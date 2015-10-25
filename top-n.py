@@ -56,6 +56,13 @@ for elem in submission:
             iterator=iterator+1
     elem.append(recommendetions)
     test.append(elem)
+## Creating the item feature map, that is the hashmap containing all the items associated with the features they have
+ifl = defaultdict(list)
+lastitem=int(byfeature[0][0]))
+for elem in byfeature:
+    elem = map (int, elem)
+    ifl[elem[0]].append(elem[1])
+
 
 ## Writing Results
 with open ('test.csv', 'w') as fp:
