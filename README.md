@@ -1,4 +1,4 @@
-# faggotsystem
+# kittens
 
 ## Top-N 
 this implementation gave for now ...26 points
