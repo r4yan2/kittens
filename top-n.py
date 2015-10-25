@@ -58,7 +58,7 @@ for elem in submission:
     test.append(elem)
 ## Creating the item feature map, that is the hashmap containing all the items associated with the features they have
 ifl = defaultdict(list)
-lastitem=int(byfeature[0][0]))
+lastitem=int(byfeature[0][0])
 for elem in byfeature:
     elem = map (int, elem)
     ifl[elem[0]].append(elem[1])
