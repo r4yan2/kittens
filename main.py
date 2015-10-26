@@ -3,21 +3,21 @@ import math
 import operator
 from collections import defaultdict
 
-## Parsing the train.csv
-parsed = list (csv.reader(open('train.csv', 'rb'), delimiter = ','))
+# Parsing the train.csv
+train = list (csv.reader(open('train.csv', 'rb'), delimiter = ','))
 
-## Calculating number of users
+# Calculating number of users
 
-nUsers=len(parsed)
+nUsers=len(train)
 
-## Insert into an hashmap the shrink vaue associated to an item and another hashmap with the normalized rating 
+# Insert into an hashmap the shrink value associated to an item and another hashmap with the normalized rating 
 sum=0
 counter=0
 total={}
 shrink={}
-del parsed[0]
-lastid=int(parsed[0][1])
-for line in parsed:
+del train[0]
+lastid=int(train[0][1])
+for line in train:
     line = map (int, line)
     if (lastid!=line[1]):
 	shrink[lastid]=int(math.fabs(math.log(float(counter)/nUsers)));
@@ -28,22 +28,24 @@ for line in parsed:
     sum=sum+line[2]
     counter=counter+1
 
-## Sorting in descending order the list of items
-sorted_total = dict(sorted(total.items(), key=operator.itemgetter(1), reverse=True))
-top=sorted(sorted_total.items(), key=lambda x:x[1], reverse=True)
+# Sorting in descending order the list of items
+sortedTotal = dict(sorted(total.items(), key=operator.itemgetter(1), reverse=True))
+topN=sorted(sortedTotal.items(), key=lambda x:x[1], reverse=True)
 
-## Creating the UserEvaluatedList that is the list of items already evaluated by an user
+# Creating the UserEvaluatedList that is the list of items already evaluated by an user
+
 uel = defaultdict(list)
-for line in parsed:
+for line in train:
         line = map (int, line)
         uel[line[0]].append(line[1])
  
-## Creating results by filtering out of the top list the items already seen by users 
-submission = list (csv.reader(open('test.csv', 'rb'), delimiter = ','))
-test=[]
-test.append(['userId','testItems'])
-del submission[0]
-for elem in submission:
+# Creating results by filtering out of the top list the items already seen by users
+ 
+test = list (csv.reader(open('test.csv', 'rb'), delimiter = ','))
+result = []
+result.append(['userId','testItems'])
+del test[0]
+for elem in test:
     count=0
     iterator=0
     recommendetions=''
@@ -55,9 +57,10 @@ for elem in submission:
         else:
             iterator=iterator+1
     elem.append(recommendetions)
-    test.append(elem)
+    result.append(elem)
 
 ## Creating the item feature map, that is the hashmap containing all the items associated with the features they have
+
 byfeature = list(csv.reader(open('icm.csv', 'rb'), delimiter = ','))
 del byfeature[0]
 ifl = defaultdict(list)
@@ -69,10 +72,14 @@ for elem in byfeature:
 ## User feature avg rating
 ufr={}
 ufr = defaultdict(lambda: 0.0, ufr)
-for i in parsed:
+for i in train:
     i=map(int, i)
     for j in ifl[i[1]]:
         ufr[(i[0],j)]=(ufr[(i[0],j)]+float(i[2]))/2
+
+## TODO fare la top-N personalizzata con la normalizzazione del voto basata sulle medie valutazioni dell'utente per una certa feature
+
+
 
 ## Writing Results
 with open ('test.csv', 'w') as fp:
