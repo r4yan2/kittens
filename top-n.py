@@ -66,6 +66,10 @@ for elem in byfeature:
     elem = map (int, elem)
     ifl[elem[0]].append(elem[1])
 
+## User feature avg rating
+ufr = defaultdict(lambda: 0.0, ufr)
+
+
 
 for i in parsed:
     i=map(int, i)
