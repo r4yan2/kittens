@@ -65,6 +65,10 @@ for elem in byfeature:
     elem = map (int, elem)
     ifl[elem[0]].append(elem[1])
 
+## User feature avg rating
+ufr = defaultdict(lambda: 0.0, ufr)
+
+
 
 ## Writing Results
 with open ('test.csv', 'w') as fp:
