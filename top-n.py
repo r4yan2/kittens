@@ -27,10 +27,10 @@ for line in train:
         lastid=line[1];
     sum=sum+line[2]
     counter=counter+1
-
 # Sorting in descending order the list of items
-sortedTotal = dict(sorted(total.items(), key=operator.itemgetter(1), reverse=True))
-topN=sorted(sortedTotal.items(), key=lambda x:x[1], reverse=True)
+#sortedTotal = dict(sorted(total.items(), key=operator.itemgetter(1), reverse=True))
+topN=sorted(total.items(), key=lambda x:x[1], reverse=True)
+topN5=topN[:1666]
 
 # Creating the UserEvaluatedList that is the list of items already evaluated by an user
 
@@ -71,35 +71,41 @@ for elem in byfeature:
 
 ## User feature avg rating
 ufr={}
+ufc={}
 ufr = defaultdict(lambda: 0.0, ufr)
 for i in train:
     i=map(int, i)
     for j in ifl[i[1]]:
         ufr[(i[0],j)]=(ufr[(i[0],j)]+float(i[2]))/2
+        ufc[j]=ufc[j]+1 TODO non farti esplodere il cervello, inizializza ufc a 0
 
 ## TODO fare la top-N personalizzata con la normalizzazione del voto basata sulle medie valutazioni dell'utente per una certa feature
 
 personalizedTopN={}
+dictTopN5=dict(topN[:1000])
 for user in test:
-    for elem in total:
-	personalizedTopN[(int(user[0]),elem)]=total[elem]
+    for elem in dictTopN5:
+	personalizedTopN[(int(user[0]),elem)]=dictTopN5[elem]
         for i in ifl[elem]:
             personalizedTopN[(int(user[0]),elem)]=personalizedTopN[(int(user[0]),elem)]+ufr[int(user[0]),i]-5
 
-sortedPersonalized = dict(sorted(personalizedTopN.items(), key=operator.itemgetter(2), reverse=True))
-topNPersonalized=sorted(sortedPersonalized.items(), key=lambda x:x[2], reverse=True)
+#sortedPersonalized = dict(sorted(personalizedTopN.items(), key=operator.itemgetter(1), reverse=True))
+topNPersonalized=sorted(personalizedTopN.items(), key=lambda x:x[1], reverse=True)
 
 test = list (csv.reader(open('test.csv', 'rb'), delimiter = ','))
 result = []
 result.append(['userId','testItems'])
 del test[0]
 for elem in test:
+    elem=map(int,elem)
     count=0
     iterator=0
     recommendetions=''
     while count<5:
-        if not (topNPersonalized[(int(elem[0]),iterator)][0] in uel[int(elem[0])]):
-            recommendetions=recommendetions+(str(topNPersonalized[(int(elem[0]),iterator)][0])+' ')
+	if not (topNPersonalized[iterator][0][0]==elem[0]):
+	    iterator=iterator+1
+        if not (topNPersonalized[iterator][0][1] in uel[int(elem[0])]):
+            recommendetions=recommendetions+(str(topNPersonalized[iterator][0][1])+' ')
             iterator=iterator+1
             count=count+1
         else:
