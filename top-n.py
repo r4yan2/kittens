@@ -58,6 +58,7 @@ for elem in submission:
     test.append(elem)
 ## Creating the item feature map, that is the hashmap containing all the items associated with the features they have
 byfeature = list(csv.reader(open('icm.csv', 'rb'), delimiter = ','))
+del byfeature[0]
 ifl = defaultdict(list)
 lastitem=int(byfeature[0][0])
 for elem in byfeature:
