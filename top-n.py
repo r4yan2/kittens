@@ -56,6 +56,7 @@ for elem in submission:
             iterator=iterator+1
     elem.append(recommendetions)
     test.append(elem)
+
 ## Creating the item feature map, that is the hashmap containing all the items associated with the features they have
 byfeature = list(csv.reader(open('icm.csv', 'rb'), delimiter = ','))
 del byfeature[0]
@@ -65,6 +66,11 @@ for elem in byfeature:
     elem = map (int, elem)
     ifl[elem[0]].append(elem[1])
 
+
+for i in parsed:
+    i=map(int, i)
+    for j in ifl[i[1]]:
+        ufr[(i[0],j)]=(ufr[(i[0],j)]+float(i[2]))/2
 
 ## Writing Results
 with open ('test.csv', 'w') as fp:
