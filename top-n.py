@@ -77,7 +77,7 @@ for i in train:
     i=map(int, i)
     for j in ifl[i[1]]:
         ufr[(i[0],j)]=(ufr[(i[0],j)]+float(i[2]))/2
-        ufc[j]=ufc[j]+1 TODO non farti esplodere il cervello, inizializza ufc a 0
+        ufc[j]=ufc[j]+1 #TODO non farti esplodere il cervello, inizializza ufc a 0
 
 ## TODO fare la top-N personalizzata con la normalizzazione del voto basata sulle medie valutazioni dell'utente per una certa feature
 
