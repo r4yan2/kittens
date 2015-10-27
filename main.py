@@ -6,7 +6,7 @@ from collections import defaultdict
 
 
 # Parsing the train.csv
-train = list (csv.reader(open('train.csv', 'rb'), delimiter = ','))
+train = list (csv.reader(open('data/train.csv', 'rb'), delimiter = ','))
 
 # Calculating number of users
 
@@ -43,7 +43,7 @@ for line in train:
  
 # Creating results by filtering out of the top list the items already seen by users
  
-test = list (csv.reader(open('test.csv', 'rb'), delimiter = ','))
+test = list (csv.reader(open('data/test.csv', 'rb'), delimiter = ','))
 result = []
 result.append(['userId','testItems'])
 del test[0]
@@ -63,7 +63,7 @@ for elem in test:
 
 ## Creating the item feature map, that is the hashmap containing all the items associated with the features they have
 
-byfeature = list(csv.reader(open('icm.csv', 'rb'), delimiter = ','))
+byfeature = list(csv.reader(open('data/icm.csv', 'rb'), delimiter = ','))
 del byfeature[0]
 ifl = defaultdict(list)
 lastitem=int(byfeature[0][0])
@@ -96,7 +96,7 @@ for user in test:
 #sortedPersonalized = dict(sorted(personalizedTopN.items(), key=operator.itemgetter(1), reverse=True))
 topNPersonalized=sorted(personalizedTopN.items(), key=lambda x:x[1], reverse=True)
 
-test = list (csv.reader(open('test.csv', 'rb'), delimiter = ','))
+test = list (csv.reader(open('data/test.csv', 'rb'), delimiter = ','))
 result = []
 result.append(['userId','testItems'])
 del test[0]
@@ -119,7 +119,7 @@ for elem in test:
 
 
 ## Writing Results
-with open ('test.csv', 'w') as fp:
+with open ('data/result.csv', 'w') as fp:
      a = csv.writer(fp, delimiter=',')
      a.writerows(result)       
 fp.close
