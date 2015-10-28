@@ -34,5 +34,3 @@ topN=sorted(total.items(), key=lambda x:x[1], reverse=True)
 writer = (csv.writer(open('data/topN.csv', 'w'), delimiter=','))
 writer.writerow(["Items", "value"])
 writer.writerows(topN)
-
-
