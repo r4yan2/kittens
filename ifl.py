@@ -16,5 +16,5 @@ result=sorted(ifl.items(), key=lambda x:x[0])
 # Writing Results
 writer = (csv.writer(open('data/ifl.csv', 'w'), delimiter=','))
 writer.writerow(["item","features"])
-writer.writerows(result)
-
+for key,value in result:
+    writer.writerow([key, **value])

@@ -3,11 +3,15 @@ import math
 import operator
 from collections import defaultdict
 
-# Parsing the train.csv
+# Parsing train dataser
 train = list (csv.reader(open('data/train.csv', 'rb'), delimiter = ','))
 del train[0] #deletion of the string header
+
+# Parsing test dataset
 test = list (csv.reader(open('data/test.csv', 'rb'), delimiter = ','))
 del test[0]
+
+# initializing resut array
 result=[]
 
 # Writing Results
@@ -43,28 +47,8 @@ for line in train:
         line = map (int, line)
         uel[line[0]].append(line[1])
  
-# Creating results by filtering out of the top list the items already seen by users
-#result = []
-#result.append(['userId','testItems'])
-#del test[0]
-#for elem in test:
-#    count=0
-#    iterator=0
-#    recommendetions=''
-#    while count<5:
-#        if not (topN[iterator][0] in uel[int(elem[0])]):
-#	#if not (topN[iterator][0] in )
-#            recommendetions=recommendetions+(str(topN[iterator][0])+' ')
-#            iterator=iterator+1
-#            count=count+1
-#        else:
-#            iterator=iterator+1
-#    elem.append(recommendetions)
-#    result.append(elem)
-
-# Creating the item feature map, that is the hashmap containing all the items associated with the features they have
-
-byfeature = list(csv.reader(open('data/icm.csv', 'rb'), delimiter = ','))
+# Parsing the item feature list
+ifl = list(csv.reader(open('data/ifl.csv', 'rb'), delimiter = ','))
 del byfeature[0]
 ifl = defaultdict(list)
 lastitem=int(byfeature[0][0])
