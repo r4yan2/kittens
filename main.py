@@ -14,10 +14,6 @@ del test[0]
 # initializing resut array
 result=[]
 
-# Writing Results
-writer = (csv.writer(open('data/result.csv', 'w'), delimiter=','))
-writer.writerow(["userId,testItems"])
-
 # Calculating number of users
 nUsers=len(train)
 
@@ -30,10 +26,11 @@ for line in train:
 # Parsing the item feature list
 byfeature = list(csv.reader(open('data/icm.csv', 'rb'), delimiter = ','))
 del byfeature[0]
-ifl = defaultdict(list)
-lastitem=int(byfeature[0][0])
+ifl = {}
 for elem in byfeature:
     elem = map (int, elem)
+    if not (elem[0]) in ifl:
+        ifl[elem[0]]=[]
     ifl[elem[0]].append(elem[1])
 
 # User feature avg rating
@@ -43,6 +40,8 @@ ufc = defaultdict(lambda: 0.0, ufc)
 ufr = defaultdict(lambda: 0.0, ufr)
 for i in train:
     i=map(int, i)
+    if not i[1] in ifl:
+        continue
     for j in ifl[i[1]]:
         ufr[(i[0],j)]=(ufr[(i[0],j)]+float(i[2]))/2
         ufc[j]=ufc[j]+1
@@ -50,12 +49,17 @@ for i in train:
 ## TODO fare la top-N personalizzata con la normalizzazione del voto basata sulle medie valutazioni dell'utente per una certa feature
 
 personalizedTopN={}
-dictTopN5=dict(list(csv.reader(open('data/topN.csv', 'rb'), delimiter = ','))[:3000])
+dictTopN5=dict(list(csv.reader(open('data/topN.csv', 'rb'), delimiter = ','))[:3100])
 for user in test:
+    user=int(user[0])
     for elem in dictTopN5:
-        personalizedTopN[(int(user[0]),elem)]=dictTopN5[elem]
+        elem=int(elem)
+        personalizedTopN[(user,elem)]=math.log(float(dictTopN5[str(elem)]))
+        if not elem in ifl:
+            continue
         for i in ifl[elem]:
-            personalizedTopN[(int(user[0]),elem)]=personalizedTopN[(int(user[0]),elem)]+(float(ufr[(int(user[0]),i)]-5)/(len(ifl[elem])))-math.fabs(math.log(math.fabs((ufr[(int(user[0]),i)]+0.01)/ufc[i])))
+            personalizedTopN[(user,elem)]=personalizedTopN[(user,elem)]+(float(ufr[(user,i)]-5)/len(ifl[elem]))
+#-math.fabs(math.log((ufr[(user,i)]+0.01)/ufc[i]))
 
 topNPersonalized=sorted(personalizedTopN.items(), key=lambda x:x[1], reverse=True)
 
@@ -73,4 +77,9 @@ for elem in test:
     elem.append(recommendetions)
     result.append(elem)
 
-writer.writerows(result)
+## Writing Results
+with open ('data/result.csv', 'w') as fp:
+     writer = csv.writer(fp, delimiter=',')
+     writer.writerow(["userId,testItems"])
+     writer.writerows(result)       
+fp.close
