@@ -3,10 +3,11 @@ import math
 import operator
 from collections import defaultdict
 
-
-
 # Parsing the train.csv
 train = list (csv.reader(open('data/train.csv', 'rb'), delimiter = ','))
+
+# Writing Results
+writer = (csv.writer(open('data/result.csv', 'w'), delimiter=','))
 
 # Calculating number of users
 
@@ -117,10 +118,5 @@ for elem in test:
     elem.append(recommendetions)
     result.append(elem)
 
-
-## Writing Results
-with open ('data/result.csv', 'w') as fp:
-     a = csv.writer(fp, delimiter=',')
-     a.writerows(result)       
 fp.close
 
