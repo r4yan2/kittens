@@ -21,8 +21,6 @@ writer.writerow("userId","testItems")
 # Calculating number of users
 nUsers=len(train)
 
-### TODO: parse the topN.csv
-
 # Creating the UserEvaluatedList: the list of items already evaluated by an user
 uel = defaultdict(list)
 for line in train:
@@ -30,7 +28,7 @@ for line in train:
         uel[line[0]].append(line[1])
  
 # Parsing the item feature list
-byfeature = list(csv.reader(open('data/icm.csv', 'rb'), delimiter = ','))
+byfeature = list(csv.reader(open('data/ifl.csv', 'rb'), delimiter = ','))
 del byfeature[0]
 ifl = defaultdict(list)
 lastitem=int(byfeature[0][0])
@@ -52,12 +50,12 @@ for i in train:
 ## TODO fare la top-N personalizzata con la normalizzazione del voto basata sulle medie valutazioni dell'utente per una certa feature
 
 personalizedTopN={}
-dictTopN5=dict(topN[:3000])
+dictTopN5=dict(list(csv.reader(open('data/topN.csv', 'rb'), delimiter = ',')[:3000])
 for user in test:
     for elem in dictTopN5:
         personalizedTopN[(int(user[0]),elem)]=dictTopN5[elem]
         for i in ifl[elem]:
-            personalizedTopN[(int(user[0]),elem)]=personalizedTopN[(int(user[0]),elem)]+ufr[(int(user[0]),i)]-5-math.fabs(math.log(math.fabs((ufr[(int(user[0]),i)]+0.01)/ufc[i])))
+            personalizedTopN[(int(user[0]),elem)]=personalizedTopN[(int(user[0]),elem)]+(float(ufr[(int(user[0]),i)]-5)/len(ifl[elem]))-math.fabs(math.log(math.fabs((ufr[(int(user[0]),i)]+0.01)/ufc[i])))
 
 topNPersonalized=sorted(personalizedTopN.items(), key=lambda x:x[1], reverse=True)
 

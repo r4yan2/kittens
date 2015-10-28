@@ -17,3 +17,5 @@ result=sorted(ifl.items(), key=lambda x:x[0])
 writer = (csv.writer(open('data/ifl.csv', 'w'), delimiter=','))
 writer.writerow(["item","features"])
 writer.writerows(result)
+
+#To remove the " character from the result type 'cat ifl.csv | tr -d '\"' > ifl.csv'
