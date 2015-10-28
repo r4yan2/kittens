@@ -86,12 +86,12 @@ for i in train:
 ## TODO fare la top-N personalizzata con la normalizzazione del voto basata sulle medie valutazioni dell'utente per una certa feature
 
 personalizedTopN={}
-dictTopN5=dict(topN[:2800])
+dictTopN5=dict(topN)
 for user in test:
     for elem in dictTopN5:
         personalizedTopN[(int(user[0]),elem)]=dictTopN5[elem]
         for i in ifl[elem]:
-            personalizedTopN[(int(user[0]),elem)]=personalizedTopN[(int(user[0]),elem)]+ufr[(int(user[0]),i)]-math.log(math.fabs(ufr[(int(user[0]),i)]/ufc[i]-5))
+            personalizedTopN[(int(user[0]),elem)]=personalizedTopN[(int(user[0]),elem)]+ufr[(int(user[0]),i)]-5-math.fabs(math.log(math.fabs((ufr[(int(user[0]),i)]+0.01)/ufc[i])))
 
 #sortedPersonalized = dict(sorted(personalizedTopN.items(), key=operator.itemgetter(1), reverse=True))
 topNPersonalized=sorted(personalizedTopN.items(), key=lambda x:x[1], reverse=True)
