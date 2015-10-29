@@ -36,15 +36,18 @@ for elem in byfeature:
 # User feature avg rating
 ufr={}
 ufc={}
-ufc = defaultdict(lambda: 0.0, ufc)
+urc={}
+ufc = defaultdict(lambda: 0, ufc)
 ufr = defaultdict(lambda: 0.0, ufr)
+urc = defaultdict(lambda: 0,urc)
 for i in train:
     i=map(int, i)
+    urc[i[0]]=urc[i[0]]+1
     if not i[1] in ifl:
         continue
     for j in ifl[i[1]]:
         ufr[(i[0],j)]=(ufr[(i[0],j)]+float(i[2]))/2
-        ufc[j]=ufc[j]+1
+        ufc[(i[0],j)]=ufc[(i[0],j)]+1
 
 ## TODO fare la top-N personalizzata con la normalizzazione del voto basata sulle medie valutazioni dell'utente per una certa feature
 
