@@ -2,7 +2,7 @@
 
 apt-get -y update
 apt-get -y upgrade
-apt-get install -y git byobu htop zram-config
+apt-get install -y git byobu htop zram-config ipython
 cd /dev/shm/
 git pull https://github.com/r4yan2/kittens
 cd kittens
