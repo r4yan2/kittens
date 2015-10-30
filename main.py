@@ -59,9 +59,7 @@ for elem in train:
 personalizedTopN={}
 dictTopN5=dict(list(csv.reader(open('data/topN.csv', 'rb'), delimiter = ','))[:3100])
 
-## Multithreading
-
-def foo(elem):       
+for elem in test     
     u=int(elem[0])
     for i in dictTopN5:
         i=int(i)
@@ -72,38 +70,12 @@ def foo(elem):
             if not (ufc[(u,f)]==0 or urc[u]==0 or u not in urc or (u,f) not in ufc):
                 personalizedTopN[(u,i)]=personalizedTopN[(u,i)]+ufr[(u,f)]/float(float(ufc[(u,f)])/urc[u])
 
-def personalizedSplit(chunk):
-    if chunk==1:
-       for elem in test[:(len(test)/2)+1]:
-           foo(elem)
-    else:
-       for porco in test[-(len(test)/2)-1:]:
-           foo(porco)
-
 class myThread (threading.Thread):
     def __init__(self, threadID):
         threading.Thread.__init__(self)
         self.threadID = threadID
     def run(self):
         personalizedSplit(self.threadID)
-
-threads = []
-
-# Create new threads
-thread1 = myThread(1)
-thread2 = myThread(2)
-
-# Start new Threads
-thread1.start()
-thread2.start()
-
-# Add threads to thread list
-threads.append(thread1)
-threads.append(thread2)
-
-# Wait for all threads to complete
-for t in threads:
-    t.join()
 
 topNPersonalized=sorted(personalizedTopN.items(), key=lambda x:x[1], reverse=True)
 
