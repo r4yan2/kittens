@@ -1,6 +1,8 @@
 import csv
+import time
 import math
 import operator
+import threading
 from collections import defaultdict
 
 # Parsing train dataser
@@ -37,32 +39,71 @@ for elem in byfeature:
 ufr={}
 ufc={}
 urc={}
-ufc = defaultdict(lambda: 0, ufc)
+ufc = defaultdict(lambda: 0.0, ufc)
 ufr = defaultdict(lambda: 0.0, ufr)
 urc = defaultdict(lambda: 0,urc)
-for i in train:
-    i=map(int, i)
-    urc[i[0]]=urc[i[0]]+1
-    if not i[1] in ifl:
+for elem in train:
+    elem=map(int, elem)
+    u=elem[0]
+    i=elem[1]
+    r=elem[2]
+    urc[u]=urc[u]+1
+    if not i in ifl:
         continue
-    for j in ifl[i[1]]:
-        ufr[(i[0],j)]=(ufr[(i[0],j)]+float(i[2]))/2
-        ufc[(i[0],j)]=ufc[(i[0],j)]+1
+    for f in ifl[i]:
+        ufr[(u,f)]=(ufr[(u,f)]+float(r))/2
+        ufc[(u,f)]=ufc[(u,f)]+1
 
 ## TODO fare la top-N personalizzata con la normalizzazione del voto basata sulle medie valutazioni dell'utente per una certa feature
 
 personalizedTopN={}
 dictTopN5=dict(list(csv.reader(open('data/topN.csv', 'rb'), delimiter = ','))[:3100])
-for user in test:
-    user=int(user[0])
-    for elem in dictTopN5:
-        elem=int(elem)
-        personalizedTopN[(user,elem)]=math.log(float(dictTopN5[str(elem)]))
-        if not elem in ifl:
+
+## Multithreading
+
+def foo(elem):       
+    u=int(elem[0])
+    for i in dictTopN5:
+        i=int(i)
+        personalizedTopN[(u,i)]=math.log(float(dictTopN5[str(i)]))
+        if not i in ifl:
             continue
-        for i in ifl[elem]:
-            personalizedTopN[(user,elem)]=personalizedTopN[(user,elem)]+(float(ufr[(user,i)]-5)/len(ifl[elem]))
-#-math.fabs(math.log((ufr[(user,i)]+0.01)/ufc[i]))
+        for f in ifl[i]:
+            if not (ufc[(u,f)]==0 or urc[u]==0 or u not in urc or (u,f) not in ufc):
+                personalizedTopN[(u,i)]=personalizedTopN[(u,i)]+ufr[(u,f)]/float(float(ufc[(u,f)])/urc[u])
+
+def personalizedSplit(chunk):
+    if chunk==1:
+       for elem in test[:(len(test)/2)+1]:
+           foo(elem)
+    else:
+       for porco in test[-(len(test)/2)-1:]:
+           foo(porco)
+
+class myThread (threading.Thread):
+    def __init__(self, threadID):
+        threading.Thread.__init__(self)
+        self.threadID = threadID
+    def run(self):
+        personalizedSplit(self.threadID)
+
+threads = []
+
+# Create new threads
+thread1 = myThread(1)
+thread2 = myThread(2)
+
+# Start new Threads
+thread1.start()
+thread2.start()
+
+# Add threads to thread list
+threads.append(thread1)
+threads.append(thread2)
+
+# Wait for all threads to complete
+for t in threads:
+    t.join()
 
 topNPersonalized=sorted(personalizedTopN.items(), key=lambda x:x[1], reverse=True)
 
