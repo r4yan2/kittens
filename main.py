@@ -68,7 +68,7 @@ for elem in test
             continue
         for f in ifl[i]:
             if not (ufc[(u,f)]==0 or urc[u]==0 or u not in urc or (u,f) not in ufc):
-                personalizedTopN[(u,i)]=personalizedTopN[(u,i)]+ufr[(u,f)]/float(float(ufc[(u,f)])/urc[u])
+                personalizedTopN[(u,i)]=personalizedTopN[(u,i)]+ufr[(u,f)]/(ufc[(u,f)]/urc[u])
 
 class myThread (threading.Thread):
     def __init__(self, threadID):
