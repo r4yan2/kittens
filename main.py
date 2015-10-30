@@ -59,7 +59,7 @@ for elem in train:
 personalizedTopN={}
 dictTopN5=dict(list(csv.reader(open('data/topN.csv', 'rb'), delimiter = ','))[:3100])
 
-for elem in test     
+for elem in test: 
     u=int(elem[0])
     for i in dictTopN5:
         i=int(i)
