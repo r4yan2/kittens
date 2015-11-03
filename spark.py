@@ -17,7 +17,7 @@ listUserItems = trainRdd.groupByKey().map(lambda x: (x[0], list(x[1]))).collect(
 
 '''
 #List of users and iterable items
-traifor i in range(len(listUserItems)):
+for i in range(len(listUserItems)):
     for j in range(i,len(listUserItems)):
         cosine_similarity[(i,j)] = get_cosine(listUserItems[i][1],listUserItems[j][1])
 nRdd.groupByKey().collect()
@@ -26,8 +26,9 @@ nRdd.groupByKey().collect()
 # Collaborative filtering recommenders with implementing the cosine similarity
 
 def getSimilarity(u):
+similarities=[0,0,0,0,0]
+v1=listUseritems[listUserItems.index(u)][1]
     for i in range(len(listUserItems)):
-        v1=listUseritems[listUserItems.index(u)][1]
         v2=listUserItems[i][1]
     "compute cosine similarity of v1 to v2: (v1 dot v2)/{||v1||*||v2||)"
         sumxx, sumxy, sumyy = 0, 0, 0
@@ -42,8 +43,14 @@ def getSimilarity(u):
         sumxx += x*x
         sumyy += y*y
         sumxy += x*y
-    #todo make this shit return the list of the most similar usersreturn 0 if sumyy==0 else float(sumxy)/((math.sqrt(sumxx))*(math.sqrt(sumyy)))
-
+        if (sumyy==0):
+            continue
+        similarty=float(sumxy)/((math.sqrt(sumxx))*(math.sqrt(sumyy)))
+        for j in similarities:
+            if similarity>j:
+                similarities[similarities.index(j)]=similarity
+                break
+   
 cosine_similarity = {}
 for i in range(len(listUserItems)):
     for j in range(i,len(listUserItems)):
