@@ -12,6 +12,10 @@ trainRdd=trainRdd.map(lambda x: [x[0],x[1]])
 
 trainRdd=trainRdd.map(lambda x: map(int,x))
 
+# Mapping (user,item) as key and rating as value
+trainRddMappedValues=trainRdd.map(lambda x: (list((x[0],x[1])),x[2]))
+
+
 # List of user items seen
 listUserItems = trainRdd.groupByKey().map(lambda x: (x[0], list(x[1]))).collect()
 
@@ -51,7 +55,29 @@ v1=getUserVector(u)
             if similarity>j:
                 similarities[similarities.index(j)]=similarity
                 break
-   
+
+# Getting the number of items that we have in our icm.csv
+icmRdd = sc.textFile("data/icm.csv").map(lambda line: line.split(","))
+icmFirstRow = icmRdd.first()
+icmRdd=icmRdd.filter(lambda x:x !=icmFirstRow)
+numDistinctItems = icmRdd.map(lambda r: r[1]).distinct().count()
+
+# Creating the function getUserVector that returns the 20K vector with the user's ratings for each item the user has seen
+
+def getUserVector(u):
+    listItems = listUserItems[u][1]
+    itemsList = [0]*numDistinctItems
+        for (user,item),v in trainRddMappedValues.collect():
+        if (user!=u or item not in listItems):
+            continue
+        listItems[item-1]=v
+
+
+
+
+
+
+
 cosine_similarity = {}
 for i in range(len(listUserItems)):
     for j in range(i,len(listUserItems)):
@@ -75,7 +101,7 @@ def cosine_similarity(v1,v2):
         return sumxy/math.sqrt(sumxx*sumyy)
 
 
-# Calculating the number of ratings that has rated some items
+# Calculating the number of ratings that of the items
 numRatings = trainRdd.count()
 # Calculating the number of distinct users that rated some items
 numUsers = trainRdd.map(lambda r: r[0]).distinct().count()
