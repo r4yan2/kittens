@@ -25,11 +25,11 @@ nRdd.groupByKey().collect()
 
 # Collaborative filtering recommenders with implementing the cosine similarity
 
-def getSimilarity(u):
-similarities=[0,0,0,0,0]
-v1=listUseritems[listUserItems.index(u)][1]
+def getRecommendetions(u):
+v1=getUserVector(u)
     for i in range(len(listUserItems)):
         v2=listUserItems[i][1]
+
     "compute cosine similarity of v1 to v2: (v1 dot v2)/{||v1||*||v2||)"
         sumxx, sumxy, sumyy = 0, 0, 0
         vMax = max(v1,v2)
@@ -46,6 +46,7 @@ v1=listUseritems[listUserItems.index(u)][1]
         if (sumyy==0):
             continue
         similarty=float(sumxy)/((math.sqrt(sumxx))*(math.sqrt(sumyy)))
+
         for j in similarities:
             if similarity>j:
                 similarities[similarities.index(j)]=similarity
