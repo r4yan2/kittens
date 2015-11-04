@@ -56,13 +56,13 @@ def getRecommendetions(u,userSet):
             sumxy += x*y
             if (sumxy==0):
                 if (x==0) and (y in filmThresh):
-                    recommendetions.add(i)
+                    recommendetions.append((y,i+1))
             continue
         similarty=float(sumxy)/((math.sqrt(sumxx))*(math.sqrt(sumyy)))
         if similarity<cosineThresh:
             continue
-        for item in film:
-            recommendetions.add(film*similarity)
+        for rating,item in film:
+            recommendetions.append((item,rating*similarity))
     return recommendetions
 
 def numDistinctItems():
@@ -77,7 +77,7 @@ def numDistinctItems():
 
 def getUserVector(u):
 # Creating the function getUserVector that returns the 20K vector with the user's ratings for each item the user has seen
-    listItems = listUserItems[u][1]
+    listItems = listUserItems[u]<[1]
     itemsList = [0]*numDistinctItems()
     for (user,item),v in trainRddMappedValues.collect():
         if (user!=u or item not in listItems):
