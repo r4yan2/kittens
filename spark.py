@@ -24,33 +24,40 @@ nRdd.groupByKey().collect()
 '''
 
 # Collaborative filtering recommenders with implementing the cosine similarity
+'''
+getRecommendetions(user,userSet)
+work on the user vector to make the cosine similarity
+if is greater than a threshold then the evaluation
+of the film is recorded in the possible recommendetions
+multiplied by the similarity value for that specific user
 
-def getRecommendetions(u):
+
+def getRecommendetions(u,userSet):
+
 v1=getUserVector(u)
-    for i in range(len(listUserItems)):
-        v2=listUserItems[i][1]
+filmThresh=range(6,10)
+cosineThresh=0.75
+recommendetions=[]
+for i in range(len(listUserItems)):
+    v2=getUserVector(listUserItems[i][0])
 
-    "compute cosine similarity of v1 to v2: (v1 dot v2)/{||v1||*||v2||)"
-        sumxx, sumxy, sumyy = 0, 0, 0
-        vMax = max(v1,v2)
-        vMin = min(v1,v2)
-        for i in range(len(vMax)):
-            x = vMax[i]
-            if vMax[i] in vMin:
-                y = vMax[i]
-            else:
-                y=0
+    #compute cosine similarity of v1 to v2: (v1 dot v2)/{||v1||*||v2||)"
+    sumxx, sumxy, sumyy = 0, 0, 0
+    for i in range(len(v1)):
+        x = v1[i]
+        y = v2[i]
         sumxx += x*x
         sumyy += y*y
         sumxy += x*y
-        if (sumyy==0):
-            continue
-        similarty=float(sumxy)/((math.sqrt(sumxx))*(math.sqrt(sumyy)))
-
-        for j in similarities:
-            if similarity>j:
-                similarities[similarities.index(j)]=similarity
-                break
+#TODO chicken and egg problem, cannot multiply for similarity because it get computed at the very end of the first for loop
+        if (sumxy==0):
+            if (x==0) and (y in filmThresh):
+                recommendetions.add([i,y*similarity])
+        continue
+    similarty=float(sumxy)/((math.sqrt(sumxx))*(math.sqrt(sumyy)))
+    if similarity<cosineThresh:
+        break
+return recommendetions
    
 cosine_similarity = {}
 for i in range(len(listUserItems)):
@@ -59,8 +66,8 @@ for i in range(len(listUserItems)):
 
 userSet = sc.textFile("data/test.csv").map(lambda line: line.split(","))
 userSet.filter(lambda x:x !=userSet.first())
-for u in userSet.map(lambda x: map(int,x)).keys():
-    getSimilarity(u)
+for u in userSet.map(lambda x: map(int,x)).keys().collect():
+    getRecommendetions(u,userSet.map(lambda x: map(int,x)).keys().collect())
 
 '''
 # Defining cosine similarity function
