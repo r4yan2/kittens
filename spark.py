@@ -38,47 +38,52 @@ multiplied by the similarity value for that specific user
 
 def getRecommendetions(u,userSet):
 
-v1=getUserVector(u)
-filmThresh=range(6,10)
-cosineThresh=0.75
-recommendetions=[]
-for i in range(len(listUserItems)):
-    v2=getUserVector(listUserItems[i][0])
+    v1=getUserVector(u)
+    filmThresh=range(6,10)
+    cosineThresh=0.75
+    recommendetions=[]
+    for i in range(len(listUserItems)):
+        film=[]
+        v2=getUserVector(listUserItems[i][0])
 
     #compute cosine similarity of v1 to v2: (v1 dot v2)/{||v1||*||v2||)"
-    sumxx, sumxy, sumyy = 0, 0, 0
-    for i in range(len(v1)):
-        x = v1[i]
-        y = v2[i]
-        sumxx += x*x
-        sumyy += y*y
-        sumxy += x*y
-  #TODO chicken and egg problem, cannot multiply for similarity because it get computed at the very end of the first for loop
-        if (sumxy==0):
-            if (x==0) and (y in filmThresh):
-                recommendetions.add([i,y*similarity])
-        continue
-    similarty=float(sumxy)/((math.sqrt(sumxx))*(math.sqrt(sumyy)))
-    if similarity<cosineThresh:
-        break
-return recommendetions
- 
-# Getting the number of items that we have in our icm.csv
-icmRdd = sc.textFile("data/icm.csv").map(lambda line: line.split(","))
-icmFirstRow = icmRdd.first()
-icmRdd=icmRdd.filter(lambda x:x !=icmFirstRow)
-numDistinctItems = icmRdd.map(lambda r: r[1]).distinct().count()
+        sumxx, sumxy, sumyy = 0, 0, 0
+        for i in range(len(v1)):
+            x = v1[i]
+            y = v2[i]
+            sumxx += x*x
+            sumyy += y*y
+            sumxy += x*y
+            if (sumxy==0):
+                if (x==0) and (y in filmThresh):
+                    recommendetions.add(i)
+            continue
+        similarty=float(sumxy)/((math.sqrt(sumxx))*(math.sqrt(sumyy)))
+        if similarity<cosineThresh:
+            continue
+        for item in film:
+            recommendetions.add(film*similarity)
+    return recommendetions
 
-# Creating the function getUserVector that returns the 20K vector with the user's ratings for each item the user has seen
+def numDistinctItems():
+
+    # Getting the number of items that we have in our icm.csv
+    icmRdd = sc.textFile("data/icm.csv").map(lambda line: line.split(","))
+    icmFirstRow = icmRdd.first()
+    icmRdd=icmRdd.filter(lambda x:x !=icmFirstRow)
+    numDistinctItems = icmRdd.map(lambda r: r[1]).distinct().count()
+    return numDistinctItems
+
 
 def getUserVector(u):
+# Creating the function getUserVector that returns the 20K vector with the user's ratings for each item the user has seen
     listItems = listUserItems[u][1]
-    itemsList = [0]*numDistinctItems
-        for (user,item),v in trainRddMappedValues.collect():
+    itemsList = [0]*numDistinctItems()
+    for (user,item),v in trainRddMappedValues.collect():
         if (user!=u or item not in listItems):
             continue
         listItems[item-1]=v
-
+    return listItems
   
 cosine_similarity = {}
 for i in range(len(listUserItems)):
