@@ -24,6 +24,10 @@ trainRdd=trainRdd.map(lambda x: map(int,x))
 # Mapping (user,item) as key and rating as value
 trainRddMappedValues=trainRdd.map(lambda x: (list((x[0],x[1])),x[2]))
 
+# Get of userSet
+userSet = sc.textFile("data/test.csv").map(lambda line: line.split(","))
+userSetFirst = userSet.first()
+userSet = userSet.filter(lambda x:x !=userSetFirst)
 
 # List of user items seen
 listUserItems = trainRdd.groupByKey().map(lambda x: (x[0], list(x[1]))).collect()
@@ -41,7 +45,6 @@ def getRecommendetions(u,userSet):
 
     v1=getUserVector(u)
     filmThresh=range(6,10)
-    cosineThresh=0.75
     recommendetions=[]
     for i in range(len(listUserItems)):
         film=[]
@@ -55,13 +58,11 @@ def getRecommendetions(u,userSet):
             sumxx += x*x
             sumyy += y*y
             sumxy += x*y
-            if (sumxy==0):
-                if (x==0) and (y in filmThresh):
-                    recommendetions.append((y,i+1))
+            if (x==0) and (y in filmThresh):
+                recommendetions.append((y,i+1))
+        if (sumxy==0):
             continue
-        similarty=float(sumxy)/((math.sqrt(sumxx))*(math.sqrt(sumyy)))
-        if similarity<cosineThresh:
-            continue
+        similarity=float(sumxy)/((math.sqrt(sumxx))*(math.sqrt(sumyy)))
         for rating,item in film:
             recommendetions.append((item,rating*similarity))
     return recommendetions
@@ -85,28 +86,13 @@ def getUserVector(u):
         listItems[item-1]=v
     return listItems
 
-cosine_similarity = {}
-for i in range(len(listUserItems)):
-    for j in range(i,len(listUserItems)):
-        cosine_similarity[(i,j)] = get_cosine(listUserItems[i][1],listUserItems[j][1])
-
-userSet = sc.textFile("data/test.csv").map(lambda line: line.split(","))
-userSet.filter(lambda x:x !=userSet.first())
-for u in userSet.map(lambda x: map(int,x)).keys().collect():
-    getRecommendetions(u,userSet.map(lambda x: map(int,x)).keys().collect())
-
 # Making the recommendetions
-for elem in test:
-    elem=map(int,elem)
-    count=0
-    iterator=0
-    recommendetions=getRecommendetions(elem)
-    while count<5:
-        if (topNPersonalized[iterator][0][0]==elem[0]):
-            if not (topNPersonalized[iterator][0][1] in uel[elem[0]]):
-                recommendetions=recommendetions+(str(topNPersonalized[iterator][0][1])+' ')
-                count=count+1
-        iterator=iterator+1
+for elem in userSet.keys().collect():
+    elem = map(int,elem)
+    recommend=[]
+    recommendetions=sorted(getRecommendetions, key=lambda x:x[1], reverse=True)[:5]
+    for i,v in recommendetions:
+        recommend=recommend+(str(v)+' ')
     elem.append(recommendetions)
     result.append(elem)
 
