@@ -62,7 +62,7 @@ for i in range(len(listUserItems)):
     if similarity<cosineThresh:
         break
 return recommendetions
- 
+
 # Getting the number of items that we have in our icm.csv
 icmRdd = sc.textFile("data/icm.csv").map(lambda line: line.split(","))
 icmFirstRow = icmRdd.first()
@@ -79,7 +79,7 @@ def getUserVector(u):
             continue
         listItems[item-1]=v
 
-  
+
 cosine_similarity = {}
 for i in range(len(listUserItems)):
     for j in range(i,len(listUserItems)):
@@ -89,6 +89,28 @@ userSet = sc.textFile("data/test.csv").map(lambda line: line.split(","))
 userSet.filter(lambda x:x !=userSet.first())
 for u in userSet.map(lambda x: map(int,x)).keys().collect():
     getRecommendetions(u,userSet.map(lambda x: map(int,x)).keys().collect())
+
+# Making the recommendetions
+for elem in test:
+    elem=map(int,elem)
+    count=0
+    iterator=0
+    recommendetions=getRecommendetions(elem)
+    while count<5:
+        if (topNPersonalized[iterator][0][0]==elem[0]):
+            if not (topNPersonalized[iterator][0][1] in uel[elem[0]]):
+                recommendetions=recommendetions+(str(topNPersonalized[iterator][0][1])+' ')
+                count=count+1
+        iterator=iterator+1
+    elem.append(recommendetions)
+    result.append(elem)
+
+# Writing Results
+with open ('data/result.csv', 'w') as fp:
+     writer = csv.writer(fp, delimiter=',')
+     writer.writerow(["userId,testItems"])
+     writer.writerows(result)
+fp.close
 
 '''
 # Defining cosine similarity function
