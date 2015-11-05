@@ -17,7 +17,7 @@ numMovies = trainRdd.map(lambda r: r[1]).distinct().count()
 # Print stats
 print "Got %d ratings from %d users on %d movies." % (numRatings, numUsers, numMovies)
 
-trainRdd=trainRdd.map(lambda x: [x[0],x[1]])
+trainRddWithoutRatings=trainRdd.map(lambda x: [x[0],x[1]])
 
 trainRdd=trainRdd.map(lambda x: map(int,x))
 
@@ -30,7 +30,7 @@ userSetFirst = userSet.first()
 userSet = userSet.filter(lambda x:x !=userSetFirst)
 
 # List of user items seen
-listUserItems = trainRdd.groupByKey().map(lambda x: (x[0], list(x[1]))).collect()
+listUserItems = trainRddWithoutRatings.groupByKey().map(lambda x: (x[0], list(x[1]))).collect()
 
 # Collaborative filtering recommenders with implementing the cosine similarity
 '''
@@ -40,15 +40,25 @@ if is greater than a threshold then the evaluation
 of the film is recorded in the possible recommendetions
 multiplied by the similarity value for that specific user
 '''
+def getUserVector(u):
+# Creating the function getUserVector that returns the 20K vector with the user's ratings for each item the user has seen
+    listItems = listUserItems[u][1]
+    listItemsInt = map(int,listItems)
+    itemsList = [0]*numDistinctItems()
+    for (user,item),v in trainRddMappedValues.collect():
+        if (user!=u or item not in listItemsInt):
+            continue
+        itemsList[item-1]=v
+    return itemsList
 
-def getRecommendetions(u,userSet):
+def getRecommendetions(u):
 
-    v1=getUserVector(u)
+    v1=map(int,getUserVector(u))
     filmThresh=range(6,10)
     recommendetions=[]
     for i in range(len(listUserItems)):
         film=[]
-        v2=getUserVector(listUserItems[i][0])
+        v2=map(int,getUserVector(int(listUserItems[i][0])))
 
     #compute cosine similarity of v1 to v2: (v1 dot v2)/{||v1||*||v2||)"
         sumxx, sumxy, sumyy = 0, 0, 0
@@ -73,24 +83,14 @@ def numDistinctItems():
     icmRdd = sc.textFile("data/icm.csv").map(lambda line: line.split(","))
     icmFirstRow = icmRdd.first()
     icmRdd=icmRdd.filter(lambda x:x !=icmFirstRow)
-    numDistinctItems = icmRdd.map(lambda r: r[1]).distinct().count()
+    numDistinctItems = icmRdd.map(lambda r: r[0]).distinct().count()
     return numDistinctItems
-
-def getUserVector(u):
-# Creating the function getUserVector that returns the 20K vector with the user's ratings for each item the user has seen
-    listItems = listUserItems[u]<[1]
-    itemsList = [0]*numDistinctItems()
-    for (user,item),v in trainRddMappedValues.collect():
-        if (user!=u or item not in listItems):
-            continue
-        listItems[item-1]=v
-    return listItems
 
 # Making the recommendetions
 for elem in userSet.keys().collect():
     elem = map(int,elem)
     recommend=[]
-    recommendetions=sorted(getRecommendetions, key=lambda x:x[1], reverse=True)[:5]
+    recommendetions=sorted(getRecommendetions(elem[0]), key=lambda x:x[1], reverse=True)[:5]
     for i,v in recommendetions:
         recommend=recommend+(str(v)+' ')
     elem.append(recommendetions)
