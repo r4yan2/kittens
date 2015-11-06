@@ -26,13 +26,13 @@ def userSetLoader():
     userSet = userSet.filter(lambda x:x !=userSetFirstRow).keys().map(lambda x: int(x)).collect()
     return userSet
 
-def stats(trainRdd):
+def stats():
     # Calculating the number of ratings that of the items
-    numRatings = trainRdd.count()
+    numRatings = trainRddLoader().count()
     # Calculating the number of distinct users that rated some items
-    numUsers = trainRdd.map(lambda r: r[0]).distinct().count()
+    numUsers = trainRddLoader().map(lambda r: r[0]).distinct().count()
     # Calculating the number of items that some users rated them
-    numMovies = trainRdd.map(lambda r: r[1]).distinct().count()
+    numMovies = trainRddLoader().map(lambda r: r[1]).distinct().count()
     # Print stats
     print "Got %d ratings from %d users on %d movies. Total items %d" % (numRatings, numUsers, numMovies, numDistinctItems())
 
@@ -104,5 +104,7 @@ for user in userSet:
     for i,v in recommendetions:
         recommend=recommend+(str(v)+' ')
     user.append(recommendetions)
+    #stats
+    print "Completion %d%" % ((userSet.index(user)*100)/len(userSet))
     result.append(user)
 resultWriter(result)
