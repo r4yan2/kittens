@@ -1,5 +1,7 @@
 import math
 import csv
+import time
+from scipy.spatial.distance import cosine
 
 def resultWriter(result):
     # Writing Results
@@ -38,7 +40,7 @@ def stats():
 
 def getUserVector(u):
 # Creating the function getUserVector that returns the 20K vector with the user's ratings for each item the user has seen
-    listItems = listUserItems[u-1][1]
+    listItems = listUserItems(u)
     itemsList = [0]*moviesNumber
     for (user,item),v in trainRddMappedValuesCollected:
         if (user!=u or item not in listItems):
@@ -57,23 +59,30 @@ def getRecommendetions(u):
     v1=getUserVector(u)
     filmThresh=range(6,10)
     recommendetions=[]
-    for i in range(len(listUserItems)):
-        film=[]
-        v2=getUserVector(listUserItems[i][0])
 
-    #compute cosine similarity of v1 to v2: (v1 dot v2)/{||v1||*||v2||)"
+    for i in userSet:
+        film=[]
+        v2=getUserVector(i)
+        #compute cosine similarity of v1 to v2: (v1 dot v2)/{||v1||*||v2||)
         sumxx, sumxy, sumyy = 0, 0, 0
-        for i in range(len(v1)):
-            x = v1[i]
-            y = v2[i]
-            sumxx += x*x
-            sumyy += y*y
-            sumxy += x*y
-            if (x==0) and (y in filmThresh):
-                recommendetions.append((y,i+1))
+        for j in range(len(v1)):
+            y = v2[j]
+            x = v1[j]
+            if (y==0):
+                continue
+            if (x==0):
+                if (y in filmThresh):
+                    film.append((y,j+1))
+                continue
+            sumxx = sumxx + x*x
+            sumyy = sumyy + y*y
+            sumxy = sumxy + x*y
         if (sumxy==0):
-            continue
-        similarity=float(sumxy)/((math.sqrt(sumxx))*(math.sqrt(sumyy)))
+            similarity=-1
+        else:
+            similarity=float(sumxy)/((math.sqrt(sumxx))*(math.sqrt(sumyy)))
+        print similarity
+        #similarity= 1 - cosine(v1, v2)
         for rating,item in film:
             recommendetions.append((item,rating*similarity))
     return recommendetions
@@ -87,26 +96,30 @@ def numDistinctItems():
     numDistinctItems = icmRdd.map(lambda x: map(int,x)).sortByKey(False).keys().first()
     return numDistinctItems
 
+def listUserItems(user):
+    # List of user items seen
+    return trainRdd.map(lambda x: [x[0],x[1]]).groupByKey().map(lambda x: (int(x[0]), map(int,list(x[1])))).filter(lambda x: x[0]==user).values().collect()[0]
+
+start_time = time.time()
 #Load trainRdd
 trainRdd=trainRddLoader()
-
-# List of user items seen
-listUserItems = trainRdd.map(lambda x: [x[0],x[1]]).groupByKey().map(lambda x: (int(x[0]), map(int,list(x[1])))).collect()
 
 # Mapping (user,item) as key and rating as value
 trainRddMappedValuesCollected=trainRdd.map(lambda x: map(int,x)).map(lambda x: (list((x[0],x[1])),x[2])).collect()
 
 moviesNumber=numDistinctItems()
 
-# Making the recommendetions
+print time.time()-start_time
+print  "Making the recommendetions"
+
 userSet=userSetLoader()
 for user in userSet:
+    print "Completion percentage %f" % (float(userSet.index(user)*100)/len(userSet))
     recommend=[]
     recommendetions=sorted(getRecommendetions(user), key=lambda x:x[1], reverse=True)[:5]
     for i,v in recommendetions:
         recommend=recommend+(str(v)+' ')
     user.append(recommendetions)
     #stats
-    print "Completion %d%" % (float(userSet.index(user)*100)/len(userSet))
     result.append(user)
 resultWriter(result)
