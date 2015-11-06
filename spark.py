@@ -83,7 +83,7 @@ def numDistinctItems():
     icmRdd = sc.textFile("data/icm.csv").map(lambda line: line.split(","))
     icmFirstRow = icmRdd.first()
     icmRdd=icmRdd.filter(lambda x:x !=icmFirstRow)
-    numDistinctItems = icmRdd.map(lambda r: r[0]).distinct().count()
+    numDistinctItems = icmRdd.map(lambda x: map(int,x)).sortByKey(False).keys().first()
     return numDistinctItems
 
 # Making the recommendetions
