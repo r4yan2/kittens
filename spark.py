@@ -34,12 +34,12 @@ def stats():
     # Calculating the number of items that some users rated them
     numMovies = trainRddLoader().map(lambda r: r[1]).distinct().count()
     # Print stats
-    print "Got %d ratings from %d users on %d movies. Total items %d" % (numRatings, numUsers, numMovies, numDistinctItems())
+    print "Got %d ratings from %d users on %d movies. Total items %d" % (numRatings, numUsers, numDistinctItems())
 
 def getUserVector(u):
 # Creating the function getUserVector that returns the 20K vector with the user's ratings for each item the user has seen
     listItems = listUserItems[u-1][1]
-    itemsList = [0]*numDistinctItems()
+    itemsList = [0]*moviesNumber
     for (user,item),v in trainRddMappedValuesCollected:
         if (user!=u or item not in listItems):
             continue
@@ -96,6 +96,8 @@ listUserItems = trainRdd.map(lambda x: [x[0],x[1]]).groupByKey().map(lambda x: (
 # Mapping (user,item) as key and rating as value
 trainRddMappedValuesCollected=trainRdd.map(lambda x: map(int,x)).map(lambda x: (list((x[0],x[1])),x[2])).collect()
 
+moviesNumber=numDistinctItems()
+
 # Making the recommendetions
 userSet=userSetLoader()
 for user in userSet:
@@ -105,6 +107,6 @@ for user in userSet:
         recommend=recommend+(str(v)+' ')
     user.append(recommendetions)
     #stats
-    print "Completion %d%" % ((userSet.index(user)*100)/len(userSet))
+    print "Completion %d%" % (float(userSet.index(user)*100)/len(userSet))
     result.append(user)
 resultWriter(result)
