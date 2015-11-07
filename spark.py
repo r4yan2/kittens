@@ -2,6 +2,8 @@ import math
 import csv
 import time
 from scipy.spatial.distance import cosine
+import numpy as np
+from __future__ import print_function
 
 def resultWriter(result):
     # Writing Results
@@ -39,7 +41,7 @@ def stats():
     print "Got %d ratings from %d users on %d movies. Total items %d" % (numRatings, numUsers, numDistinctItems())
 
 def getUserVector(u):
-# Creating the function getUserVector that returns the 20K vector with the user's ratings for each item the user has seen
+# Creating the function getUserVector that returns the vector with the user's rated items
     listItems = listUserItems(u)
     itemsList = [0]*moviesNumber
     for (user,item),v in trainRddMappedValuesCollected:
@@ -47,6 +49,12 @@ def getUserVector(u):
             continue
         itemsList[item-1]=v
     return itemsList
+
+def getEvaluation(u,i):
+    for (user,item),v in trainRddMappedValuesCollected:
+        if (user == u and item == i):
+            return v
+
 
 def getRecommendetions(u):
     '''
@@ -56,36 +64,61 @@ def getRecommendetions(u):
     of the film is recorded in the possible recommendetions
     multiplied by the similarity value for that specific user
     '''
-    v1=getUserVector(u)
+    v1=listUserItems(u)
     filmThresh=range(6,10)
     recommendetions=[]
 
-    for i in userSet:
-        film=[]
-        v2=getUserVector(i)
+    for u2 in userSet:
+        skip=True
+        if (u2 == u):
+            continue
+        '''if ((i,u) in globalSimilarityUsers):
+            similarity = globalSImilarityValue(globalSimilarityUsers.index( (u,i) ))
+            if (similarity==-1):
+                globalSimilarityUsers.append( (u,i) )
+                globalSimilarityValue.append(similarity)
+                continue'''
+        v2=listUserItems(u2)
+        listA=[]
+        listB=[]
+        for i in list(v1):
+            if i in v2:
+                skip=False
+
+                listA.append(getEvaluation(u,i))
+                listB.append(getEvaluation(u2,i))
+                v2.remove(i)
+            v1.remove(i)
+        if (skip):
+            similarity = -1
+            globalSimilarityUsers.append( (u,u2) )
+            globalSimilarityValue.append(similarity)
+            continue
+
+        for i in list(v2):
+            if getEvaluation(u2,i) not in filmThresh:
+                v2.remove(i)
         #compute cosine similarity of v1 to v2: (v1 dot v2)/{||v1||*||v2||)
-        sumxx, sumxy, sumyy = 0, 0, 0
+        '''sumxx, sumxy, sumyy = 0, 0, 0
         for j in range(len(v1)):
             y = v2[j]
             x = v1[j]
-            if (y==0):
+            if (y == 0):
                 continue
-            if (x==0):
+            if (x == 0):
                 if (y in filmThresh):
-                    film.append((y,j+1))
+                    film.append( (y,j+1) )
                 continue
-            sumxx = sumxx + x*x
-            sumyy = sumyy + y*y
-            sumxy = sumxy + x*y
-        if (sumxy==0):
-            similarity=-1
-        else:
-            similarity=float(sumxy)/((math.sqrt(sumxx))*(math.sqrt(sumyy)))
-        print similarity
-        #similarity= 1 - cosine(v1, v2)
-        for rating,item in film:
-            recommendetions.append((item,rating*similarity))
+            sumxy = sumxy + x*y'''
+        similarity = cosine(listA, listB)
+        globalSimilarityUsers.append( (u,u2) )
+        globalSimilarityValue.append(similarity)
+        for i in v2:
+            recommendetions.append((i,getEvaluation(u2,i) * similarity))
     return recommendetions
+
+def cos(v1, v2):
+    return np.dot(v1, v2) / (np.sqrt(np.dot(v1, v1)) * np.sqrt(np.dot(v2, v2)))
 
 def numDistinctItems():
 
@@ -98,28 +131,33 @@ def numDistinctItems():
 
 def listUserItems(user):
     # List of user items seen
-    return trainRdd.map(lambda x: [x[0],x[1]]).groupByKey().map(lambda x: (int(x[0]), map(int,list(x[1])))).filter(lambda x: x[0]==user).values().collect()[0]
+    return itemsList[usersList.index(user)]
 
+globalSimilarityUsers=[]
+globalSimilarityValue=[]
 start_time = time.time()
 #Load trainRdd
 trainRdd=trainRddLoader()
-
+result=[]
 # Mapping (user,item) as key and rating as value
 trainRddMappedValuesCollected=trainRdd.map(lambda x: map(int,x)).map(lambda x: (list((x[0],x[1])),x[2])).collect()
+
+itemsList=trainRdd.map(lambda x: [x[0],x[1]]).groupByKey().map(lambda x: (int(x[0]), map(int,list(x[1])))).values().collect()
+usersList=trainRdd.map(lambda x: [x[0],x[1]]).groupByKey().map(lambda x: (int(x[0]), map(int,list(x[1])))).keys().collect()
 
 moviesNumber=numDistinctItems()
 
 print time.time()-start_time
 print  "Making the recommendetions"
-
 userSet=userSetLoader()
 for user in userSet:
-    print "Completion percentage %f" % (float(userSet.index(user)*100)/len(userSet))
-    recommend=[]
+    print("Completion percentage"+(float(userSet.index(user)*100)/len(userSet)),end='\r')
+    recommend=''
     recommendetions=sorted(getRecommendetions(user), key=lambda x:x[1], reverse=True)[:5]
     for i,v in recommendetions:
-        recommend=recommend+(str(v)+' ')
-    user.append(recommendetions)
-    #stats
-    result.append(user)
+        recommend=recommend+(str(i)+' ')
+    elem=[]
+    elem.append(user)
+    elem.append(recommend)
+    result.append(elem)
 resultWriter(result)
