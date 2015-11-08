@@ -53,19 +53,12 @@ def getRecommendetions(u):
                 v2.remove(i)
         if (skip):
             similarity = -1
-            globalSimilarityUsers.append( (u,u2) )
-            globalSimilarityValue.append(similarity)
             continue
-
-        for i in v2:
-            if getEvaluation(u2,i) not in filmThresh:
-                v2.remove(i)
-        #compute cosine similarity of v1 to v2: (v1 dot v2)/{||v1||*||v2||)
         similarity = 1.0-cosine(listA, listB)
-        globalSimilarityUsers.append( (u,u2) )
-        globalSimilarityValue.append(similarity)
+        #compute cosine similarity of v1 to v2: (v1 dot v2)/{||v1||*||v2||)
         for i in v2:
-            recommendetions.append((i,getEvaluation(u2,i) * similarity))
+            if getEvaluation(u2,i) in filmThresh:
+                recommendetions.append((i,getEvaluation(u2,i) * similarity))
     return recommendetions
 
 def listUserItems(user):
@@ -136,8 +129,6 @@ def userSetLoader():
     userSet = userSet.filter(lambda x:x !=userSetFirstRow).keys().map(lambda x: int(x)).collect()
     return userSet
 
-globalSimilarityUsers=[]
-globalSimilarityValue=[]
 start_time = time.time()
 #Load trainRdd
 trainRdd=trainRddLoader()
