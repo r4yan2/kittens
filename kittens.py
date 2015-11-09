@@ -13,24 +13,23 @@ def cos(v1, v2):
 
 def getUserAvgRating():
     '''User avg rating'''
-    for u in userSet:
-        rating = 0
-        count = 0
-        for elem in train:
-            if elem[0] == u:
-                rating = rating + elem[2]
-                count = count + 1
-        avgRating[u] = float(rating)/count
+    count={}
+    count = defaultdict(lambda: 0,count)
+    for elem in train:
+        u=elem[0]
+        v=elem[2]
+        avgRating[u] = (avgRating[u]*count[u]+float(v))/(count[u]+1)
+        count[u]=count[u]+1
 
-def getUserVector(u):
+def getUserHistoryExtendedVector(u):
     '''Creating the function getUserVector that return the 20k long vector with
     the user's rating for all items'''
     listItems = listUserItems(u)
     itemsList = [0]*moviesNumber
-    for (user,item),v in trainRddMappedValuesCollected:
+    for (user,item),value in trainRddMappedValuesCollected:
         if (user!=u or item not in listItems):
             continue
-        itemsList[item-1]=v
+        itemsList[item-1]=value
     return itemsList
 
 def getEvaluation(u,i):
@@ -45,54 +44,55 @@ def getRecommendetions(u):
     of the film is recorded in the possible recommendetions
     multiplied by the similarity value for that specific user
     '''
-    v1=listUserItems(u)
-    filmThresh=xrange(6,10)
-    recommendetions=[]
+    v1 = listUserItems(u)
+    filmThresh = xrange(6,10)
+    recommendetions = []
+    similarities = []
 
     for u2 in userSet:
-        skip=True
+        skip = True
         if (u2 == u):
             continue
-        v2=listUserItems(u2)
-        listA=[]
-        listB=[]
+        v2 = listUserItems(u2)
+        listA = []
+        listB = []
         for i in list(v1):
             if i in v2:
-                skip=False
+                skip = False
                 listA.append(getEvaluation(u,i))
                 listB.append(getEvaluation(u2,i))
                 v2.remove(i)
         if (skip):
-            similarity = -1
-            continue
-        similarity = 1.0-pearsonCorrelation(u, u2, listA, listB)
-        '''compute cosine similarity of v1 to v2: (v1 dot v2)/{||v1||*||v2||)'''
-        for i in v2:
-            if getEvaluation(u2,i) in filmThresh:
-                recommendetions.append((i,getEvaluation(u2,i) * similarity))
+            similarity = 0
+        else:
+            similarity = 1.0 - pearsonCorrelation(u, u2, listA, listB)
+
+        similarities.append(similarity)
+        prediction(u, similarity)
     return recommendetions
 
 def get_topN():
     # Insert into an hashmap the total value for each film calculated by summing all the rating obtained throught user rating divided by the sum of the votes + the variable shrink value obtained as logarithm of the number of votes divided for the number of users in the system.
-    sum=0
-    counter=0
-    total={}
-    lastid=int(train[0][1])
+    sum = 0
+    counter = 0
+    total = {}
+    lastid = int(train[0][1])
     for line in train:
         line = map (int, line)
         if (lastid!=line[1]):
-            total[lastid]=sum/float(counter+int(math.fabs(math.log(float(counter)/nUsers))));
-            counter=0;
-            sum=0;
-            lastid=line[1];
-        sum=sum+line[2]
-        counter=counter+1
+            variableShrink = int(math.fabs(math.log(float(counter)/nUsers)))
+            total[lastid] = sum/float(counter + variableShrink);
+            counter = 0
+            sum = 0
+            lastid = line[1]
+        sum = sum + line[2]
+        counter = counter + 1
     # Sorting in descending order the list of items
-    topN=sorted(total.items(), key=lambda x:x[1], reverse=True)
-    return topN
+    return sorted(total.items(), key=lambda x:x[1], reverse=True)
+
     '''alternatively get it from the csv'''
-    dictTopN5=dict(list(csv.reader(open('data/topN.csv', 'rb'), delimiter = ',')))
-    return dictTopN5
+    return dict(list(csv.reader(open('data/topN.csv', 'rb'), delimiter = ',')))
+
 def loadUserStats():
     for elem in train:
         elem=map(int, elem)
@@ -176,15 +176,17 @@ def resultWriter(result):
         writer.writerows(result)
     fp.close
 
-def stats():
-    '''Calculating the number of ratings that of the items'''
-    numRatings = trainRddLoader().count()
+def getNumUsers():
     '''Calculating the number of distinct users that rated some items'''
-    numUsers = trainRddLoader().map(lambda r: r[0]).distinct().count()
+    return trainRddLoader().map(lambda r: r[0]).distinct().count()
+
+def getNumRatings():
+    '''Calculating the number of ratings that of the items'''
+    return trainRddLoader().count()
+
+def getNumMovies():
     '''Calculating the number of items that some users rated them'''
     numMovies = trainRddLoader().map(lambda r: r[1]).distinct().count()
-    '''Print stats'''
-    print "Got %d ratings from %d users on %d movies. Total items %d" % (numRatings, numUsers, numDistinctItems())
 
 def trainLoader():
     train = list (csv.reader(open('data/train.csv', 'rb'), delimiter = ','))
@@ -241,17 +243,19 @@ def main():
 
 
 
-'''List of Global Variables'''
+'''List of Global Variables Definitions and Computation'''
+
 trainRdd = trainRddLoader()
+
 itemsList = trainRdd.map(lambda x: [x[0],x[1]]).groupByKey().map(lambda x: (int(x[0]), map(int,list(x[1])))).values().collect()
 usersList = trainRdd.map(lambda x: [x[0],x[1]]).groupByKey().map(lambda x: (int(x[0]), map(int,list(x[1])))).keys().collect()
 trainRddMappedValuesCollected=trainRdd.map(lambda x: map(int,x)).map(lambda x: (list((x[0],x[1])),x[2])).collect()
-
+nUsers=getNumUsers()
 train = trainLoader()
 ufvl = ufvlLoader()
-
 userSet = userSetLoader()
 avgRating = {}
+avgRating = defaultdict(lambda: 0.0,avgRating)
 getUserAvgRating()
 ufr = {}
 moviesNumber = numDistinctItems()
@@ -264,4 +268,5 @@ urc = defaultdict(lambda: 0,urc)
 uel = defaultdict(list)
 ifl = {}
 loadUserStats()
+
 result=[]
