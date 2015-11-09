@@ -228,7 +228,7 @@ def main():
     loop_time=time.time()
     for user in userSet:
         sys.stdout.flush()
-        sys.stdout.write("\r%f%" % (float(userSet.index(user)*100)/len(userSet),time.time()-loop_time))
+        sys.stdout.write("\r%f%%f" % (float(userSet.index(user)*100)/len(userSet),time.time()-loop_time))
         #print "Completion percentage %f, increment %f" % (float(userSet.index(user)*100)/len(userSet),time.time()-loop_time)
         loop_time=time.time()
         recommend=''
