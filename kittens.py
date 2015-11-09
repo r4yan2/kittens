@@ -11,15 +11,16 @@ def cos(v1, v2):
     '''cosine similarity implemented in numpy'''
     return np.dot(v1, v2) / (np.sqrt(np.dot(v1, v1)) * np.sqrt(np.dot(v2, v2)))
 
-def getUserAvgRating(u):
+def getUserAvgRating():
     '''User avg rating'''
-    rating = 0
-    for user in train:
-        if user == u:
-            u = map(int,u)
-            rating = rating + int(train[u][2])
-            count = count + 1
-    return float(rating/count)
+    for u in userSet:
+        rating = 0
+        count = 0
+        for elem in train:
+            if elem[0] == u:
+                rating = rating + elem[2]
+                count = count + 1
+        avgRating[u] = float(rating)/count
 
 def getUserVector(u):
     '''Creating the function getUserVector that return the 20k long vector with
@@ -88,15 +89,11 @@ def get_topN():
         counter=counter+1
     # Sorting in descending order the list of items
     topN=sorted(total.items(), key=lambda x:x[1], reverse=True)
-
+    return topN
     '''alternatively get it from the csv'''
     dictTopN5=dict(list(csv.reader(open('data/topN.csv', 'rb'), delimiter = ',')))
-
+    return dictTopN5
 def loadUserStats():
-    ufc = defaultdict(lambda: 0.0, ufc)
-    ufr = defaultdict(lambda: 0.0, ufr)
-    urc = defaultdict(lambda: 0,urc)
-
     for elem in train:
         elem=map(int, elem)
         u=elem[0]
@@ -110,14 +107,12 @@ def loadUserStats():
             ufc[(u,f)]=ufc[(u,f)]+1
 
     '''Creating the UserEvaluatedList: the list of items already evaluated by an user'''
-    uel = defaultdict(list)
     for line in train:
             line = map (int, line)
             uel[line[0]].append(line[1])
     '''Parsing the item feature list'''
     byfeature = list(csv.reader(open('data/icm.csv', 'rb'), delimiter = ','))
     del byfeature[0]
-    ifl = {}
     for elem in byfeature:
         elem = map (int, elem)
         if not (elem[0]) in ifl:
@@ -161,12 +156,12 @@ def padding(u):
 
 def pearsonCorrelation(u, u2, listA, listB):
     '''Calculating the Pearson Correlation coefficient between two given users'''
-    avgu = getUserAvgRating(u)
-    avgu2 = getUserAvgRating(u2)
+    avgu = avgRating[u]
+    avgu2 = avgRating[u2]
     for item1, item2 in zip(listA, listB):
         listNumeratorU = map(lambda listA: listA-avgu, listA)
         listNumeratorU2 = map(lambda listB: listB-avgu2, listB)
-        numeratorPearson = np.sum([elem1*elem2 for elem1,elem2 in zip(listU,listU2)])
+        numeratorPearson = np.sum([elem1*elem2 for elem1,elem2 in zip(listNumeratorU,listNumeratorU2)])
         listDenU = map(lambda listNumeratorU: listNumeratorU**2, listNumeratorU)
         listDenU2 = map(lambda listNumeratorU2: listNumeratorU2**2, listNumeratorU2)
         denominatorPearson = math.sqrt(np.sum(listDenU))*math.sqrt(np.sum(listDenU2))
@@ -194,6 +189,10 @@ def stats():
 def trainLoader():
     train = list (csv.reader(open('data/train.csv', 'rb'), delimiter = ','))
     del train[0] # deletion of the string header
+    trainMapped = []
+    for i in train:
+        trainMapped.append(map(int,i))
+    return trainMapped
 
 def trainRddLoader():
     '''Creating the RDD of the train.csv'''
@@ -212,31 +211,28 @@ def userSetLoader():
     return userSet
 
 def ufvlLoader():
-    ufvl=dict((((x[0], x[1]), x[2])) for x in map(lambda x: map(int,x),train[1:]))
+    return dict((((x[0], x[1]), x[2])) for x in map(lambda x: map(int,x),train[1:]))
 
 def main():
     '''
     main loop
     for all the users in userSet make the recommendetions through getRecommendetions, the output of the function
-    is properly sorted onyl the first top5 elements are considered, eventually it's possible to get padding for the 
+    is properly sorted onyl the first top5 elements are considered, eventually it's possible to get padding for the
     user which getRecommendetions is unable to fill
     Includes also percentage and temporization
     '''
-
-    result=[]
-    userSet=userSetLoader()
     loop_time=time.time()
     for user in userSet:
-        sys.stdout.flush()
-        sys.stdout.write("\rstr(float(userSet.index(user)*100)/len(userSet)) % str(time.time()-loop_time)")
-        #print "Completion percentage %f, increment %f" % (float(userSet.index(user)*100)/len(userSet),time.time()-loop_time)
+        #sys.stdout.flush()
+        #sys.stdout.write("\r %s % %s" % (str(float(userSet.index(user)*100)/len(userSet)),str(time.time()-loop_time)))
+        print "Completion percentage %f, increment %f" % (float(userSet.index(user)*100)/len(userSet),time.time()-loop_time)
         loop_time=time.time()
         recommend=''
         recommendetions=sorted(getRecommendetions(user), key=lambda x:x[1], reverse=True)[:5]
         for i,v in recommendetions:
             recommend=recommend+(str(i)+' ')
-        if (len(recommendetions)<5):
-            recommend=padding(user)
+        #if (len(recommendetions)<5):
+        #    recommend=padding(user)
         elem=[]
         elem.append(user)
         elem.append(recommend)
@@ -246,17 +242,26 @@ def main():
 
 
 '''List of Global Variables'''
-ufr={}
-moviesNumber=numDistinctItems()
-ufc={}
-urc={}
-dictTopN5={}
-trainRdd=trainRddLoader()
-itemsList=trainRdd.map(lambda x: [x[0],x[1]]).groupByKey().map(lambda x: (int(x[0]), map(int,list(x[1])))).values().collect()
-usersList=trainRdd.map(lambda x: [x[0],x[1]]).groupByKey().map(lambda x: (int(x[0]), map(int,list(x[1])))).keys().collect()
-
-ufvl={}
-'''Mapping (user,item) as key and rating as value'''
+trainRdd = trainRddLoader()
+itemsList = trainRdd.map(lambda x: [x[0],x[1]]).groupByKey().map(lambda x: (int(x[0]), map(int,list(x[1])))).values().collect()
+usersList = trainRdd.map(lambda x: [x[0],x[1]]).groupByKey().map(lambda x: (int(x[0]), map(int,list(x[1])))).keys().collect()
 trainRddMappedValuesCollected=trainRdd.map(lambda x: map(int,x)).map(lambda x: (list((x[0],x[1])),x[2])).collect()
 
+train = trainLoader()
+ufvl = ufvlLoader()
 
+userSet = userSetLoader()
+avgRating = {}
+getUserAvgRating()
+ufr = {}
+moviesNumber = numDistinctItems()
+ufc = {}
+urc = {}
+dictTopN5 = {}
+ufc = defaultdict(lambda: 0.0, ufc)
+ufr = defaultdict(lambda: 0.0, ufr)
+urc = defaultdict(lambda: 0,urc)
+uel = defaultdict(list)
+ifl = {}
+loadUserStats()
+result=[]
