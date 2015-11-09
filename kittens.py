@@ -228,7 +228,7 @@ def main():
     loop_time=time.time()
     for user in userSet:
         sys.stdout.flush()
-        sys.stdout.write("\r%f%%f" % (float(userSet.index(user)*100)/len(userSet),time.time()-loop_time))
+        sys.stdout.write("\rstr(float(userSet.index(user)*100)/len(userSet)) % str(time.time()-loop_time)")
         #print "Completion percentage %f, increment %f" % (float(userSet.index(user)*100)/len(userSet),time.time()-loop_time)
         loop_time=time.time()
         recommend=''
@@ -252,10 +252,10 @@ ufc={}
 urc={}
 dictTopN5={}
 trainRdd=trainRddLoader()
-uitemsList=trainRdd.map(lambda x: [x[0],x[1]]).groupByKey().map(lambda x: (int(x[0]), map(int,list(x[1])))).values().collect()
+itemsList=trainRdd.map(lambda x: [x[0],x[1]]).groupByKey().map(lambda x: (int(x[0]), map(int,list(x[1])))).values().collect()
 usersList=trainRdd.map(lambda x: [x[0],x[1]]).groupByKey().map(lambda x: (int(x[0]), map(int,list(x[1])))).keys().collect()
 
-fvl={}
+ufvl={}
 '''Mapping (user,item) as key and rating as value'''
 trainRddMappedValuesCollected=trainRdd.map(lambda x: map(int,x)).map(lambda x: (list((x[0],x[1])),x[2])).collect()
 
