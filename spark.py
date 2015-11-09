@@ -1,4 +1,4 @@
-#from __future__ import print_function
+# from __future__ import print_function
 import math
 import csv
 import time
@@ -10,6 +10,16 @@ from collections import defaultdict
 def cos(v1, v2):
     '''cosine similarity implemented in numpy'''
     return np.dot(v1, v2) / (np.sqrt(np.dot(v1, v1)) * np.sqrt(np.dot(v2, v2)))
+
+def getUserAvgRating(u):
+    '''User avg rating'''
+    rating = 0
+    for user in train:
+        if user == u:
+            u = map(int,u)
+            rating = rating + int(train[u][2])
+            count = count + 1
+    return float(rating/count)
 
 def getUserVector(u):
     '''Creating the function getUserVector that return the 20k long vector with
@@ -54,8 +64,8 @@ def getRecommendetions(u):
         if (skip):
             similarity = -1
             continue
-        similarity = 1.0-cosine(listA, listB)
-        #compute cosine similarity of v1 to v2: (v1 dot v2)/{||v1||*||v2||)
+        similarity = 1.0-pearsonCorrelation(u, u2, listA, listB)
+        '''compute cosine similarity of v1 to v2: (v1 dot v2)/{||v1||*||v2||)'''
         for i in v2:
             if getEvaluation(u2,i) in filmThresh:
                 recommendetions.append((i,getEvaluation(u2,i) * similarity))
@@ -95,6 +105,20 @@ def padding(u):
         iterator=iterator+1
     return recommendetions
 
+def pearsonCorrelation(u, u2, listA, listB):
+    '''Calculating the Pearson Correlation coefficient between two given users'''
+    avgu = getUserAvgRating(u)
+    avgu2 = getUserAvgRating(u2)
+    for item1, item2 in zip(listA, listB):
+        listNumeratorU = map(lambda listA: listA-avgu, listA)
+        listNumeratorU2 = map(lambda listB: listB-avgu2, listB)
+        numeratorPearson = np.sum([elem1*elem2 for elem1,elem2 in zip(listU,listU2)])
+        listDenU = map(lambda listNumeratorU: listNumeratorU**2, listNumeratorU)
+        listDenU2 = map(lambda listNumeratorU2: listNumeratorU2**2, listNumeratorU2)
+        denominatorPearson = math.sqrt(np.sum(listDenU))*math.sqrt(np.sum(listDenU2))
+        pearson = numeratorPearson/denominatorPearson
+    return pearson
+
 def resultWriter(result):
     ''' Writing Results '''
     with open ('data/result.csv', 'w') as fp:
@@ -104,52 +128,53 @@ def resultWriter(result):
     fp.close
 
 def stats():
-    # Calculating the number of ratings that of the items
+    '''Calculating the number of ratings that of the items'''
     numRatings = trainRddLoader().count()
-    # Calculating the number of distinct users that rated some items
+    '''Calculating the number of distinct users that rated some items'''
     numUsers = trainRddLoader().map(lambda r: r[0]).distinct().count()
-    # Calculating the number of items that some users rated them
+    '''Calculating the number of items that some users rated them'''
     numMovies = trainRddLoader().map(lambda r: r[1]).distinct().count()
-    # Print stats
+    '''Print stats'''
     print "Got %d ratings from %d users on %d movies. Total items %d" % (numRatings, numUsers, numDistinctItems())
 
 def trainRddLoader():
-    # Creating the RDD of the train.csv
+    '''Creating the RDD of the train.csv'''
     trainRdd = sc.textFile("data/train.csv").map(lambda line: line.split(","))
-    # Getting the header of trainRdd
+    '''Getting the header of trainRdd'''
     trainFirstRow = trainRdd.first()
-    # Removing the first line of train, that is userId,iteamId,rating
+    '''Removing the first line of train, that is userId,iteamId,rating'''
     trainRdd=trainRdd.filter(lambda x:x !=trainFirstRow)
     return trainRdd
 
 def userSetLoader():
-    # Get of userSet
+    '''Get of userSet'''
     userSet = sc.textFile("data/test.csv").map(lambda line: line.split(","))
     userSetFirstRow = userSet.first()
     userSet = userSet.filter(lambda x:x !=userSetFirstRow).keys().map(lambda x: int(x)).collect()
     return userSet
 
+
 start_time = time.time()
-#Load trainRdd
+'''Load trainRdd'''
 trainRdd=trainRddLoader()
 result=[]
-# Mapping (user,item) as key and rating as value
+'''Mapping (user,item) as key and rating as value'''
 trainRddMappedValuesCollected=trainRdd.map(lambda x: map(int,x)).map(lambda x: (list((x[0],x[1])),x[2])).collect()
 
 train = list (csv.reader(open('data/train.csv', 'rb'), delimiter = ','))
-del train[0] #deletion of the string header
+del train[0] # deletion of the string header
 ufvl=dict((((x[0], x[1]), x[2])) for x in map(lambda x: map(int,x),train[1:]))
 
 itemsList=trainRdd.map(lambda x: [x[0],x[1]]).groupByKey().map(lambda x: (int(x[0]), map(int,list(x[1])))).values().collect()
 usersList=trainRdd.map(lambda x: [x[0],x[1]]).groupByKey().map(lambda x: (int(x[0]), map(int,list(x[1])))).keys().collect()
 
 moviesNumber=numDistinctItems()
-# Creating the UserEvaluatedList: the list of items already evaluated by an user
+'''Creating the UserEvaluatedList: the list of items already evaluated by an user'''
 uel = defaultdict(list)
 for line in train:
         line = map (int, line)
         uel[line[0]].append(line[1])
-# Parsing the item feature list
+'''Parsing the item feature list'''
 byfeature = list(csv.reader(open('data/icm.csv', 'rb'), delimiter = ','))
 del byfeature[0]
 ifl = {}
@@ -159,7 +184,7 @@ for elem in byfeature:
         ifl[elem[0]]=[]
     ifl[elem[0]].append(elem[1])
 
-# User feature avg rating
+'''User feature avg rating'''
 ufr={}
 ufc={}
 urc={}
