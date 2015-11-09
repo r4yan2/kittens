@@ -92,7 +92,7 @@ def get_topN():
     '''alternatively get it from the csv'''
     dictTopN5=dict(list(csv.reader(open('data/topN.csv', 'rb'), delimiter = ',')))
 
-def loadUserStats()
+def loadUserStats():
     ufc = defaultdict(lambda: 0.0, ufc)
     ufr = defaultdict(lambda: 0.0, ufr)
     urc = defaultdict(lambda: 0,urc)
