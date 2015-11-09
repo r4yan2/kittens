@@ -7,25 +7,6 @@ from scipy.spatial.distance import cosine
 import numpy as np
 from collections import defaultdict
 
-def get_topN():
-    # Insert into an hashmap the total value for each film calculated by summing all the rating obtained throught user rating divided by the sum of the votes + the variable shrink value obtained as logarithm of the number of votes divided for the number of users in the system.
-    sum=0
-    counter=0
-    total={}
-    lastid=int(train[0][1])
-    for line in train:
-        line = map (int, line)
-        if (lastid!=line[1]):
-            total[lastid]=sum/float(counter+int(math.fabs(math.log(float(counter)/nUsers))));
-            counter=0;
-            sum=0;
-            lastid=line[1];
-        sum=sum+line[2]
-        counter=counter+1
-    
-    # Sorting in descending order the list of items
-    topN=sorted(total.items(), key=lambda x:x[1], reverse=True)
-
 def cos(v1, v2):
     '''cosine similarity implemented in numpy'''
     return np.dot(v1, v2) / (np.sqrt(np.dot(v1, v1)) * np.sqrt(np.dot(v2, v2)))
@@ -89,6 +70,60 @@ def getRecommendetions(u):
             if getEvaluation(u2,i) in filmThresh:
                 recommendetions.append((i,getEvaluation(u2,i) * similarity))
     return recommendetions
+
+def get_topN():
+    # Insert into an hashmap the total value for each film calculated by summing all the rating obtained throught user rating divided by the sum of the votes + the variable shrink value obtained as logarithm of the number of votes divided for the number of users in the system.
+    sum=0
+    counter=0
+    total={}
+    lastid=int(train[0][1])
+    for line in train:
+        line = map (int, line)
+        if (lastid!=line[1]):
+            total[lastid]=sum/float(counter+int(math.fabs(math.log(float(counter)/nUsers))));
+            counter=0;
+            sum=0;
+            lastid=line[1];
+        sum=sum+line[2]
+        counter=counter+1
+    # Sorting in descending order the list of items
+    topN=sorted(total.items(), key=lambda x:x[1], reverse=True)
+
+    '''alternatively get it from the csv'''
+    dictTopN5=dict(list(csv.reader(open('data/topN.csv', 'rb'), delimiter = ',')))
+
+def loadUserStats()
+    ufc = defaultdict(lambda: 0.0, ufc)
+    ufr = defaultdict(lambda: 0.0, ufr)
+    urc = defaultdict(lambda: 0,urc)
+
+    for elem in train:
+        elem=map(int, elem)
+        u=elem[0]
+        i=elem[1]
+        r=elem[2]
+        urc[u]=urc[u]+1
+        if not i in ifl:
+            continue
+        for f in ifl[i]:
+            ufr[(u,f)]=(ufr[(u,f)]+float(r))/2
+            ufc[(u,f)]=ufc[(u,f)]+1
+
+    '''Creating the UserEvaluatedList: the list of items already evaluated by an user'''
+    uel = defaultdict(list)
+    for line in train:
+            line = map (int, line)
+            uel[line[0]].append(line[1])
+    '''Parsing the item feature list'''
+    byfeature = list(csv.reader(open('data/icm.csv', 'rb'), delimiter = ','))
+    del byfeature[0]
+    ifl = {}
+    for elem in byfeature:
+        elem = map (int, elem)
+        if not (elem[0]) in ifl:
+            ifl[elem[0]]=[]
+        ifl[elem[0]].append(elem[1])
+
 
 def listUserItems(user):
     '''List of user's seen items'''
@@ -156,6 +191,10 @@ def stats():
     '''Print stats'''
     print "Got %d ratings from %d users on %d movies. Total items %d" % (numRatings, numUsers, numDistinctItems())
 
+def trainLoader():
+    train = list (csv.reader(open('data/train.csv', 'rb'), delimiter = ','))
+    del train[0] # deletion of the string header
+
 def trainRddLoader():
     '''Creating the RDD of the train.csv'''
     trainRdd = sc.textFile("data/train.csv").map(lambda line: line.split(","))
@@ -172,6 +211,9 @@ def userSetLoader():
     userSet = userSet.filter(lambda x:x !=userSetFirstRow).keys().map(lambda x: int(x)).collect()
     return userSet
 
+def ufvlLoader():
+    ufvl=dict((((x[0], x[1]), x[2])) for x in map(lambda x: map(int,x),train[1:]))
+
 def main():
     '''
     main loop
@@ -180,8 +222,8 @@ def main():
     user which getRecommendetions is unable to fill
     Includes also percentage and temporization
     '''
-    print time.time()-start_time
-    print  "Making the recommendetions"
+
+    result=[]
     userSet=userSetLoader()
     loop_time=time.time()
     for user in userSet:
@@ -202,53 +244,19 @@ def main():
     resultWriter(result)
 
 
-start_time = time.time()
-'''Load trainRdd'''
+
+'''List of Global Variables'''
+ufr={}
+moviesNumber=numDistinctItems()
+ufc={}
+urc={}
+dictTopN5={}
 trainRdd=trainRddLoader()
-result=[]
+uitemsList=trainRdd.map(lambda x: [x[0],x[1]]).groupByKey().map(lambda x: (int(x[0]), map(int,list(x[1])))).values().collect()
+usersList=trainRdd.map(lambda x: [x[0],x[1]]).groupByKey().map(lambda x: (int(x[0]), map(int,list(x[1])))).keys().collect()
+
+fvl={}
 '''Mapping (user,item) as key and rating as value'''
 trainRddMappedValuesCollected=trainRdd.map(lambda x: map(int,x)).map(lambda x: (list((x[0],x[1])),x[2])).collect()
 
-train = list (csv.reader(open('data/train.csv', 'rb'), delimiter = ','))
-del train[0] # deletion of the string header
-ufvl=dict((((x[0], x[1]), x[2])) for x in map(lambda x: map(int,x),train[1:]))
 
-itemsList=trainRdd.map(lambda x: [x[0],x[1]]).groupByKey().map(lambda x: (int(x[0]), map(int,list(x[1])))).values().collect()
-usersList=trainRdd.map(lambda x: [x[0],x[1]]).groupByKey().map(lambda x: (int(x[0]), map(int,list(x[1])))).keys().collect()
-
-moviesNumber=numDistinctItems()
-'''Creating the UserEvaluatedList: the list of items already evaluated by an user'''
-uel = defaultdict(list)
-for line in train:
-        line = map (int, line)
-        uel[line[0]].append(line[1])
-'''Parsing the item feature list'''
-byfeature = list(csv.reader(open('data/icm.csv', 'rb'), delimiter = ','))
-del byfeature[0]
-ifl = {}
-for elem in byfeature:
-    elem = map (int, elem)
-    if not (elem[0]) in ifl:
-        ifl[elem[0]]=[]
-    ifl[elem[0]].append(elem[1])
-
-'''User feature avg rating'''
-ufr={}
-ufc={}
-urc={}
-ufc = defaultdict(lambda: 0.0, ufc)
-ufr = defaultdict(lambda: 0.0, ufr)
-urc = defaultdict(lambda: 0,urc)
-for elem in train:
-    elem=map(int, elem)
-    u=elem[0]
-    i=elem[1]
-    r=elem[2]
-    urc[u]=urc[u]+1
-    if not i in ifl:
-        continue
-    for f in ifl[i]:
-        ufr[(u,f)]=(ufr[(u,f)]+float(r))/2
-        ufc[(u,f)]=ufc[(u,f)]+1
-
-dictTopN5=dict(list(csv.reader(open('data/topN.csv', 'rb'), delimiter = ',')))
