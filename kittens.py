@@ -47,8 +47,8 @@ def getRecommendetions(u):
     v1 = listUserItems(u)
     filmThresh = xrange(6,10)
     recommendetions = []
-    similarities = []
-
+    similarities = {}
+    movies = []
     for u2 in userSet:
         skip = True
         if (u2 == u):
@@ -65,12 +65,29 @@ def getRecommendetions(u):
         if (skip):
             similarity = 0
         else:
-            similarity = 1.0 - pearsonCorrelation(u, u2, listA, listB)
+            similarity = pearsonCorrelation(u, u2, listA, listB)
+        if similarity > 0:
+            similarities[u2] = similarity
+            movies.extend(v2)
+    movies = set(movies)
+    return getPredictions(u, similarities, movies)
 
-        similarities.append(similarity)
-        prediction(u, similarity)
-    return recommendetions
-
+'''This method is making the predictions for a given user'''
+def getPredictions(u, similarities, movies):
+    avgu = avgRating[u]
+    userValues = []
+    predictions = []
+    denominator = np.sum(similarities.values())
+    for item in movies:
+        for u2 in similarities.keys():
+            if item in listUserItems(u2):
+                avg2 = avgRating[u2]
+                rating = getEvaluation(u2,item)
+                userValues.append(similarities[u2] * (rating - avg2))
+        numerator = np.sum(userValues)
+        prediction = avgu + float(numerator)/denominator
+        predictions.append( (item,prediction) )
+    return predictions
 def get_topN():
     # Insert into an hashmap the total value for each film calculated by summing all the rating obtained throught user rating divided by the sum of the votes + the variable shrink value obtained as logarithm of the number of votes divided for the number of users in the system.
     sum = 0
@@ -134,8 +151,7 @@ def numDistinctItems():
 def padding(u):
     personalizedTopN = {}
     for i in dictTopN5:
-        i = int(i)
-        personalizedTopN[(u,i)] = math.log(float(dictTopN5[str(i)]))
+        personalizedTopN[(u,i)] = math.log(float(dictTopN5[i]))
         if not i in ifl:
             continue
         for f in ifl[i]:
@@ -164,6 +180,8 @@ def pearsonCorrelation(u, u2, listA, listB):
         listDenU = map(lambda listNumeratorU: listNumeratorU**2, listNumeratorU)
         listDenU2 = map(lambda listNumeratorU2: listNumeratorU2**2, listNumeratorU2)
         denominatorPearson = math.sqrt(np.sum(listDenU))*math.sqrt(np.sum(listDenU2))
+        if denominatorPearson==0:
+            return 0
         pearson = numeratorPearson/denominatorPearson
     return pearson
 
@@ -230,10 +248,12 @@ def main():
         loop_time = time.time()
         recommend = ''
         recommendetions = sorted(getRecommendetions(user), key = lambda x:x[1], reverse=True)[:5]
+        print user
+        print recommendetions
         for i,v in recommendetions:
             recommend = recommend+(str(i) + ' ')
-        #if (len(recommendetions)<5):
-        #    recommend=padding(user)
+        if (len(recommendetions)<5):
+            recommend=padding(user)
         elem = []
         elem.append(user)
         elem.append(recommend)
@@ -260,7 +280,7 @@ ufr = {}
 moviesNumber = numDistinctItems()
 ufc = {}
 urc = {}
-dictTopN5 = {}
+dictTopN5 = dict(get_topN())
 ufc = defaultdict(lambda: 0.0, ufc)
 ufr = defaultdict(lambda: 0.0, ufr)
 urc = defaultdict(lambda: 0,urc)
