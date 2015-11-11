@@ -18,8 +18,18 @@ def getUserAvgRating():
     for elem in train:
         u=elem[0]
         v=elem[2]
-        avgRating[u] = (avgRating[u] * count[u] + float(v)) / (count[u] + 1)
+        avgUserRating[u] = (avgUserRating[u] * count[u] + float(v)) / (count[u] + 1)
         count[u] = count[u] + 1
+
+def getItemAvgRating():
+    '''Item avg rating'''
+    count = {}
+    count = defaultdict(lambda: 0,count)
+    for elem in train:
+        i=elem[1]
+        v=elem[2]
+        avgItemRating[i] = (avgItemRating[i] * count[i] + float(v)) / (count[i] + 1)
+        count[i] = count[i] + 1
 
 def getUserHistoryExtendedVector(u):
     '''Creating the function getUserVector that return the 20k long vector with
@@ -74,14 +84,14 @@ def getRecommendetions(u):
 
 '''This method is making the predictions for a given user'''
 def getPredictions(u, similarities, movies):
-    avgu = avgRating[u]
+    avgu = avgUserRating[u]
     userValues = []
     predictions = []
     denominator = np.sum(similarities.values())
     for item in movies:
         for u2 in similarities.keys():
             if item in getUserEvaluatedItems(u2):
-                avg2 = avgRating[u2]
+                avg2 = avgUserRating[u2]
                 rating = getEvaluation(u2,item)
                 userValues.append(similarities[u2] * (rating - avg2))
         numerator = np.sum(userValues)
@@ -173,8 +183,8 @@ def padding(u):
 
 def pearsonCorrelation(u, u2, listA, listB):
     '''Calculating the Pearson Correlation coefficient between two given users'''
-    avgu = avgRating[u]
-    avgu2 = avgRating[u2]
+    avgu = avgUserRating[u]
+    avgu2 = avgUserRating[u2]
     for item1, item2 in zip(listA, listB):
         listNumeratorU = map(lambda listA: listA - avgu, listA)
         listNumeratorU2 = map(lambda listB: listB - avgu2, listB)
@@ -274,8 +284,8 @@ nUsers=getNumUsers()
 train = trainLoader()
 ufvl = ufvlLoader()
 userSet = userSetLoader()
-avgRating = {}
-avgRating = defaultdict(lambda: 0.0,avgRating)
+avgUserRating = {}
+avgUserRating = defaultdict(lambda: 0.0,avgUserRating)
 getUserAvgRating()
 ufr = {}
 moviesNumber = numDistinctItems()
