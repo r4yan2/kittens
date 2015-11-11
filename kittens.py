@@ -53,7 +53,7 @@ def getRecommendetions(u):
         skip = True
         if (u2 == u):
             continue
-        v2 = getUserEvaluatedItems(u2)
+        v2 = getUserEvaluatedItems(u2)[:]
         listA = []
         listB = []
         for i in list(v1):
@@ -88,6 +88,7 @@ def getPredictions(u, similarities, movies):
         prediction = avgu + float(numerator)/denominator
         predictions.append( (item,prediction) )
     return predictions
+
 def get_topN():
     # Insert into an hashmap the total value for each film calculated by summing all the rating obtained throught user rating divided by the sum of the votes + the variable shrink value obtained as logarithm of the number of votes divided for the number of users in the system.
     sum = 0
@@ -266,8 +267,6 @@ def main():
 
 trainRdd = trainRddLoader()
 
-itemsList = trainRdd.map(lambda x: [x[0],x[1]]).groupByKey().map(lambda x: (int(x[0]), map(int,list(x[1])))).values().collect()
-usersList = trainRdd.map(lambda x: [x[0],x[1]]).groupByKey().map(lambda x: (int(x[0]), map(int,list(x[1])))).keys().collect()
 trainRddMappedValuesCollected=trainRdd.map(lambda x: map(int,x)).map(lambda x: (list((x[0],x[1])),x[2])).collect()
 nUsers=getNumUsers()
 train = trainLoader()
