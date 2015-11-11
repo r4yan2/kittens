@@ -242,6 +242,7 @@ def main():
     user which getRecommendetions is unable to fill
     Includes also percentage and temporization
     '''
+    result=[]
     loop_time = time.time()
     for user in userSet:
         #sys.stdout.flush()
@@ -251,11 +252,11 @@ def main():
         recommend = ''
         recommendetions = sorted(getRecommendetions(user), key = lambda x:x[1], reverse=True)[:5]
         print user
-        print recommendetions
         for i,v in recommendetions:
             recommend = recommend+(str(i) + ' ')
         if (len(recommendetions)<5):
             recommend=padding(user)
+        print recommend
         elem = []
         elem.append(user)
         elem.append(recommend)
@@ -286,5 +287,3 @@ urc = defaultdict(lambda: 0,urc)
 uel = defaultdict(list)
 ifl = {}
 loadUserStats()
-
-result=[]
