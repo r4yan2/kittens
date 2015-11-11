@@ -112,6 +112,15 @@ def get_topN():
     return dict(list(csv.reader(open('data/topN.csv', 'rb'), delimiter = ',')))
 
 def loadUserStats():
+    '''Parsing the item feature list'''
+    byfeature = list(csv.reader(open('data/icm.csv', 'rb'), delimiter = ','))
+    del byfeature[0]
+    for elem in byfeature:
+        elem = map (int, elem)
+        if not (elem[0]) in ifl:
+            ifl[elem[0]] = []
+        ifl[elem[0]].append(elem[1])
+
     for elem in train:
         elem = map(int, elem)
         u = elem[0]
@@ -128,14 +137,6 @@ def loadUserStats():
     for line in train:
             line = map (int, line)
             uel[line[0]].append(line[1])
-    '''Parsing the item feature list'''
-    byfeature = list(csv.reader(open('data/icm.csv', 'rb'), delimiter = ','))
-    del byfeature[0]
-    for elem in byfeature:
-        elem = map (int, elem)
-        if not (elem[0]) in ifl:
-            ifl[elem[0]] = []
-        ifl[elem[0]].append(elem[1])
 
 def getUserEvaluatedItems(user):
     '''List of user's seen items'''
@@ -151,22 +152,22 @@ def numDistinctItems():
 
 def padding(u):
     personalizedTopN = {}
-    for i in dictTopN5:
-        personalizedTopN[(u,i)] = math.log(float(dictTopN5[i]))
+    topN=get_topN()
+    for i,v in topN:
+        personalizedTopN[i] = math.log(v)
         if not i in ifl:
             continue
         for f in ifl[i]:
             if not (ufc[(u,f)] == 0 or urc[u] == 0 or u not in urc or (u,f) not in ufc):
-                personalizedTopN[(u,i)] = personalizedTopN[(u,i)] + ufr[(u,f)] / (ufc[(u,f)] / urc[u])
+                personalizedTopN[i] = personalizedTopN[i] + ufr[(u,f)] / (ufc[(u,f)] / urc[u])
     topNPersonalized = sorted(personalizedTopN.items(), key = lambda x:x[1], reverse = True)
     count = 0
     iterator = 0
     recommendetions = ''
     while count<5:
-        if (topNPersonalized[iterator][0][0] == u):
-            if not (topNPersonalized[iterator][0][1] in uel[u]):
-                recommendetions = recommendetions + (str(topNPersonalized[iterator][0][1]) + ' ')
-                count = count + 1
+        if not (topNPersonalized[iterator][0] in uel[u]):
+            recommendetions = recommendetions + (str(topNPersonalized[iterator][0]) + ' ')
+            count = count + 1
         iterator = iterator + 1
     return recommendetions
 
@@ -279,7 +280,6 @@ ufr = {}
 moviesNumber = numDistinctItems()
 ufc = {}
 urc = {}
-dictTopN5 = dict(get_topN())
 ufc = defaultdict(lambda: 0.0, ufc)
 ufr = defaultdict(lambda: 0.0, ufr)
 urc = defaultdict(lambda: 0,urc)
