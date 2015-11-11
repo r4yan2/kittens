@@ -24,7 +24,7 @@ def getUserAvgRating():
 def getUserHistoryExtendedVector(u):
     '''Creating the function getUserVector that return the 20k long vector with
     the user's rating for all items'''
-    listItems = listUserItems(u)
+    listItems = getUserEvaluatedItems(u)
     itemsList = [0] * moviesNumber
     for (user,item),value in trainRddMappedValuesCollected:
         if (user != u or item not in listItems):
@@ -44,7 +44,7 @@ def getRecommendetions(u):
     of the film is recorded in the possible recommendetions
     multiplied by the similarity value for that specific user
     '''
-    v1 = listUserItems(u)
+    v1 = getUserEvaluatedItems(u)
     filmThresh = xrange(6,10)
     recommendetions = []
     similarities = {}
@@ -53,7 +53,7 @@ def getRecommendetions(u):
         skip = True
         if (u2 == u):
             continue
-        v2 = listUserItems(u2)
+        v2 = getUserEvaluatedItems(u2)
         listA = []
         listB = []
         for i in list(v1):
@@ -80,7 +80,7 @@ def getPredictions(u, similarities, movies):
     denominator = np.sum(similarities.values())
     for item in movies:
         for u2 in similarities.keys():
-            if item in listUserItems(u2):
+            if item in getUserEvaluatedItems(u2):
                 avg2 = avgRating[u2]
                 rating = getEvaluation(u2,item)
                 userValues.append(similarities[u2] * (rating - avg2))
@@ -136,9 +136,9 @@ def loadUserStats():
             ifl[elem[0]] = []
         ifl[elem[0]].append(elem[1])
 
-def listUserItems(user):
+def getUserEvaluatedItems(user):
     '''List of user's seen items'''
-    return itemsList[usersList.index(user)][:]
+    return uel[user]
 
 def numDistinctItems():
     ''' Getting the number of items that we have in our icm.csv'''
