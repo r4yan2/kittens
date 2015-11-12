@@ -141,8 +141,9 @@ def getPredictions(user, similarities, possibleRecommendetions):
         predictions.append( (item,prediction) )
     return predictions
 
-def getTopN():
+def loadTopN():
     # Insert into an hashmap the total value for each film calculated by summing all the rating obtained throught user rating divided by the sum of the votes + the variable shrink value obtained as logarithm of the number of votes divided for the number of users in the system.
+    global topN
     sum = 0
     counter = 0
     total = {}
@@ -158,7 +159,7 @@ def getTopN():
         sum = sum + line[2]
         counter = counter + 1
     # Sorting in descending order the list of items
-    return sorted(total.items(), key = lambda x:x[1], reverse = True)
+    topN = sorted(total.items(), key = lambda x:x[1], reverse = True)
 
 def loadMaps():
     '''Parsing the item feature list'''
@@ -250,7 +251,6 @@ def numDistinctItems():
 
 def padding(u): # recicle from the old recommendetions methos
     personalizedTopN = {}
-    topN=getTopN() # getter for the generic TopN
     for i,v in topN:
         personalizedTopN[i] = math.log(v)
         if not i in itemFeatureslist:
@@ -354,6 +354,7 @@ def main():
     loadUserAvgRating() # Load the map of the average rating per user
     loadItemAvgRating() # Load the map of the average rating per item
     userItemEvaluationLoader() # Load the map that associate (user,item) to the rating
+    loadTopN()
 
     resultToWrite=[]
     loopTime = time.time()
