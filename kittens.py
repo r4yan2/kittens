@@ -123,20 +123,19 @@ def getRecommendetions(user):
         if similarity > 0.5: # taking into consideration only positive and significant similarities
             similarities[userIterator] = similarity
 
-    return getPredictions(user, similarities, set(possibleRecommendetions[userIterator])) # we need every element to be unique
+    return getPredictions(user, similarities, possibleRecommendetions) # we need every element to be unique
 
-def getPredictions(user, similarities, movies):
+def getPredictions(user, similarities, possibleRecommendetions):
     '''This method is making the predictions for a given user'''
     avgu = avgUserRating[user]
     userValues = []
     predictions = []
     denominator = np.sum(similarities.values())
-    for item in movies:
-        for u2 in similarities.keys():
-            if item in getUserEvaluationList(u2):
-                avg2 = avgUserRating[u2]
-                rating = getEvaluation(u2,item)
-                userValues.append(similarities[u2] * (rating - avg2))
+    for userIterator in similarities.keys():
+        for item in possibleRecommendetions[userIterator]:
+            avg2 = avgUserRating[userIterator]
+            rating = getEvaluation(userIterator,item)
+            userValues.append(similarities[userIterator] * (rating - avg2))
         numerator = np.sum(userValues)
         prediction = avgu + float(numerator)/denominator
         predictions.append( (item,prediction) )
@@ -227,23 +226,19 @@ def getUserEvaluationList(user):
     try:
         return userEvaluationList[user]
     except Exception,e:
-        return 0
+        return []
 
-def getuserFeatureEvaluation(user,feature):
+def getUserFeatureEvaluation(user,feature):
     try:
         return userFeatureEvaluation[(user,feature)]
     except Exception,e:
         return 0
 
-def getuserFeatureEvaluationCount(user,feature):
+def getUserFeatureEvaluationCount(user,feature):
     try:
         return userFeatureEvaluationCount[(user,feature)]
     except Exception,e:
         return 0
-
-def getUserEvaluationList(user):
-    '''List of user's seen items'''
-    return userEvaluationList[user]
 
 def numDistinctItems():
     ''' Getting the number of items that we have in our icm.csv'''
@@ -261,14 +256,14 @@ def padding(u): # recicle from the old recommendetions methos
         if not i in itemFeatureslist:
             continue
         for f in itemFeatureslist[i]:
-            if not (ufc[(u,f)] == 0 or urc[u] == 0 or u not in urc or (u,f) not in ufc):
-                personalizedTopN[i] = personalizedTopN[i] + ufr[(u,f)] / (ufc[(u,f)] / urc[u])
+            if not ((getUserFeatureEvaluation(u,f) == 0) or ( len(getUserEvaluationList(u))== 0 ) or (getUserFeatureEvaluationCount(u,f)==0)):
+                personalizedTopN[i] = personalizedTopN[i] + getUserFeatureEvaluation(u,f) / (float(getUserFeatureEvaluationCount(u,f)) / len(getUserEvaluationList(u)))
     topNPersonalized = sorted(personalizedTopN.items(), key = lambda x:x[1], reverse = True)
     count = 0
     iterator = 0
     recommendetions = ''
     while count<5:
-        if not (topNPersonalized[iterator][0] in uel[u]):
+        if not (topNPersonalized[iterator][0] in getUserEvaluationList(u)):
             recommendetions = recommendetions + (str(topNPersonalized[iterator][0]) + ' ')
             count = count + 1
         iterator = iterator + 1
@@ -370,8 +365,8 @@ def main():
         print user
         for i,v in recommendetions:
             recommend = recommend+(str(i) + ' ')
-        #if (len(recommendetions)<5):
-        #    recommend=padding(user)
+        if (len(recommendetions)<5):
+            recommend=padding(user)
         print recommend
         elem = []
         elem.append(user)
