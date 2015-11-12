@@ -88,12 +88,12 @@ def getRecommendetions(user):
         evaluationListUser = []
         evaluationListIteratorUser = []
 
-        for filmAlreadySeen in list(vectorUserEvaluatedItems):
-            if filmAlreadySeen in vectorUserIterator and filmAlreadySeen in filmThreshold:
+        for item in list(vectorUserEvaluatedItems):
+            if item in vectorUserIterator and item in filmThreshold:
                 skip = False
-                evaluationListUser.append(getEvaluation(user,filmAlreadySeen))
-                evaluationListIteratorUser.append(getEvaluation(userIterator,filmAlreadySeen))
-                vectorUserIterator.remove(filmAlreadySeen)
+                evaluationListUser.append(getEvaluation(user,item))
+                evaluationListIteratorUser.append(getEvaluation(userIterator,item))
+                vectorUserIterator.remove(item)
         avgCommonMovies[userIterator] = (avgCommonMovies[userIterator]  *  countForTheAverage + len(evaluationListIteratorUser)) / (countForTheAverage + 1) # Running Average
         countForTheAverage += 1
 
@@ -156,11 +156,16 @@ def loadMaps(): # TODO ufc is a memory leak, need a refactor
             itemFeatureslist[elem[0]] = []
         itemFeatureslist[elem[0]].append(elem[1])
 
-    '''Creating the UserEvaluatedList: the list of items already evaluated by an user'''
-    global userItemEvaluation # define variable as global
-    userItemEvaluation = {}
-    global userItemRatingCount # define variable as global
-    userItemRatingCount = {}
+    '''Creating some maps
+    userEvaluationList: the list of items already evaluated by an user
+    userEvaluationCount: count of the rating given by a single user to a film
+    userFeatureEvaluation: the map of the rating given to a feature calculated as average of the votes received through film containing that feature
+    userFeatureEvaluationCount: count of the rating given by a user to a film containing that feature
+    '''
+    global userFeatureEvaluation # define variable as global
+    userFeatureEvaluation = {}
+    global userFeatureEvaluationCount # define variable as global
+    userFeatureEvaluationCount = {}
     global userEvaluationCount # define variable as global
     userEvaluationCount = {}
     global userEvaluationList # define variable as global
@@ -178,22 +183,25 @@ def loadMaps(): # TODO ufc is a memory leak, need a refactor
             userEvaluationList[u] = []
             userEvaluationList[u].append(i)
 
-        userEvaluationCount[u] = userEvaluationCount[u] + 1
+        try:
+            userEvaluationCount[u] = userEvaluationCount[u] + 1
+        except Exception,e:
+            userEvaluationCount[u]=0
+            userEvaluationCount[u] = userEvaluationCount[u] + 1
 
         if i in itemFeatureslist:
             for f in itemFeatureslist[i]:
 
                 try: # need to manage the "initialization case" in which the key does not exists
-                    userItemRating[(u,f)] = (userItemRating[(u,f)] + float(r)) / 2
+                    userItemRating[(u,f)] = (userItemRating[(u,f)] * userItemRatingCount[(u,f)] + float(r)) / (userItemRatingCount[(u,f)] + 1)
                 except Exception,e: # if the key is non-initialized, do it
-                    userItemRating[(u,f)] = 0.0
-                    userItemRating[(u,f)] = (userItemRating[(u,f)] + float(r)) / 2
-
-                    try: # need to manage the "initialization case" in which the key does not exists
-                        userItemRatingCount[(u,f)] = userItemRatingCount[(u,f)] + 1
-                    except Exception,e: # if the key is non-initialized, do it
+                    if (u,f) not in userItemRating:
+                        userItemRating[(u,f)] = 0.0
+                    elif (u,f) not in userItemRatingCount:
                         userItemRatingCount[(u,f)] = 0
-                        userItemRatingCount[(u,f)] = userItemRatingCount[(u,f)] + 1
+
+                    userItemRating[(u,f)] = (userItemRating[(u,f)] * userItemRatingCount[(u,f)] + float(r)) / (userItemRatingCount[(u,f)] + 1)
+                    userItemRatingCount[(u,f)] = userItemRatingCount[(u,f)] + 1
 
 def getUserEvaluatedItems(user):
     '''List of user's seen items'''
@@ -302,13 +310,13 @@ def main():
     user which getRecommendetions is unable to fill
     Includes also percentage and temporization
     '''
+    trainLoader() # Load the trainset
     loadMaps() # Load the needed data structured from the train set
     loadUserAvgRating() # Load the map of the average rating per user
     loadItemAvgRating() # Load the map of the average rating per item
-    trainLoader() # Load the trainset
     userItemEvaluationLoader() # Load the userItemEvaluation map
     loadUserSet() # Load the userSet
-    
+
     resultToWrite=[]
     loopTime = time.time()
     for user in userSet:
