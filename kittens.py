@@ -13,29 +13,41 @@ def cos(v1, v2):
 
 def loadUserAvgRating():
     '''Populate the hashmap with the average given vote by all users'''
+    global avgUserRating
+    avgUserRating = {}
     count = {}
     count = defaultdict(lambda: 0,count)
     for elem in train:
         user=elem[0]
         evaluation=elem[2]
-        avgUserRating[user] = (avgUserRating[user] * count[user] + float(evaluation)) / (count[user] + 1) # running average
+        try:
+            avgUserRating[user] = (avgUserRating[user] * count[user] + float(evaluation)) / (count[user] + 1) # running average
+        except Exception,e:
+            avgUserRating[user] = 0.0
+            avgUserRating[user] = (avgUserRating[user] * count[user] + float(evaluation)) / (count[user] + 1)
         count[user] += 1
 
-def getItemAvgRating():
+def loadItemAvgRating():
     '''Populate the hashmap with the average taken vote by all items'''
+    global avgUserRating
+    avgUserRating = {}
     count = {}
     count = defaultdict(lambda: 0,count)
     for elem in train:
         item=elem[1]
         evaluation=elem[2]
-        avgItemRating[item] = (avgItemRating[item] * count[item] + float(evaluation)) / (count[item] + 1) # running average
+        try:
+            avgItemRating[item] = (avgItemRating[item] * count[item] + float(evaluation)) / (count[item] + 1) # running average
+        except Exception,e:
+            avgItemRating[item] = 0.0
+            avgItemRating[item] = (avgItemRating[item] * count[item] + float(evaluation)) / (count[item] + 1) # running average
         count[item] += 1
 
 def getUserExtendedEvaluationVector(u):
     '''return the 20k long vector with the user's rating at index corresponding to related item, 0 if no evaluation is provided'''
     evaluatedItems = getUserEvaluatedItems(u)
     userExtendedEvaluationVector = [0] * moviesNumber # initialization
-    for (user,item),value in trainRddMappedValuesCollected:
+    for (user,item),value in userItemEvaluationMap:
         if (user == u and item in evaluatedItems):
             userExtendedEvaluationVector[item - 1] = value
     return userExtendedEvaluationVector
@@ -44,7 +56,7 @@ def getEvaluation(u,i):
     '''Getting the evaluation of a specific film for a user'''
     return ufvl[ (u,i) ]
 
-def getRecommendetions(userToRecommend):
+def getRecommendetions(user):
     '''
     getRecommendetions(user)
     take an user
@@ -59,7 +71,7 @@ def getRecommendetions(userToRecommend):
     * making a personaCorrelation between the two users to make the graduatory
     * TODO fill the description
     '''
-    vectorUserToRecommend = getUserEvaluatedItems(userToRecommend) # get the vector of the seen items
+    vectorUserEvaluatedItems = getUserEvaluatedItems(user) # get the vector of the seen items
     filmThreshold = xrange(7,10) # threshold to be applied to the possible Recommendetions
     similarities = {}
     possibleRecommendetions = []
@@ -69,33 +81,36 @@ def getRecommendetions(userToRecommend):
 
     for userIterator in userSet:
         skip = True # if no common film will be found this variable will remain setten and the remain part of the cicle will be skipped
-        if (userIterator == userToRecommend): # if the user which we need to make recommendetion is the same of the one in the iterator we skip this iteration
+        if (userIterator == user): # if the user which we need to make recommendetion is the same of the one in the iterator we skip this iteration
             continue
 
         vectorUserIterator = getUserEvaluatedItems(userIterator)[:] #same as befor, this time we need to get a copy of the vector (achieved through [:]) since we are going to modify it
-        evaluationListUserToRecommend = []
+        evaluationListUser = []
         evaluationListIteratorUser = []
-        for filmAlreadySeen in list(vectorUserToRecommend):
+
+        for filmAlreadySeen in list(vectorUserEvaluatedItems):
             if filmAlreadySeen in vectorUserIterator and filmAlreadySeen in filmThreshold:
                 skip = False
-                evaluationListUserToRecommend.append(getEvaluation(UserToRecommend,filmAlreadySeen))
+                evaluationListUser.append(getEvaluation(user,filmAlreadySeen))
                 evaluationListIteratorUser.append(getEvaluation(userIterator,filmAlreadySeen))
                 vectorUserIterator.remove(filmAlreadySeen)
         avgCommonMovies[userIterator] = (avgCommonMovies[userIterator]  *  countForTheAverage + len(evaluationListIteratorUser)) / (countForTheAverage + 1) # Running Average
         countForTheAverage += 1
+
         if (skip):
             similarity = 0
         else:
-            similarity = pearsonCorrelation(userToRecommend, userIterator, evaluationListUserToRecommend, evaluationListIteratorUser)
+            similarity = pearsonCorrelation(user, userIterator, evaluationListUser, evaluationListIteratorUser)
+
         if similarity > 0: # taking into consideation only positive similarities
             similarities[userIterator] = similarity
             movies.extend(vectorUserIterator) # extend needed to "append" a list without creating nesting
-    possibleRecommendetions = set(possibleRecommendetions) # we need every element to be unique
-    return getPredictions(userToRecommend, similarities, possibleRecommendetions) # functional python fuck yeah
 
-def getPredictions(u, similarities, movies):
+    return getPredictions(user, similarities, set(possibleRecommendetions)) # we need every element to be unique
+
+def getPredictions(user, similarities, movies):
     '''This method is making the predictions for a given user'''
-    avgu = avgUserRating[u]
+    avgu = avgUserRating[user]
     userValues = []
     predictions = []
     denominator = np.sum(similarities.values())
@@ -129,33 +144,60 @@ def getTopN():
     # Sorting in descending order the list of items
     return sorted(total.items(), key = lambda x:x[1], reverse = True)
 
-def loadUserStats(): # TODO ufc is a memory leak, need a refactor
+def loadMaps(): # TODO ufc is a memory leak, need a refactor
     '''Parsing the item feature list'''
-    byfeature = list(csv.reader(open('data/icm.csv', 'rb'), delimiter = ','))
-    del byfeature[0]
+    byfeature = list(csv.reader(open('data/icm.csv', 'rb'), delimiter = ',')) #open csv splitting field on the comma character
+    del byfeature[0] # header remove
+    global itemFeatureslist
+    itemFeatureslist = {}
     for elem in byfeature:
         elem = map (int, elem)
-        if not (elem[0]) in ifl:
-            ifl[elem[0]] = []
-        ifl[elem[0]].append(elem[1])
+        if not (elem[0]) in itemFeatureslist:
+            itemFeatureslist[elem[0]] = []
+        itemFeatureslist[elem[0]].append(elem[1])
 
     '''Creating the UserEvaluatedList: the list of items already evaluated by an user'''
+    global userItemEvaluation # define variable as global
+    userItemEvaluation = {}
+    global userItemRatingCount # define variable as global
+    userItemRatingCount = {}
+    global userEvaluationCount # define variable as global
+    userEvaluationCount = {}
+    global userEvaluationList # define variable as global
+    userEvaluationList = {}
+
     for elem in train:
         elem = map(int, elem)
         u = elem[0]
         i = elem[1]
         r = elem[2]
-        uel[u].append(i)
-        urc[u] = urc[u] + 1
-        if not i in ifl:
-            continue
-        for f in ifl[i]:
-            ufr[(u,f)] = (ufr[(u,f)] + float(r)) / 2
-            ufc[(u,f)] = ufc[(u,f)] + 1
+
+        try: # need to manage the "initialization case" in which the key does not exists
+            userEvaluationList[u].append(i)
+        except Exception,e: # if the key is non-initialized, do it
+            userEvaluationList[u] = []
+            userEvaluationList[u].append(i)
+
+        userEvaluationCount[u] = userEvaluationCount[u] + 1
+
+        if i in itemFeatureslist:
+            for f in itemFeatureslist[i]:
+
+                try: # need to manage the "initialization case" in which the key does not exists
+                    userItemRating[(u,f)] = (userItemRating[(u,f)] + float(r)) / 2
+                except Exception,e: # if the key is non-initialized, do it
+                    userItemRating[(u,f)] = 0.0
+                    userItemRating[(u,f)] = (userItemRating[(u,f)] + float(r)) / 2
+
+                    try: # need to manage the "initialization case" in which the key does not exists
+                        userItemRatingCount[(u,f)] = userItemRatingCount[(u,f)] + 1
+                    except Exception,e: # if the key is non-initialized, do it
+                        userItemRatingCount[(u,f)] = 0
+                        userItemRatingCount[(u,f)] = userItemRatingCount[(u,f)] + 1
 
 def getUserEvaluatedItems(user):
     '''List of user's seen items'''
-    return uel[user]
+    return userEvaluationList[user]
 
 def numDistinctItems():
     ''' Getting the number of items that we have in our icm.csv'''
@@ -170,9 +212,9 @@ def padding(u): # recicle from the old recommendetions methos
     topN=getTopN() # getter for the generic TopN
     for i,v in topN:
         personalizedTopN[i] = math.log(v)
-        if not i in ifl:
+        if not i in itemFeatureslist:
             continue
-        for f in ifl[i]:
+        for f in itemFeatureslist[i]:
             if not (ufc[(u,f)] == 0 or urc[u] == 0 or u not in urc or (u,f) not in ufc):
                 personalizedTopN[i] = personalizedTopN[i] + ufr[(u,f)] / (ufc[(u,f)] / urc[u])
     topNPersonalized = sorted(personalizedTopN.items(), key = lambda x:x[1], reverse = True)
@@ -223,35 +265,34 @@ def getNumMovies():
     numMovies = trainRddLoader().map(lambda r: r[1]).distinct().count()
 
 def trainLoader():
-    train = list (csv.reader(open('data/train.csv', 'rb'), delimiter = ','))
+    global train
+    train = list (csv.reader(open('data/train.csv', 'rb'), delimiter = ',')) #open csv splitting field on the comma character
     del train[0] # deletion of the string header
-    trainMapped = []
-    for i in train:
-        trainMapped.append(map(int,i))
-    return trainMapped
+    train = map(lambda x: map(int, x),train) # Not so straight to read...map every (sub)element of train to int
 
 def trainRddLoader():
     '''Creating the RDD of the train.csv'''
-    trainRdd = sc.textFile("data/train.csv").map(lambda line: line.split(","))
+    trainRdd = sc.textFile("data/train.csv").map(lambda line: line.split(",")) #open csv splitting field on the comma character
     '''Getting the header of trainRdd'''
     trainFirstRow = trainRdd.first()
     '''Removing the first line of train, that is userId,iteamId,rating'''
     trainRdd = trainRdd.filter(lambda x:x != trainFirstRow)
     return trainRdd
 
-def userSetLoader():
-    '''Get of userSet'''
-    userSet = sc.textFile("data/test.csv").map(lambda line: line.split(","))
+def loadUserSet():
+    '''Loader of userSet'''
+    global userSet
+    userSet = sc.textFile("data/test.csv").map(lambda line: line.split(",")) #open csv splitting field on the comma character
     userSetFirstRow = userSet.first()
     userSet = userSet.filter(lambda x:x != userSetFirstRow).keys().map(lambda x: int(x)).collect()
-    return userSet
 
 def userItemEvaluationLoader():
+    global userItemEvaluation
     '''return an hashmap structured
     (K1,K2): V
     (user,film): evaluation
     this map is obtained mapping the correct field from train set into an hashmap'''
-    return dict((((x[0], x[1]), x[2])) for x in map(lambda x: map(int,x),train[1:]))
+    userItemEvaluation = dict((((x[0], x[1]), x[2])) for x in map(lambda x: map(int,x),train[1:]))
 
 def main():
     '''
@@ -261,6 +302,13 @@ def main():
     user which getRecommendetions is unable to fill
     Includes also percentage and temporization
     '''
+    loadMaps() # Load the needed data structured from the train set
+    loadUserAvgRating() # Load the map of the average rating per user
+    loadItemAvgRating() # Load the map of the average rating per item
+    trainLoader() # Load the trainset
+    userItemEvaluationLoader() # Load the userItemEvaluation map
+    loadUserSet() # Load the userSet
+    
     resultToWrite=[]
     loopTime = time.time()
     for user in userSet:
@@ -279,35 +327,3 @@ def main():
         elem.append(recommend)
         resultToWrite.append(elem)
     resultWriter(resultToWrite)
-
-
-
-'''List of Global Variables Definitions and Computation
-    for debugging reason are out of the main function'''
-
-trainRdd = trainRddLoader()
-
-trainRddMappedValuesCollected=trainRdd.map(lambda x: map(int,x)).map(lambda x: (list((x[0],x[1])),x[2])).collect()
-nUsers=getNumUsers()
-train = trainLoader()
-userItemEvaluationMap = userItemEvaluationLoader()
-userSet = userSetLoader()
-avgUserRating = {}
-avgUserRating = defaultdict(lambda: 0.0,avgUserRating)
-getUserAvgRating()
-
-avgItemRating = {}
-avgItemRating = defaultdict(lambda: 0.0,avgItemRating)
-getItemAvgRating()
-
-ufr = {}
-moviesNumber = numDistinctItems()
-ufc = {}
-urc = {}
-
-ufc = defaultdict(lambda: 0.0, ufc)
-ufr = defaultdict(lambda: 0.0, ufr)
-urc = defaultdict(lambda: 0,urc)
-uel = defaultdict(list)
-ifl = {}
-loadUserStats()
