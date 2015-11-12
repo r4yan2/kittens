@@ -54,7 +54,7 @@ def getUserExtendedEvaluationVector(u):
 
 def getEvaluation(u,i):
     '''Getting the evaluation of a specific film for a user'''
-    return ufvl[ (u,i) ]
+    return userItemEvaluation[ (u,i) ]
 
 def getRecommendetions(user):
     '''
@@ -71,53 +71,56 @@ def getRecommendetions(user):
     * making a personaCorrelation between the two users to make the graduatory
     * TODO fill the description
     '''
-    vectorUser = getUserEvaluationList(user) # get the vector of the seen items
+    itemsUser = getUserEvaluationList(user) # get the vector of the seen items
     filmThreshold = xrange(7,10) # threshold to be applied to the possible Recommendetions
     similarities = {}
-    countForTheAverage=0
+    countForTheAverage = {}
+    countForTheAverage = defaultdict(lambda: 0,countForTheAverage)
     avgCommonMovies = {}
-    avgCommonMovies = defaultdict(lambda: 0,avgCommonMovies)
+    avgCommonMovies = defaultdict(lambda: 0.0,avgCommonMovies)
     numberCommonMovies = {}
     numberCommonMovies = defaultdict(lambda: 0,numberCommonMovies)
     possibleRecommendetions = {}
     possibleRecommendetions = defaultdict(list)
     evaluationsList = {}
     evaluationsList = defaultdict(list)
+    blacklist=[]
 
     for userIterator in userSet:
         skip = True # if no common film will be found this variable will remain setten and the remain part of the cicle will be skipped
         if (userIterator == user): # if the user which we need to make recommendetion is the same of the one in the iterator we skip this iteration
+            blacklist.append(userIterator)
             continue
-
-        vectorUserIterator = getUserEvaluationList(userIterator)[:] #same as befor, this time we need to get a copy of the vector (achieved through [:]) since we are going to modify it
-        evaluationListUser = []
-        evaluationListUserIterator = []
-
-        for item in list(vectorUser):
-            if item in vectorUserIterator:
+        itemsUserIterator = getUserEvaluationList(userIterator)[:] #same as before, this time we need to get a copy of the vector (achieved through [:]) since we are going to modify it
+        ratingsUser = [] #will contain the evaluations of User of the common items with userIterator
+        ratingsUserIterator = [] #will contain the evaluations of userIterato of the common items with userIterator
+        for item in list(itemsUser):
+            if item in itemsUserIterator:
                 numberCommonMovies[userIterator] += 1
-                if item in filmThreshold:
-                    skip = False
-                    evaluationListUser.append(getEvaluation(user,item))
-                    evaluationListUserIterator.append(getEvaluation(userIterator,item))
-                    possibleRecommendetions[userIterator].append(item)
-        evaluationsList[userIterator].append(evaluationListUser)
-        evaluationsList[userIterator].append(evaluationListUserIterator)
+                skip = False
+                ratingsUser.append(getEvaluation(user,item))
+                ratingsUserIterator.append(getEvaluation(userIterator,item))
+                itemsUserIterator.remove(item)
+
+        possibleRecommendetions[userIterator].extend( itemsUserIterator )
+        evaluationsList[userIterator].append(ratingsUser)
+        evaluationsList[userIterator].append(ratingsUserIterator)
 
         if skip :
+            blacklist.append(userIterator)
             continue
-        avgCommonMovies[userIterator] = (avgCommonMovies[userIterator]  *  countForTheAverage + len(evaluationListUserIterator)) / (countForTheAverage + 1) # Running Average
-        countForTheAverage += 1
+        avgCommonMovies[userIterator] = (avgCommonMovies[userIterator]  *  countForTheAverage[userIterator] + len(ratingsUserIterator)) / (countForTheAverage[userIterator] + 1) # Running Average
+        countForTheAverage[userIterator] += 1
 
     for userIterator in userSet:
-        if (userIterator not in similarities.keys()):
+        if (userIterator in blacklist):
             continue
         if numberCommonMovies[userIterator] >= avgCommonMovies[userIterator]:
             similarity = pearsonCorrelation(user, userIterator, evaluationsList[userIterator][0], evaluationsList[userIterator][1])
         else:
-            similarity = pearsonCorrelation(user, userIterator, evaluationsList[userIterator][0], evaluationsList[userIterator][1]) * (numberCommonMovies[userIterator]/avgCommonMovies[userIterator])
+            similarity = pearsonCorrelation(user, userIterator, evaluationsList[userIterator][0], evaluationsList[userIterator][1]) * (numberCommonMovies[userIterator]/avgCommonMovies[userIterator]) # significance weight
 
-        if similarity > 0.5: # taking into consideation only positive similarities
+        if similarity > 0.5: # taking into consideration only positive and significant similarities
             similarities[userIterator] = similarity
 
     return getPredictions(user, similarities, set(possibleRecommendetions[userIterator])) # we need every element to be unique
@@ -130,7 +133,7 @@ def getPredictions(user, similarities, movies):
     denominator = np.sum(similarities.values())
     for item in movies:
         for u2 in similarities.keys():
-            if item in getUserEvaluationList[u2]:
+            if item in getUserEvaluationList(u2):
                 avg2 = avgUserRating[u2]
                 rating = getEvaluation(u2,item)
                 userValues.append(similarities[u2] * (rating - avg2))
@@ -355,7 +358,8 @@ def main():
     loadMaps() # Load the needed data structured from the train set
     loadUserAvgRating() # Load the map of the average rating per user
     loadItemAvgRating() # Load the map of the average rating per item
-    #userItemEvaluationLoader() Not needed because of the userEvaluationList already present
+    userItemEvaluationLoader() # Load the map that associate (user,item) to the rating
+
     resultToWrite=[]
     loopTime = time.time()
     for user in userSet:
