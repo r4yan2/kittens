@@ -172,7 +172,7 @@ def loadMaps():
 
     '''Creating some maps
     userEvaluationList: the list of items already evaluated by an user
-    userEvaluationCount: count of the rating given by a single user to a film
+    userEvaluationCount: not needed anymore, instead use len(userEvaluationList)
     userFeatureEvaluation: the map of the rating given to a feature calculated as average of the votes received through film containing that feature
     userFeatureEvaluationCount: count of the rating given by a user to a film containing that feature
     '''
@@ -180,8 +180,6 @@ def loadMaps():
     userFeatureEvaluation = {}
     global userFeatureEvaluationCount # define variable as global
     userFeatureEvaluationCount = {}
-    global userEvaluationCount # define variable as global
-    userEvaluationCount = {}
     global userEvaluationList # define variable as global
     userEvaluationList = {}
 
@@ -192,7 +190,6 @@ def loadMaps():
         r = elem[2]
 
         setUserEvaluationList(u,i)
-        incrementUserEvaluationCount(u)
 
         if i in itemFeatureslist:
             for f in itemFeatureslist[i]:
@@ -223,22 +220,9 @@ def setUserEvaluationList(u,i):
         userEvaluationList[u] = []
         userEvaluationList[u].append(i)
 
-def incrementUserEvaluationCount(u):
-        try:
-            userEvaluationCount[u] = userEvaluationCount[u] + 1
-        except Exception,e:
-            userEvaluationCount[u] = 0
-            userEvaluationCount[u] = userEvaluationCount[u] + 1
-
 def getUserEvaluationList(user):
     try:
         return userEvaluationList[user]
-    except Exception,e:
-        return 0
-
-def getUserEvaluationCount(user):
-    try:
-        return userEvaluationCount[u]
     except Exception,e:
         return 0
 
@@ -371,7 +355,7 @@ def main():
     loadMaps() # Load the needed data structured from the train set
     loadUserAvgRating() # Load the map of the average rating per user
     loadItemAvgRating() # Load the map of the average rating per item
-    #userItemEvaluationLoader() Not needed because of the userEvaluationList already present    
+    #userItemEvaluationLoader() Not needed because of the userEvaluationList already present
     resultToWrite=[]
     loopTime = time.time()
     for user in userSet:
