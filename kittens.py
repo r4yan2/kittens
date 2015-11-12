@@ -71,36 +71,43 @@ def getRecommendetions(user):
     * making a personaCorrelation between the two users to make the graduatory
     * TODO fill the description
     '''
-    vectorUserEvaluatedItems = userEvaluationList[user] # get the vector of the seen items
+    vectorUser = getUserEvaluationList[user] # get the vector of the seen items
     filmThreshold = xrange(7,10) # threshold to be applied to the possible Recommendetions
     similarities = {}
     possibleRecommendetions = []
     countForTheAverage=0
     avgCommonMovies = {}
     avgCommonMovies = defaultdict(lambda: 0,avgCommonMovies)
+    numberCommonMovies = {}
+    numberCommonMovies = defaultdict(lambda: 0,numberCommonMovies)
 
     for userIterator in userSet:
         skip = True # if no common film will be found this variable will remain setten and the remain part of the cicle will be skipped
         if (userIterator == user): # if the user which we need to make recommendetion is the same of the one in the iterator we skip this iteration
             continue
 
-        vectorUserIterator = userEvaluationList[userIterator][:] #same as befor, this time we need to get a copy of the vector (achieved through [:]) since we are going to modify it
+        vectorUserIterator = getUserEvaluationList[userIterator][:] #same as befor, this time we need to get a copy of the vector (achieved through [:]) since we are going to modify it
         evaluationListUser = []
         evaluationListIteratorUser = []
 
-        for item in list(vectorUserEvaluatedItems):
-            if item in vectorUserIterator and item in filmThreshold:
-                skip = False
-                evaluationListUser.append(getEvaluation(user,item))
-                evaluationListIteratorUser.append(getEvaluation(userIterator,item))
+        for item in list(vectorUser):
+            if item in vectorUserIterator:
+                numberCommonMovies[userIterator] += 1
+                if item in filmThreshold:
+                    skip = False
+                    evaluationListUser.append(getEvaluation(user,item))
+                    evaluationListIteratorUser.append(getEvaluation(userIterator,item))
                 vectorUserIterator.remove(item)
+        if skip :
+            similarities[userIterator] = 0
         avgCommonMovies[userIterator] = (avgCommonMovies[userIterator]  *  countForTheAverage + len(evaluationListIteratorUser)) / (countForTheAverage + 1) # Running Average
         countForTheAverage += 1
 
-        if (skip):
-            similarity = 0
-        else:
+    for userIterator in userSet:
+        if numberCommonMovies[userIterator] >= avgCommonMovies[userIterator]:
             similarity = pearsonCorrelation(user, userIterator, evaluationListUser, evaluationListIteratorUser)
+        else:
+            similarity = pearsonCorrelation(user, userIterator, evaluationListUser, evaluationListIteratorUser) * (numberCommonMovies[userIterator]/avgCommonMovies[userIterator])
 
         if similarity > 0: # taking into consideation only positive similarities
             similarities[userIterator] = similarity
@@ -116,7 +123,7 @@ def getPredictions(user, similarities, movies):
     denominator = np.sum(similarities.values())
     for item in movies:
         for u2 in similarities.keys():
-            if item in userEvaluationList[u2]:
+            if item in getUserEvaluationList[u2]:
                 avg2 = avgUserRating[u2]
                 rating = getEvaluation(u2,item)
                 userValues.append(similarities[u2] * (rating - avg2))
@@ -144,7 +151,7 @@ def getTopN():
     # Sorting in descending order the list of items
     return sorted(total.items(), key = lambda x:x[1], reverse = True)
 
-def loadMaps(): # TODO ufc is a memory leak, need a refactor
+def loadMaps():
     '''Parsing the item feature list'''
     byfeature = list(csv.reader(open('data/icm.csv', 'rb'), delimiter = ',')) #open csv splitting field on the comma character
     del byfeature[0] # header remove
@@ -186,7 +193,7 @@ def loadMaps(): # TODO ufc is a memory leak, need a refactor
         try:
             userEvaluationCount[u] = userEvaluationCount[u] + 1
         except Exception,e:
-            userEvaluationCount[u]=0
+            userEvaluationCount[u] = 0
             userEvaluationCount[u] = userEvaluationCount[u] + 1
 
         if i in itemFeatureslist:
@@ -202,8 +209,19 @@ def loadMaps(): # TODO ufc is a memory leak, need a refactor
                     userFeatureEvaluation[(u,f)] = (userFeatureEvaluation[(u,f)] * userFeatureEvaluationCount[(u,f)] + float(r)) / (userFeatureEvaluationCount[(u,f)] + 1)
 
                 userFeatureEvaluationCount[(u,f)] = userFeatureEvaluationCount[(u,f)] + 1
+def getuserFeatureEvaluation(user,feature):
+    try:
+        return userFeatureEvaluation(user,feature)
+    except Exception,e:
+        return 0
 
-def getUserEvaluatedItems(user):
+def getuserFeatureEvaluationCount(user,feature):
+    try:
+        return userFeatureEvaluationCount[(user,feature)]
+    except Exception,e:
+        return 0
+
+def getUserEvaluationList(user):
     '''List of user's seen items'''
     return userEvaluationList[user]
 
