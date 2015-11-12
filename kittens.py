@@ -47,7 +47,7 @@ def getUserExtendedEvaluationVector(u):
     '''return the 20k long vector with the user's rating at index corresponding to related item, 0 if no evaluation is provided'''
     evaluatedItems = getUserEvaluatedItems(u)
     userExtendedEvaluationVector = [0] * moviesNumber # initialization
-    for (user,item),value in userItemEvaluationMap:
+    for (user,item),value in userEvaluationList:
         if (user == u and item in evaluatedItems):
             userExtendedEvaluationVector[item - 1] = value
     return userExtendedEvaluationVector
@@ -71,24 +71,27 @@ def getRecommendetions(user):
     * making a personaCorrelation between the two users to make the graduatory
     * TODO fill the description
     '''
-    vectorUser = getUserEvaluationList[user] # get the vector of the seen items
+    vectorUser = getUserEvaluationList(user) # get the vector of the seen items
     filmThreshold = xrange(7,10) # threshold to be applied to the possible Recommendetions
     similarities = {}
-    possibleRecommendetions = []
     countForTheAverage=0
     avgCommonMovies = {}
     avgCommonMovies = defaultdict(lambda: 0,avgCommonMovies)
     numberCommonMovies = {}
     numberCommonMovies = defaultdict(lambda: 0,numberCommonMovies)
+    possibleRecommendetions = {}
+    possibleRecommendetions = defaultdict(list)
+    evaluationsList = {}
+    evaluationsList = defaultdict(list)
 
     for userIterator in userSet:
         skip = True # if no common film will be found this variable will remain setten and the remain part of the cicle will be skipped
         if (userIterator == user): # if the user which we need to make recommendetion is the same of the one in the iterator we skip this iteration
             continue
 
-        vectorUserIterator = getUserEvaluationList[userIterator][:] #same as befor, this time we need to get a copy of the vector (achieved through [:]) since we are going to modify it
+        vectorUserIterator = getUserEvaluationList(userIterator)[:] #same as befor, this time we need to get a copy of the vector (achieved through [:]) since we are going to modify it
         evaluationListUser = []
-        evaluationListIteratorUser = []
+        evaluationListUserIterator = []
 
         for item in list(vectorUser):
             if item in vectorUserIterator:
@@ -96,24 +99,28 @@ def getRecommendetions(user):
                 if item in filmThreshold:
                     skip = False
                     evaluationListUser.append(getEvaluation(user,item))
-                    evaluationListIteratorUser.append(getEvaluation(userIterator,item))
-                vectorUserIterator.remove(item)
+                    evaluationListUserIterator.append(getEvaluation(userIterator,item))
+                    possibleRecommendetions[userIterator].append(item)
+        evaluationsList[userIterator].append(evaluationListUser)
+        evaluationsList[userIterator].append(evaluationListUserIterator)
+
         if skip :
-            similarities[userIterator] = 0
-        avgCommonMovies[userIterator] = (avgCommonMovies[userIterator]  *  countForTheAverage + len(evaluationListIteratorUser)) / (countForTheAverage + 1) # Running Average
+            continue
+        avgCommonMovies[userIterator] = (avgCommonMovies[userIterator]  *  countForTheAverage + len(evaluationListUserIterator)) / (countForTheAverage + 1) # Running Average
         countForTheAverage += 1
 
     for userIterator in userSet:
+        if (userIterator not in similarities.keys()):
+            continue
         if numberCommonMovies[userIterator] >= avgCommonMovies[userIterator]:
-            similarity = pearsonCorrelation(user, userIterator, evaluationListUser, evaluationListIteratorUser)
+            similarity = pearsonCorrelation(user, userIterator, evaluationsList[userIterator][0], evaluationsList[userIterator][1])
         else:
-            similarity = pearsonCorrelation(user, userIterator, evaluationListUser, evaluationListIteratorUser) * (numberCommonMovies[userIterator]/avgCommonMovies[userIterator])
+            similarity = pearsonCorrelation(user, userIterator, evaluationsList[userIterator][0], evaluationsList[userIterator][1]) * (numberCommonMovies[userIterator]/avgCommonMovies[userIterator])
 
-        if similarity > 0: # taking into consideation only positive similarities
+        if similarity > 0.5: # taking into consideation only positive similarities
             similarities[userIterator] = similarity
-            movies.extend(vectorUserIterator) # extend needed to "append" a list without creating nesting
 
-    return getPredictions(user, similarities, set(possibleRecommendetions)) # we need every element to be unique
+    return getPredictions(user, similarities, set(possibleRecommendetions[userIterator])) # we need every element to be unique
 
 def getPredictions(user, similarities, movies):
     '''This method is making the predictions for a given user'''
@@ -141,7 +148,7 @@ def getTopN():
     for line in train:
         line = map (int, line)
         if (lastid != line[1]):
-            variableShrink = int(math.fabs(math.log(float(counter) / nUsers)))
+            variableShrink = int(math.fabs(math.log(float(counter) / getNumUsers())))
             total[lastid] = sum / float(counter + variableShrink);
             counter = 0
             sum = 0
@@ -184,34 +191,60 @@ def loadMaps():
         i = elem[1]
         r = elem[2]
 
-        try: # need to manage the "initialization case" in which the key does not exists
-            userEvaluationList[u].append(i)
-        except Exception,e: # if the key is non-initialized, do it
-            userEvaluationList[u] = []
-            userEvaluationList[u].append(i)
+        setUserEvaluationList(u,i)
+        incrementUserEvaluationCount(u)
 
+        if i in itemFeatureslist:
+            for f in itemFeatureslist[i]:
+                setUserFeatureEvaluationAndCount(u,f,r)
+
+def getFeaturesList(i):
+    try:
+        return itemFeatureList[i]
+    except Exception,e:
+        return []
+
+def setUserFeatureEvaluationAndCount(u,f,r):
+    try: # need to manage the "initialization case" in which the key does not exists
+        userFeatureEvaluation[(u,f)] = (userFeatureEvaluation[(u,f)] * userFeatureEvaluationCount[(u,f)] + float(r)) / (userFeatureEvaluationCount[(u,f)] + 1)
+        userFeatureEvaluationCount[(u,f)] = userFeatureEvaluationCount[(u,f)] + 1
+    except Exception,e: # if the key is non-initialized, do it
+        if (u,f) not in userFeatureEvaluation:
+            userFeatureEvaluation[(u,f)] = 0.0
+        if (u,f) not in userFeatureEvaluationCount:
+            userFeatureEvaluationCount[(u,f)] = 0
+        userFeatureEvaluation[(u,f)] = (userFeatureEvaluation[(u,f)] * userFeatureEvaluationCount[(u,f)] + float(r)) / (userFeatureEvaluationCount[(u,f)] + 1)
+        userFeatureEvaluationCount[(u,f)] = userFeatureEvaluationCount[(u,f)] + 1
+
+def setUserEvaluationList(u,i):
+     try: # need to manage the "initialization case" in which the key does not exists
+        userEvaluationList[u].append(i)
+     except Exception,e: # if the key is non-initialized, do it
+        userEvaluationList[u] = []
+        userEvaluationList[u].append(i)
+
+def incrementUserEvaluationCount(u):
         try:
             userEvaluationCount[u] = userEvaluationCount[u] + 1
         except Exception,e:
             userEvaluationCount[u] = 0
             userEvaluationCount[u] = userEvaluationCount[u] + 1
 
-        if i in itemFeatureslist:
-            for f in itemFeatureslist[i]:
+def getUserEvaluationList(user):
+    try:
+        return userEvaluationList[user]
+    except Exception,e:
+        return 0
 
-                try: # need to manage the "initialization case" in which the key does not exists
-                    userFeatureEvaluation[(u,f)] = (userFeatureEvaluation[(u,f)] * userFeatureEvaluationCount[(u,f)] + float(r)) / (userFeatureEvaluationCount[(u,f)] + 1)
-                except Exception,e: # if the key is non-initialized, do it
-                    if (u,f) not in userFeatureEvaluation:
-                        userFeatureEvaluation[(u,f)] = 0.0
-                    if (u,f) not in userFeatureEvaluationCount:
-                        userFeatureEvaluationCount[(u,f)] = 0
-                    userFeatureEvaluation[(u,f)] = (userFeatureEvaluation[(u,f)] * userFeatureEvaluationCount[(u,f)] + float(r)) / (userFeatureEvaluationCount[(u,f)] + 1)
+def getUserEvaluationCount(user):
+    try:
+        return userEvaluationCount[u]
+    except Exception,e:
+        return 0
 
-                userFeatureEvaluationCount[(u,f)] = userFeatureEvaluationCount[(u,f)] + 1
 def getuserFeatureEvaluation(user,feature):
     try:
-        return userFeatureEvaluation(user,feature)
+        return userFeatureEvaluation[(user,feature)]
     except Exception,e:
         return 0
 
@@ -280,7 +313,7 @@ def resultWriter(result):
 
 def getNumUsers():
     '''Calculating the number of distinct users that rated some items'''
-    return trainRddLoader().map(lambda r: r[0]).distinct().count()
+    return len(userSet)
 
 def getNumRatings():
     '''Calculating the number of ratings that of the items'''
@@ -334,12 +367,11 @@ def main():
     Includes also percentage and temporization
     '''
     trainLoader() # Load the trainset
+    loadUserSet() # Load the userSet
     loadMaps() # Load the needed data structured from the train set
     loadUserAvgRating() # Load the map of the average rating per user
     loadItemAvgRating() # Load the map of the average rating per item
-    userItemEvaluationLoader() # Load the userItemEvaluation map
-    loadUserSet() # Load the userSet
-
+    #userItemEvaluationLoader() Not needed because of the userEvaluationList already present    
     resultToWrite=[]
     loopTime = time.time()
     for user in userSet:
@@ -350,8 +382,8 @@ def main():
         print user
         for i,v in recommendetions:
             recommend = recommend+(str(i) + ' ')
-        if (len(recommendetions)<5):
-            recommend=padding(user)
+        #if (len(recommendetions)<5):
+        #    recommend=padding(user)
         print recommend
         elem = []
         elem.append(user)
