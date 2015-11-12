@@ -29,8 +29,8 @@ def loadUserAvgRating():
 
 def loadItemAvgRating():
     '''Populate the hashmap with the average taken vote by all items'''
-    global avgUserRating
-    avgUserRating = {}
+    global avgItemRating
+    avgItemRating = {}
     count = {}
     count = defaultdict(lambda: 0,count)
     for elem in train:
@@ -71,7 +71,7 @@ def getRecommendetions(user):
     * making a personaCorrelation between the two users to make the graduatory
     * TODO fill the description
     '''
-    vectorUserEvaluatedItems = getUserEvaluatedItems(user) # get the vector of the seen items
+    vectorUserEvaluatedItems = userEvaluationList[user] # get the vector of the seen items
     filmThreshold = xrange(7,10) # threshold to be applied to the possible Recommendetions
     similarities = {}
     possibleRecommendetions = []
@@ -84,7 +84,7 @@ def getRecommendetions(user):
         if (userIterator == user): # if the user which we need to make recommendetion is the same of the one in the iterator we skip this iteration
             continue
 
-        vectorUserIterator = getUserEvaluatedItems(userIterator)[:] #same as befor, this time we need to get a copy of the vector (achieved through [:]) since we are going to modify it
+        vectorUserIterator = userEvaluationList[userIterator][:] #same as befor, this time we need to get a copy of the vector (achieved through [:]) since we are going to modify it
         evaluationListUser = []
         evaluationListIteratorUser = []
 
@@ -116,7 +116,7 @@ def getPredictions(user, similarities, movies):
     denominator = np.sum(similarities.values())
     for item in movies:
         for u2 in similarities.keys():
-            if item in getUserEvaluatedItems(u2):
+            if item in userEvaluationList[u2]:
                 avg2 = avgUserRating[u2]
                 rating = getEvaluation(u2,item)
                 userValues.append(similarities[u2] * (rating - avg2))
@@ -193,15 +193,15 @@ def loadMaps(): # TODO ufc is a memory leak, need a refactor
             for f in itemFeatureslist[i]:
 
                 try: # need to manage the "initialization case" in which the key does not exists
-                    userItemRating[(u,f)] = (userItemRating[(u,f)] * userItemRatingCount[(u,f)] + float(r)) / (userItemRatingCount[(u,f)] + 1)
+                    userFeatureEvaluation[(u,f)] = (userFeatureEvaluation[(u,f)] * userFeatureEvaluationCount[(u,f)] + float(r)) / (userFeatureEvaluationCount[(u,f)] + 1)
                 except Exception,e: # if the key is non-initialized, do it
-                    if (u,f) not in userItemRating:
-                        userItemRating[(u,f)] = 0.0
-                    elif (u,f) not in userItemRatingCount:
-                        userItemRatingCount[(u,f)] = 0
+                    if (u,f) not in userFeatureEvaluation:
+                        userFeatureEvaluation[(u,f)] = 0.0
+                    if (u,f) not in userFeatureEvaluationCount:
+                        userFeatureEvaluationCount[(u,f)] = 0
+                    userFeatureEvaluation[(u,f)] = (userFeatureEvaluation[(u,f)] * userFeatureEvaluationCount[(u,f)] + float(r)) / (userFeatureEvaluationCount[(u,f)] + 1)
 
-                    userItemRating[(u,f)] = (userItemRating[(u,f)] * userItemRatingCount[(u,f)] + float(r)) / (userItemRatingCount[(u,f)] + 1)
-                    userItemRatingCount[(u,f)] = userItemRatingCount[(u,f)] + 1
+                userFeatureEvaluationCount[(u,f)] = userFeatureEvaluationCount[(u,f)] + 1
 
 def getUserEvaluatedItems(user):
     '''List of user's seen items'''
@@ -290,9 +290,14 @@ def trainRddLoader():
 def loadUserSet():
     '''Loader of userSet'''
     global userSet
-    userSet = sc.textFile("data/test.csv").map(lambda line: line.split(",")) #open csv splitting field on the comma character
-    userSetFirstRow = userSet.first()
-    userSet = userSet.filter(lambda x:x != userSetFirstRow).keys().map(lambda x: int(x)).collect()
+    try:
+        userSet = sc.textFile("data/test.csv").map(lambda line: line.split(",")) #open csv splitting field on the comma character
+        userSetFirstRow = userSet.first()
+        userSet = userSet.filter(lambda x:x != userSetFirstRow).keys().map(lambda x: int(x)).collect()
+    except Exception,e:
+        userSet = list (csv.reader(open('data/test.csv', 'rb'), delimiter = ','))
+        del userSet[0]
+        userSet = map(lambda x: x[0],map(lambda x: map(int, x),userSet))
 
 def userItemEvaluationLoader():
     global userItemEvaluation
