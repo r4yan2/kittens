@@ -72,8 +72,10 @@ def getRecommendetions(user):
     * TODO fill the description
     '''
     itemsUser = getUserEvaluationList(user) # get the vector of the seen items
-    filmThreshold = xrange(7,10) # threshold to be applied to the possible Recommendetions
+    threshold = xrange(7,10) # threshold to be applied to the possible Recommendetions
     similarities = {}
+    countFeature = {}
+    countFeature = defaultdict(lambda: 0,countFeature)
     countForTheAverage = {}
     countForTheAverage = defaultdict(lambda: 0,countForTheAverage)
     avgCommonMovies = {}
@@ -85,6 +87,8 @@ def getRecommendetions(user):
     evaluationsList = {}
     evaluationsList = defaultdict(list)
     blacklist=[]
+    featuresAvg = {}
+    featuresAvg = defaultdict(lambda: 0, featuresAvg)
 
     for userIterator in userSet:
         skip = True # if no common film will be found this variable will remain setten and the remain part of the cicle will be skipped
@@ -101,14 +105,22 @@ def getRecommendetions(user):
                 ratingsUser.append(getEvaluation(user,item))
                 ratingsUserIterator.append(getEvaluation(userIterator,item))
                 itemsUserIterator.remove(item)
+        for item in itemsUserIterator:
+            features = getFeaturesList(item)
+            for feature in features:
+                rating = getUserFeatureEvaluation(user,feature)
+                featuresAvg[item] = (featuresAvg[item] * countFeature[item] + float(rating)) / (countFeature[item] + 1)
+                countFeature[item] = countFeature[item] + 1
+            if featuresAvg[item] in threshold:
+                possibleRecommendetions[userIterator].append( item )
 
-        possibleRecommendetions[userIterator].extend( itemsUserIterator )
+        if (skip or len(possibleRecommendetions)==0) :
+            blacklist.append(userIterator)
+            continue
+
         evaluationsList[userIterator].append(ratingsUser)
         evaluationsList[userIterator].append(ratingsUserIterator)
 
-        if skip :
-            blacklist.append(userIterator)
-            continue
         avgCommonMovies[userIterator] = (avgCommonMovies[userIterator]  *  countForTheAverage[userIterator] + len(ratingsUserIterator)) / (countForTheAverage[userIterator] + 1) # Running Average
         countForTheAverage[userIterator] += 1
 
