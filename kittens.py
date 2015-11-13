@@ -72,7 +72,7 @@ def getRecommendetions(user):
     * TODO fill the description
     '''
     itemsUser = getUserEvaluationList(user) # get the vector of the seen items
-    threshold = xrange(7,10) # threshold to be applied to the possible Recommendetions
+    threshold = xrange(8,11) # threshold to be applied to the possible Recommendetions
     similarities = {}
     countFeature = {}
     countFeature = defaultdict(lambda: 0,countFeature)
@@ -274,7 +274,7 @@ def padding(u,recommendetions,recommend): # recicle from the old recommendetions
     count = len(recommendetions)
     iterator = 0
     while count<5:
-        if not ((topNPersonalized[iterator][0] in getUserEvaluationList(u) or (topNPersonalized[iterator][0] in recommendetion)):
+        if not ( (topNPersonalized[iterator][0] in getUserEvaluationList(u) ) or ( topNPersonalized[iterator][0] in recommendetion) ):
             recommend = recommend + (str(topNPersonalized[iterator][0]) + ' ')
             count = count + 1
         iterator = iterator + 1
