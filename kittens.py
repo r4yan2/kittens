@@ -261,7 +261,7 @@ def numDistinctItems():
     numDistinctItems = icmRdd.map(lambda x: map(int,x)).sortByKey(False).keys().first()
     return numDistinctItems
 
-def padding(u): # recicle from the old recommendetions methos
+def padding(u,recommendetions,recommend): # recicle from the old recommendetions methos
     personalizedTopN = {}
     for i,v in topN:
         personalizedTopN[i] = math.log(v)
@@ -271,15 +271,14 @@ def padding(u): # recicle from the old recommendetions methos
             if not ((getUserFeatureEvaluation(u,f) == 0) or ( len(getUserEvaluationList(u))== 0 ) or (getUserFeatureEvaluationCount(u,f)==0)):
                 personalizedTopN[i] = personalizedTopN[i] + getUserFeatureEvaluation(u,f) / (float(getUserFeatureEvaluationCount(u,f)) / len(getUserEvaluationList(u)))
     topNPersonalized = sorted(personalizedTopN.items(), key = lambda x:x[1], reverse = True)
-    count = 0
+    count = len(recommendetions)
     iterator = 0
-    recommendetions = ''
     while count<5:
-        if not (topNPersonalized[iterator][0] in getUserEvaluationList(u)):
-            recommendetions = recommendetions + (str(topNPersonalized[iterator][0]) + ' ')
+        if not (topNPersonalized[iterator][0] in getUserEvaluationList(u) or (topNPersonalized[iterator][0] in recommendetion):
+            recommend = recommend + (str(topNPersonalized[iterator][0]) + ' ')
             count = count + 1
         iterator = iterator + 1
-    return recommendetions
+    return recommend
 
 def pearsonCorrelation(u, u2, listA, listB):
     '''Calculating the Pearson Correlation coefficient between two given users'''
@@ -371,16 +370,19 @@ def main():
     resultToWrite=[]
     loopTime = time.time()
     for user in userSet:
-        print "Completion percentage %f, increment %f" % (float(userSet.index(user)*100) / len(userSet),time.time() - loopTime)
+        #print "Completion percentage %f, increment %f" % (float(userSet.index(user)*100) / len(userSet),time.time() - loopTime)
+        completion=float(userSet.index(user)*100) / len(userSet)
+        sys.stdout.write("\r%f%%" % completion)
+        sys.stdout.flush()
         loopTime = time.time()
         recommend = ''
         recommendetions = sorted(getRecommendetions(user), key = lambda x:x[1], reverse=True)[:5]
-        print user
+        #print user
         for i,v in recommendetions:
             recommend = recommend+(str(i) + ' ')
         if (len(recommendetions)<5):
-            recommend=padding(user)
-        print recommend
+            recommend=padding(user, recommendetions, recommend)
+        #print recommend
         elem = []
         elem.append(user)
         elem.append(recommend)
