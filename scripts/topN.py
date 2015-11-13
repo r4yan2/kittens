@@ -10,7 +10,7 @@ test = list (csv.reader(open('data/test.csv', 'rb'), delimiter = ','))
 del test[0]
 
 # Calculating number of users
-nUsers=len(train)
+nUsers=len(test)
 
 # Insert into an hashmap the total value for each film calculated by summing all the rating obtained throught user rating divided by the sum of the votes + the variable shrink value obtained as logarithm of the number of votes divided for the number of users in the system.
 sum=0
