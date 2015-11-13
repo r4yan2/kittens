@@ -1,7 +1,15 @@
 # kittens
 
-## Top-N 
-this implementation gave for now ...26 points
+## Top-N Personalized with shrinked value
 
-* shrink term fixed to 3
-* without repetition of already evaluated items
+Is the successful approach for now 
+
+## Cosine Similarity
+
+applied to users...
+failed!
+should have been applied to items
+
+## Pearson Similarity
+
+Currently work in progress, it's known to be the best user-similarity
