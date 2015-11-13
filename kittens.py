@@ -294,8 +294,10 @@ def resultWriter(result):
     fp.close
 
 def getNumUsers():
-    '''Calculating the number of distinct users that rated some items'''
-    return len(userSet)
+    '''Calculating the number of distinct users that rated some items
+    len(set(map(lambda x: x[0],train) + userSet))=> 15373
+    last element of train=>15374'''
+    return 15373
 
 def getNumRatings():
     '''Calculating the number of ratings that of the items'''
@@ -305,7 +307,7 @@ def getNumMovies():
     '''Calculating the number of items that some users rated them'''
     numMovies = trainRddLoader().map(lambda r: r[1]).distinct().count()
 
-def trainLoader():
+def loadTrain():
     global train
     train = list (csv.reader(open('data/train.csv', 'rb'), delimiter = ',')) #open csv splitting field on the comma character
     del train[0] # deletion of the string header
@@ -332,7 +334,7 @@ def loadUserSet():
         del userSet[0]
         userSet = map(lambda x: x[0],map(lambda x: map(int, x),userSet))
 
-def userItemEvaluationLoader():
+def loadUserItemEvaluation():
     global userItemEvaluation
     '''return an hashmap structured
     (K1,K2): V
@@ -348,12 +350,12 @@ def main():
     user which getRecommendetions is unable to fill
     Includes also percentage and temporization
     '''
-    trainLoader() # Load the trainset
+    loadTrain() # Load the trainset
     loadUserSet() # Load the userSet
     loadMaps() # Load the needed data structured from the train set
     loadUserAvgRating() # Load the map of the average rating per user
     loadItemAvgRating() # Load the map of the average rating per item
-    userItemEvaluationLoader() # Load the map that associate (user,item) to the rating
+    loadUserItemEvaluation() # Load the map that associate (user,item) to the rating
     loadTopN()
 
     resultToWrite=[]
