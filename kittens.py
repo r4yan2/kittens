@@ -274,7 +274,7 @@ def padding(u,recommendetions,recommend): # recicle from the old recommendetions
     count = len(recommendetions)
     iterator = 0
     while count<5:
-        if not ( (topNPersonalized[iterator][0] in getUserEvaluationList(u) ) or ( topNPersonalized[iterator][0] in recommendetion) ):
+        if not ( (topNPersonalized[iterator][0] in getUserEvaluationList(u) ) or ( topNPersonalized[iterator][0] in recommendetions) ):
             recommend = recommend + (str(topNPersonalized[iterator][0]) + ' ')
             count = count + 1
         iterator = iterator + 1
