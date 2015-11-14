@@ -371,6 +371,8 @@ def main():
 
     resultToWrite=[]
     loopTime = time.time()
+    statsPadding=0
+
     for user in userSet:
         #print "Completion percentage %f, increment %f" % (float(userSet.index(user)*100) / len(userSet),time.time() - loopTime)
         completion=float(userSet.index(user)*100) / len(userSet)
@@ -382,6 +384,7 @@ def main():
         #print user
         for i,v in recommendetions:
             recommend = recommend+(str(i) + ' ')
+        statsPadding=statsPadding+5-len(recommendetions)
         if (len(recommendetions)<5):
             recommend=padding(user, recommendetions, recommend)
         #print recommend
@@ -390,3 +393,4 @@ def main():
         elem.append(recommend)
         resultToWrite.append(elem)
     resultWriter(resultToWrite)
+    print "Padding needed for %f per cent of recommendetions" % (float(statsPadding*100))/(getNumUsers()*5))
