@@ -56,7 +56,7 @@ def getEvaluation(u,i):
     '''Getting the evaluation of a specific film for a user'''
     return userItemEvaluation[ (u,i) ]
 
-def getRecommendetions(user):
+def getUserBasedRecommendetions(user):
     '''
     getRecommendetions(user)
     take an user
@@ -137,6 +137,69 @@ def getRecommendetions(user):
 
     return getPredictions(user, similarities, possibleRecommendetions) # we need every element to be unique
 
+def getItemBasedRecommendetions(u):
+    '''
+    getRecommendetions(user)
+    take an user
+    return the list of the recommendetions
+    the method work of the vector of the seen items of the usrs. For all the
+    users in the userSet we make similarity with the User for which we are
+    recommending by:
+    * taking the list of the common items
+    * changind the items with the respective evaluation
+    * removing already seen items
+    * removing film not well evaluated
+    * making a personaCorrelation between the two users to make the graduatory
+    * TODO fill the description
+    '''
+    threshold = xrange(8,11) # threshold to be applied to the possible Recommendetions
+    similarities = {}
+    countFeature = {}
+    countFeature = defaultdict(lambda: 0,countFeature)
+    countForTheAverage = {}
+    countForTheAverage = defaultdict(lambda: 0,countForTheAverage)
+    avgCommonMovies = {}
+    avgCommonMovies = defaultdict(lambda: 0.0,avgCommonMovies)
+    numberCommonMovies = {}
+    numberCommonMovies = defaultdict(lambda: 0,numberCommonMovies)
+    possibleRecommendetions = {}
+    possibleRecommendetions = defaultdict(list)
+    evaluationsList = {}
+    evaluationsList = defaultdict(list)
+    blacklist=[]
+    featuresAvg = {}
+    featuresAvg = defaultdict(lambda: 0, featuresAvg)
+    similarities = {}
+    similarities = defaultdict(list)
+
+    for itemJ in filter(lambda x: getEvaluation(u,x) in threshold,getUserEvaluationList(u)): #direct filtering out the evaluation not in threshold
+        for itemI in itemSet:
+            if itemI == itemJ:
+                continue
+            skip=True
+
+            usersI = getItemEvaluatorsList(itemI)[:] #take the copy of the users that evaluated itemI
+            usersJ = getItemEvaluatorsList(itemJ)[:] #take the copy of the users that evaluated itemJ
+
+            ratingsItemI = [] #will contain the evaluations of User of the common items with userIterator
+            ratingsItemJ = [] #will contain the evaluations of userIterator of the common items with userIterator
+
+            for user in usersJ:
+                if user in usersI:
+                    skip = False
+                    ratingsItemI.append(getEvaluation(user,itemI))
+                    ratingsItemJ.append(getEvaluation(user,itemJ))
+
+            if (skip):
+                continue
+
+            similarity = pearsonItemBasedCorrelation(itemJ, itemI, ratingsItemJ, ratingsItemI)
+
+            if similarity > 0.5: # taking into consideration only positive and significant similarities
+                similarities[itemI].append(itemJ,similarity)
+    print similarities
+    return getItemBasedPredictions(u, sorted(similarities,key = lambda x: [0]) # we need every element to be unique
+
 def getPredictions(user, similarities, possibleRecommendetions):
     '''This method is making the predictions for a given user'''
     avgu = avgUserRating[user]
@@ -151,6 +214,20 @@ def getPredictions(user, similarities, possibleRecommendetions):
         numerator = np.sum(userValues)
         prediction = avgu + float(numerator)/denominator
         predictions.append( (item,prediction) )
+    return predictions
+
+def getItemBasedPredictions(user, similarities):
+    '''This method is making the predictions for a given pair of items'''
+    predictions=[]
+    lastId=similairties[0]
+    for item in similarities:
+        numerators[item]
+    for (itemI,itemJ) in similarities.keys():
+        numerators[itemJ].append(getEvaluation(user,itemI)*similarities[(itemI,itemJ)])
+        denominators[itemJ].append(math.fabs(similarities[(itemI,itemJ)]))
+    #prediction = float(np.sum(numerator))/np.sum(denominator)
+    for numerator,denominator in zip(numerators,denominators):
+        predictions.append( (itemJ,float(np.sum(numerators[itemJ]))/np.sum(denominators[itemJ])) )
     return predictions
 
 def loadTopN():
@@ -197,14 +274,16 @@ def loadMaps():
     userFeatureEvaluationCount = {}
     global userEvaluationList # define variable as global
     userEvaluationList = {}
+    global itemEvaluatorsList # define variable as global
+    itemEvaluatorsList = {}
 
     for elem in train:
-        elem = map(int, elem)
         u = elem[0]
         i = elem[1]
         r = elem[2]
 
         setUserEvaluationList(u,i)
+        setItemEvaluatorsList(i,u)
 
         if i in itemFeatureslist:
             for f in itemFeatureslist[i]:
@@ -235,9 +314,22 @@ def setUserEvaluationList(u,i):
         userEvaluationList[u] = []
         userEvaluationList[u].append(i)
 
+def setItemEvaluatorsList(i,u):
+     try: # need to manage the "initialization case" in which the key does not exists
+        itemEvaluatorsList[i].append(u)
+     except Exception,e: # if the key is non-initialized, do it
+        itemEvaluatorsList[i] = []
+        itemEvaluatorsList[i].append(u)
+
 def getUserEvaluationList(user):
     try:
         return userEvaluationList[user]
+    except Exception,e:
+        return []
+
+def getItemEvaluatorsList(item):
+    try:
+        return itemEvaluatorsList[item]
     except Exception,e:
         return []
 
@@ -296,6 +388,22 @@ def pearsonCorrelation(u, u2, listA, listB):
         pearson = numeratorPearson/denominatorPearson
     return pearson
 
+def pearsonItemBasedCorrelation(itemI, itemJ, listA, listB):
+    '''Calculating the Pearson Correlation coefficient between two given items'''
+    avgI = avgItemRating[itemI]
+    avgJ = avgItemRating[itemJ]
+    for ratingI,ratingJ in zip(listA, listB):
+        listNumeratorI = map(lambda listA: listA - avgI, listA)
+        listNumeratorJ = map(lambda listB: listB - avgJ, listB)
+        numeratorPearson = np.sum([elem1*elem2 for elem1,elem2 in zip(listNumeratorI,listNumeratorJ)])
+        listDenI = map(lambda listNumeratorI: listNumeratorI**2, listNumeratorI)
+        listDenJ = map(lambda listNumeratorJ: listNumeratorJ**2, listNumeratorJ)
+        denominatorPearson = math.sqrt(np.sum(listDenI))*math.sqrt(np.sum(listDenJ))
+        if denominatorPearson==0:
+            return 0
+        pearson = numeratorPearson/denominatorPearson
+    return pearson
+
 def resultWriter(result):
     ''' Writing Results '''
     with open ('data/result.csv', 'w') as fp:
@@ -336,14 +444,16 @@ def trainRddLoader():
 def loadUserSet():
     '''Loader of userSet'''
     global userSet
-    try:
-        userSet = sc.textFile("data/test.csv").map(lambda line: line.split(",")) #open csv splitting field on the comma character
-        userSetFirstRow = userSet.first()
-        userSet = userSet.filter(lambda x:x != userSetFirstRow).keys().map(lambda x: int(x)).collect()
-    except Exception,e:
-        userSet = list (csv.reader(open('data/test.csv', 'rb'), delimiter = ','))
-        del userSet[0]
-        userSet = map(lambda x: x[0],map(lambda x: map(int, x),userSet))
+    userSet = list (csv.reader(open('data/test.csv', 'rb'), delimiter = ','))
+    del userSet[0]
+    userSet = map(lambda x: x[0],map(lambda x: map(int, x),userSet))
+
+def loadItemSet():
+    '''Loader of itemSet'''
+    global itemSet
+    itemSet = list (csv.reader(open('data/icm.csv', 'rb'), delimiter = ','))
+    del itemSet[0]
+    itemSet = set(map(lambda x: x[0],map(lambda x: map(int, x),itemSet)))
 
 def loadUserItemEvaluation():
     global userItemEvaluation
@@ -374,23 +484,23 @@ def main():
     statsPadding=0
 
     for user in userSet:
-        #print "Completion percentage %f, increment %f" % (float(userSet.index(user)*100) / len(userSet),time.time() - loopTime)
+        print "Completion percentage %f, increment %f" % (float(userSet.index(user)*100) / len(userSet),time.time() - loopTime)
         completion=float(userSet.index(user)*100) / len(userSet)
-        sys.stdout.write("\r%f%%" % completion)
-        sys.stdout.flush()
+        #sys.stdout.write("\r%f%%" % completion)
+        #sys.stdout.flush()
         loopTime = time.time()
         recommend = ''
-        recommendetions = sorted(getRecommendetions(user), key = lambda x:x[1], reverse=True)[:5]
-        #print user
+        recommendetions = sorted(getItemBasedRecommendetions(user), key = lambda x:x[1], reverse=True)[:5]
+        print user
         for i,v in recommendetions:
             recommend = recommend+(str(i) + ' ')
         statsPadding=statsPadding+5-len(recommendetions)
-        if (len(recommendetions)<5):
-            recommend=padding(user, recommendetions, recommend)
-        #print recommend
+        #if (len(recommendetions)<5):
+        #    recommend=padding(user, recommendetions, recommend)
+        print recommend
         elem = []
         elem.append(user)
         elem.append(recommend)
         resultToWrite.append(elem)
     resultWriter(resultToWrite)
-    print "Padding needed for %f per cent of recommendetions" % (float(statsPadding*100))/(getNumUsers()*5))
+    #print "Padding needed for %f per cent of recommendetions" % (float(statsPadding*100))/(getNumUsers()*5))
