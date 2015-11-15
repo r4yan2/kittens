@@ -152,21 +152,10 @@ def getItemBasedRecommendetions(u):
     * making a personaCorrelation between the two users to make the graduatory
     * TODO fill the description
     '''
-    threshold = xrange(8,11) # threshold to be applied to the possible Recommendetions
+    threshold = xrange(7,11) # threshold to be applied to the possible Recommendetions
     similarities = {}
     countFeature = {}
     countFeature = defaultdict(lambda: 0,countFeature)
-    countForTheAverage = {}
-    countForTheAverage = defaultdict(lambda: 0,countForTheAverage)
-    avgCommonMovies = {}
-    avgCommonMovies = defaultdict(lambda: 0.0,avgCommonMovies)
-    numberCommonMovies = {}
-    numberCommonMovies = defaultdict(lambda: 0,numberCommonMovies)
-    possibleRecommendetions = {}
-    possibleRecommendetions = defaultdict(list)
-    evaluationsList = {}
-    evaluationsList = defaultdict(list)
-    blacklist=[]
     featuresAvg = {}
     featuresAvg = defaultdict(lambda: 0, featuresAvg)
     similarities = {}
@@ -176,31 +165,42 @@ def getItemBasedRecommendetions(u):
         for itemI in itemSet:
             if itemI == itemJ:
                 continue
-            skip=True
 
             usersI = getItemEvaluatorsList(itemI)[:] #take the copy of the users that evaluated itemI
             usersJ = getItemEvaluatorsList(itemJ)[:] #take the copy of the users that evaluated itemJ
 
-            ratingsItemI = [] #will contain the evaluations of User of the common items with userIterator
-            ratingsItemJ = [] #will contain the evaluations of userIterator of the common items with userIterator
+            preRatingsItemI = [] #will contain the evaluations of User of the common items with userIterator
+            preRatingsItemJ = [] #will contain the evaluations of userIterator of the common items with userIterator
 
             for user in usersJ:
                 if user in usersI:
-                    skip = False
-                    ratingsItemI.append(getEvaluation(user,itemI))
-                    ratingsItemJ.append(getEvaluation(user,itemJ))
+                    preRatingsItemI.append((user,itemI))
+                    preRatingsItemJ.append((user,itemJ))
 
-            if (skip):
+            for (user,itemI),(dontcare,itemJ) in zip(preRatingsItemI,preRatingsItemJ):
+                features = getFeaturesList(itemI)
+                for feature in features:
+                    rating = getUserFeatureEvaluation(u,feature)
+                    featuresAvg[itemI] = (featuresAvg[itemI] * countFeature[itemI] + float(rating)) / (countFeature[itemI] + 1)
+                    countFeature[itemI] = countFeature[itemI] + 1
+                if featuresAvg[itemI] not in threshold:
+                    preRatingsItemI.remove((user,itemI))
+                    preRatingsItemJ.remove((user,itemJ))
+
+            if len(preRatingsItemI) == 0:
                 continue
 
-            similarity = pearsonItemBasedCorrelation(itemJ, itemI, ratingsItemJ, ratingsItemI)
+            ratingsItemI=map(lambda x: getEvaluation(x[0],x[1]),preRatingsItemI)
+            ratingsItemJ=map(lambda x: getEvaluation(x[0],x[1]),preRatingsItemJ)
 
-            if similarity > 0.5: # taking into consideration only positive and significant similarities
-                similarities[itemI].append(itemJ,similarity)
-    print similarities
-    return getItemBasedPredictions(u, sorted(similarities,key = lambda x: [0]) # we need every element to be unique
+            shrink = math.fabs(math.log(float(len(preRatingsItemI))/getNumUsers()))
+            similarity = pearsonItemBasedCorrelation(itemJ, itemI, ratingsItemJ, ratingsItemI,shrink)
 
-def getPredictions(user, similarities, possibleRecommendetions):
+            if similarity > 0.6: # taking into consideration only positive and significant similarities
+                similarities[itemI].append( (itemJ,similarity) )
+    return getItemBasedPredictions(u, similarities) # we need every element to be unique
+
+def getUserBasedPredictions(user, similarities, possibleRecommendetions):
     '''This method is making the predictions for a given user'''
     avgu = avgUserRating[user]
     userValues = []
@@ -218,16 +218,17 @@ def getPredictions(user, similarities, possibleRecommendetions):
 
 def getItemBasedPredictions(user, similarities):
     '''This method is making the predictions for a given pair of items'''
-    predictions=[]
-    lastId=similairties[0]
-    for item in similarities:
-        numerators[item]
-    for (itemI,itemJ) in similarities.keys():
-        numerators[itemJ].append(getEvaluation(user,itemI)*similarities[(itemI,itemJ)])
-        denominators[itemJ].append(math.fabs(similarities[(itemI,itemJ)]))
-    #prediction = float(np.sum(numerator))/np.sum(denominator)
-    for numerator,denominator in zip(numerators,denominators):
-        predictions.append( (itemJ,float(np.sum(numerators[itemJ]))/np.sum(denominators[itemJ])) )
+    predictions = []
+    for itemI in similarities.keys():
+        possibleRecommendetions = similarities[itemI]
+        listNumerator = []
+        listDenominator = []
+        for elem in possibleRecommendetions:
+            itemJ = elem[0]
+            similarity = elem[1]
+            listNumerator.append(getEvaluation(user,itemJ)*similarity)
+            listDenominator.append(similarity)
+        predictions.append( (itemI,float(np.sum(listNumerator))/(np.sum(listDenominator))) )
     return predictions
 
 def loadTopN():
@@ -240,7 +241,7 @@ def loadTopN():
     for line in train:
         line = map (int, line)
         if (lastid != line[1]):
-            variableShrink = int(math.fabs(math.log(float(counter) / getNumUsers())))
+            variableShrink = math.fabs(math.log(float(counter) / getNumUsers()))
             total[lastid] = sum / float(counter + variableShrink);
             counter = 0
             sum = 0
@@ -372,7 +373,7 @@ def padding(u,recommendetions,recommend): # recicle from the old recommendetions
         iterator = iterator + 1
     return recommend
 
-def pearsonCorrelation(u, u2, listA, listB):
+def pearsonUserBasedCorrelation(u, u2, listA, listB):
     '''Calculating the Pearson Correlation coefficient between two given users'''
     avgu = avgUserRating[u]
     avgu2 = avgUserRating[u2]
@@ -388,7 +389,7 @@ def pearsonCorrelation(u, u2, listA, listB):
         pearson = numeratorPearson/denominatorPearson
     return pearson
 
-def pearsonItemBasedCorrelation(itemI, itemJ, listA, listB):
+def pearsonItemBasedCorrelation(itemI, itemJ, listA, listB,shrink):
     '''Calculating the Pearson Correlation coefficient between two given items'''
     avgI = avgItemRating[itemI]
     avgJ = avgItemRating[itemJ]
@@ -401,7 +402,7 @@ def pearsonItemBasedCorrelation(itemI, itemJ, listA, listB):
         denominatorPearson = math.sqrt(np.sum(listDenI))*math.sqrt(np.sum(listDenJ))
         if denominatorPearson==0:
             return 0
-        pearson = numeratorPearson/denominatorPearson
+        pearson = numeratorPearson/(denominatorPearson+shrink)
     return pearson
 
 def resultWriter(result):
@@ -461,7 +462,7 @@ def loadUserItemEvaluation():
     (K1,K2): V
     (user,film): evaluation
     this map is obtained mapping the correct field from train set into an hashmap'''
-    userItemEvaluation = dict((((x[0], x[1]), x[2])) for x in map(lambda x: map(int,x),train[1:]))
+    userItemEvaluation = dict((((x[0], x[1]), x[2])) for x in map(lambda x: map(int,x),train))
 
 def main():
     '''
@@ -473,6 +474,7 @@ def main():
     '''
     loadTrain() # Load the trainset
     loadUserSet() # Load the userSet
+    loadItemSet()
     loadMaps() # Load the needed data structured from the train set
     loadUserAvgRating() # Load the map of the average rating per user
     loadItemAvgRating() # Load the map of the average rating per item
@@ -495,12 +497,12 @@ def main():
         for i,v in recommendetions:
             recommend = recommend+(str(i) + ' ')
         statsPadding=statsPadding+5-len(recommendetions)
-        #if (len(recommendetions)<5):
-        #    recommend=padding(user, recommendetions, recommend)
+        if (len(recommendetions)<5):
+            recommend=padding(user, recommendetions, recommend)
         print recommend
         elem = []
         elem.append(user)
         elem.append(recommend)
         resultToWrite.append(elem)
     resultWriter(resultToWrite)
-    #print "Padding needed for %f per cent of recommendetions" % (float(statsPadding*100))/(getNumUsers()*5))
+    print "Padding needed for %f per cent of recommendetions" % (float(statsPadding*100))/(getNumUsers()*5)
