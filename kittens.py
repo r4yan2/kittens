@@ -128,14 +128,14 @@ def getUserBasedRecommendetions(user):
         if (userIterator in blacklist):
             continue
         if numberCommonMovies[userIterator] >= avgCommonMovies[userIterator]:
-            similarity = pearsonCorrelation(user, userIterator, evaluationsList[userIterator][0], evaluationsList[userIterator][1])
+            similarity = pearsonUserBasedCorrelation(user, userIterator, evaluationsList[userIterator][0], evaluationsList[userIterator][1])
         else:
-            similarity = pearsonCorrelation(user, userIterator, evaluationsList[userIterator][0], evaluationsList[userIterator][1]) * (numberCommonMovies[userIterator]/avgCommonMovies[userIterator]) # significance weight
+            similarity = pearsonUserBasedCorrelation(user, userIterator, evaluationsList[userIterator][0], evaluationsList[userIterator][1]) * (numberCommonMovies[userIterator]/avgCommonMovies[userIterator]) # significance weight
 
         if similarity > 0.5: # taking into consideration only positive and significant similarities
             similarities[userIterator] = similarity
 
-    return getPredictions(user, similarities, possibleRecommendetions) # we need every element to be unique
+    return getUserBasedPredictions(user, similarities, possibleRecommendetions) # we need every element to be unique
 
 def getItemBasedRecommendetions(u):
     '''
@@ -177,7 +177,7 @@ def getItemBasedRecommendetions(u):
                     preRatingsItemI.append((user,itemI))
                     preRatingsItemJ.append((user,itemJ))
 
-            for (user,itemI),(dontcare,itemJ) in zip(preRatingsItemI,preRatingsItemJ):
+            '''for (user,itemI),(dontcare,itemJ) in zip(preRatingsItemI,preRatingsItemJ):
                 features = getFeaturesList(itemI)
                 for feature in features:
                     rating = getUserFeatureEvaluation(u,feature)
@@ -185,7 +185,7 @@ def getItemBasedRecommendetions(u):
                     countFeature[itemI] = countFeature[itemI] + 1
                 if featuresAvg[itemI] not in threshold:
                     preRatingsItemI.remove((user,itemI))
-                    preRatingsItemJ.remove((user,itemJ))
+                    preRatingsItemJ.remove((user,itemJ))'''
 
             if len(preRatingsItemI) == 0:
                 continue
@@ -252,16 +252,22 @@ def loadTopN():
     topN = sorted(total.items(), key = lambda x:x[1], reverse = True)
 
 def loadMaps():
+
+    global itemsNeverSeen
+    itemsNeverSeen = []
+    itemsInTrain=dict(((x[1], x[2])) for x in train)
     '''Parsing the item feature list'''
     byfeature = list(csv.reader(open('data/icm.csv', 'rb'), delimiter = ',')) #open csv splitting field on the comma character
     del byfeature[0] # header remove
-    global itemFeatureslist
-    itemFeatureslist = {}
+    global itemFeaturesList
+    itemFeaturesList = {}
     for elem in byfeature:
         elem = map (int, elem)
-        if not (elem[0]) in itemFeatureslist:
-            itemFeatureslist[elem[0]] = []
-        itemFeatureslist[elem[0]].append(elem[1])
+        if not elem[0] in itemsInTrain:
+            itemsNeverSeen.append(elem[0])
+        if not elem[0] in itemFeaturesList:
+            itemFeaturesList[elem[0]] = []
+        itemFeaturesList[elem[0]].append(elem[1])
 
     '''Creating some maps
     userEvaluationList: the list of items already evaluated by an user
@@ -286,13 +292,13 @@ def loadMaps():
         setUserEvaluationList(u,i)
         setItemEvaluatorsList(i,u)
 
-        if i in itemFeatureslist:
-            for f in itemFeatureslist[i]:
+        if i in itemFeaturesList:
+            for f in itemFeaturesList[i]:
                 setUserFeatureEvaluationAndCount(u,f,r)
 
 def getFeaturesList(i):
     try:
-        return itemFeatureList[i]
+        return itemFeaturesList[i]
     except Exception,e:
         return []
 
@@ -354,13 +360,13 @@ def numDistinctItems():
     numDistinctItems = icmRdd.map(lambda x: map(int,x)).sortByKey(False).keys().first()
     return numDistinctItems
 
-def padding(u,recommendetions,recommend): # recicle from the old recommendetions methos
+def padding(u,recommendetions): # recicle from the old recommendetions methos
     personalizedTopN = {}
     for i,v in topN:
         personalizedTopN[i] = math.log(v)
-        if not i in itemFeatureslist:
+        if not i in itemFeaturesList:
             continue
-        for f in itemFeatureslist[i]:
+        for f in itemFeaturesList[i]:
             if not ((getUserFeatureEvaluation(u,f) == 0) or ( len(getUserEvaluationList(u))== 0 ) or (getUserFeatureEvaluationCount(u,f)==0)):
                 personalizedTopN[i] = personalizedTopN[i] + getUserFeatureEvaluation(u,f) / (float(getUserFeatureEvaluationCount(u,f)) / len(getUserEvaluationList(u)))
     topNPersonalized = sorted(personalizedTopN.items(), key = lambda x:x[1], reverse = True)
@@ -368,10 +374,33 @@ def padding(u,recommendetions,recommend): # recicle from the old recommendetions
     iterator = 0
     while count<5:
         if not ( (topNPersonalized[iterator][0] in getUserEvaluationList(u) ) or ( topNPersonalized[iterator][0] in recommendetions) ):
-            recommend = recommend + (str(topNPersonalized[iterator][0]) + ' ')
+            recommendetions.append(topNPersonalized[iterator])
             count = count + 1
         iterator = iterator + 1
-    return recommend
+    return recommendetions
+
+def paddingNeverSeen(user,recommendetions):
+    threshold=xrange(8,11)
+    count = len(recommendetions)
+    iterator = 0
+    possibleRecommendetions=[]
+    for item in itemsNeverSeen:
+        features = getFeaturesList(item)
+        ratings = map(lambda x: getUserFeatureEvaluation(user,x), features)
+        Avg = float(np.sum(ratings))/len(features)
+
+        if Avg in threshold:
+            possibleRecommendetions.append( (item,Avg) )
+    if len(possibleRecommendetions) == 0:
+        return recommendetions
+    possibleRecommendetions=sorted(possibleRecommendetions, key=lambda x: x[1], reverse=True)[:5]
+    count=min(len(possibleRecommendetions),5-count)
+    while count>0:
+        recommendetions.append(possibleRecommendetions[iterator])
+        count -= 1
+        iterator += 1
+    return recommendetions
+
 
 def pearsonUserBasedCorrelation(u, u2, listA, listB):
     '''Calculating the Pearson Correlation coefficient between two given users'''
@@ -492,17 +521,19 @@ def main():
         #sys.stdout.flush()
         loopTime = time.time()
         recommend = ''
-        recommendetions = sorted(getItemBasedRecommendetions(user), key = lambda x:x[1], reverse=True)[:5]
+        recommendetions = sorted(getUserBasedRecommendetions(user), key = lambda x:x[1], reverse=True)[:5]
         print user
-        for i,v in recommendetions:
-            recommend = recommend+(str(i) + ' ')
         statsPadding=statsPadding+5-len(recommendetions)
         if (len(recommendetions)<5):
-            recommend=padding(user, recommendetions, recommend)
+            recommendetions=paddingNeverSeen(user, recommendetions)
+        if (len(recommendetions)<5):
+            recommendetions=padding(user, recommendetions)
+        for i,v in recommendetions:
+            recommend = recommend+(str(i) + ' ')
         print recommend
         elem = []
         elem.append(user)
         elem.append(recommend)
         resultToWrite.append(elem)
     resultWriter(resultToWrite)
-    print "Padding needed for %f per cent of recommendetions" % (float(statsPadding*100))/(getNumUsers()*5)
+    print "Padding needed for %f per cent of recommendetions" % ((float(statsPadding*100))/(getNumUsers()*5))
