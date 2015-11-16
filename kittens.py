@@ -72,7 +72,7 @@ def getUserBasedRecommendetions(user):
     * TODO fill the description
     '''
     itemsUser = getUserEvaluationList(user) # get the vector of the seen items
-    threshold = xrange(8,11) # threshold to be applied to the possible Recommendetions
+    threshold = xrange(7,11) # threshold to be applied to the possible Recommendetions
     similarities = {}
     countFeature = {}
     countFeature = defaultdict(lambda: 0,countFeature)
@@ -132,7 +132,7 @@ def getUserBasedRecommendetions(user):
         else:
             similarity = pearsonUserBasedCorrelation(user, userIterator, evaluationsList[userIterator][0], evaluationsList[userIterator][1]) * (numberCommonMovies[userIterator]/avgCommonMovies[userIterator]) # significance weight
 
-        if similarity > 0.5: # taking into consideration only positive and significant similarities
+        if similarity > 0.4: # taking into consideration only positive and significant similarities
             similarities[userIterator] = similarity
 
     return getUserBasedPredictions(user, similarities, possibleRecommendetions) # we need every element to be unique
@@ -190,13 +190,13 @@ def getItemBasedRecommendetions(u):
             if len(preRatingsItemI) == 0:
                 continue
 
-            ratingsItemI=map(lambda x: getEvaluation(x[0],x[1]),preRatingsItemI)
-            ratingsItemJ=map(lambda x: getEvaluation(x[0],x[1]),preRatingsItemJ)
+            ratingsItemI=map(lambda x: getEvaluation(x[0],x[1])-avgUserRating[user],preRatingsItemI)
+            ratingsItemJ=map(lambda x: getEvaluation(x[0],x[1])-avgUserRating[user],preRatingsItemJ)
 
             shrink = math.fabs(math.log(float(len(preRatingsItemI))/getNumUsers()))
             similarity = pearsonItemBasedCorrelation(itemJ, itemI, ratingsItemJ, ratingsItemI,shrink)
 
-            if similarity > 0.6: # taking into consideration only positive and significant similarities
+            if similarity > 0.3: # taking into consideration only positive and significant similarities
                 similarities[itemI].append( (itemJ,similarity) )
     return getItemBasedPredictions(u, similarities) # we need every element to be unique
 
@@ -217,7 +217,7 @@ def getUserBasedPredictions(user, similarities, possibleRecommendetions):
         for item in possibleRecommendetions[userIterator]:
             prediction = avgu + float(np.sum(listNumerator[item]))/denominator
             predictions.append((item,prediction))
-   return predictions
+    return predictions
 
 def getItemBasedPredictions(user, similarities):
     '''This method is making the predictions for a given pair of items'''
@@ -423,11 +423,11 @@ def pearsonUserBasedCorrelation(u, u2, listA, listB):
 
 def pearsonItemBasedCorrelation(itemI, itemJ, listA, listB,shrink):
     '''Calculating the Pearson Correlation coefficient between two given items'''
-    avgI = avgItemRating[itemI]
-    avgJ = avgItemRating[itemJ]
+    #avgI = avgItemRating[itemI]
+    #avgJ = avgItemRating[itemJ]
     for ratingI,ratingJ in zip(listA, listB):
-        listNumeratorI = map(lambda listA: listA - avgI, listA)
-        listNumeratorJ = map(lambda listB: listB - avgJ, listB)
+        listNumeratorI = map(lambda listA: listA, listA)
+        listNumeratorJ = map(lambda listB: listB, listB)
         numeratorPearson = np.sum([elem1*elem2 for elem1,elem2 in zip(listNumeratorI,listNumeratorJ)])
         listDenI = map(lambda listNumeratorI: listNumeratorI**2, listNumeratorI)
         listDenJ = map(lambda listNumeratorJ: listNumeratorJ**2, listNumeratorJ)
@@ -525,7 +525,7 @@ def main():
         #sys.stdout.flush()
         loopTime = time.time()
         recommend = ''
-        recommendetions = getUserBasedRecommendetions(user)
+        recommendetions = getItemBasedRecommendetions(user)
         recommendetions = sorted(recommendetions, key = lambda x:x[1], reverse=True)[:5]
         print user
         statsPadding=statsPadding+5-len(recommendetions)
