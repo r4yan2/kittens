@@ -217,7 +217,7 @@ def getUserBasedPredictions(user, similarities, possibleRecommendetions):
         for item in possibleRecommendetions[userIterator]:
             prediction = avgu + float(np.sum(listNumerator[item]))/denominator
             predictions.append((item,prediction))
-    return predictions
+   return predictions
 
 def getItemBasedPredictions(user, similarities):
     '''This method is making the predictions for a given pair of items'''
