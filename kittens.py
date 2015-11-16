@@ -207,16 +207,16 @@ def getUserBasedPredictions(user, similarities, possibleRecommendetions):
     predictions = []
     denominator = np.sum(similarities.values())
     for userIterator in similarities.keys():
+        listNumerator={}
+        listNumerator=defaultdict(list)
         for item in possibleRecommendetions[userIterator]:
             avg2 = avgUserRating[userIterator]
             rating = getEvaluation(userIterator,item)
             userValues.append(similarities[userIterator] * (rating - avg2))
-            predictions.append((item))
-        numerator = np.sum(userValues)
-        prediction = avgu + float(numerator)/denominator
-        if possibleRecommendetions[userIterator] in predictions:
-            predictions.remove(item)
-            predictions.append( (item,prediction) )
+            listNumerator[item].append(userValues)
+        for item in possibleRecommendetions[userIterator]:
+            prediction = avgu + float(np.sum(listNumerator[item]))/denominator
+            predictions.append((item,prediction))
     return predictions
 
 def getItemBasedPredictions(user, similarities):
@@ -516,6 +516,7 @@ def main():
     resultToWrite=[]
     loopTime = time.time()
     statsPadding=0
+    print "Making UserBased Recommendetions"
 
     for user in userSet:
         print "Completion percentage %f, increment %f" % (float(userSet.index(user)*100) / len(userSet),time.time() - loopTime)
@@ -524,10 +525,12 @@ def main():
         #sys.stdout.flush()
         loopTime = time.time()
         recommend = ''
-        recommendetions = sorted(getUserBasedRecommendetions(user), key = lambda x:x[1], reverse=True)[:5]
+        recommendetions = getUserBasedRecommendetions(user)
+        recommendetions = sorted(recommendetions, key = lambda x:x[1], reverse=True)[:5]
         print user
         statsPadding=statsPadding+5-len(recommendetions)
         if (len(recommendetions)<5):
+            print "padding needed"
             recommendetions=paddingNeverSeen(user, recommendetions)
         if (len(recommendetions)<5):
             recommendetions=padding(user, recommendetions)
