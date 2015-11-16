@@ -211,12 +211,9 @@ def getUserBasedPredictions(user, similarities, possibleRecommendetions):
             avg2 = avgUserRating[userIterator]
             rating = getEvaluation(userIterator,item)
             userValues.append(similarities[userIterator] * (rating - avg2))
-            predictions.append((item))
         numerator = np.sum(userValues)
         prediction = avgu + float(numerator)/denominator
-        if possibleRecommendetions[userIterator] in predictions:
-            predictions.remove(item)
-            predictions.append( (item,prediction) )
+        predictions.append( (item,prediction) )
     return predictions
 
 def getItemBasedPredictions(user, similarities):
