@@ -7,7 +7,6 @@ import numpy as np
 from scipy.spatial.distance import cosine
 from collections import defaultdict
 
-
 def cos(v1, v2):
     """
 
@@ -17,9 +16,9 @@ def cos(v1, v2):
     :return:
     """
 
-    Numerator = np.dot(v1, v2)
-    Denominator = np.sqrt(np.dot(v1, v1)) * np.sqrt(np.dot(v2, v2))
-    return  Numerator/Denominator
+    numerator = np.dot(v1, v2)
+    denominator = np.sqrt(np.dot(v1, v1)) * np.sqrt(np.dot(v2, v2))
+    return  numerator/denominator
 
 def get_user_extended_evaluation_vector(u):
     """
@@ -276,22 +275,28 @@ def load_top_n():
     sum = 0
     counter = 0
     total = {}
-    lastid = int(train[0][1])
+    lastItem = train[0][1]
     for line in train:
-        line = map(int, line)
-        if (lastid != line[1]):
+        item=line[1]
+        rating=line[2]
+        if (lastItem != item):
             variableShrink = math.fabs(math.log(float(counter) / get_num_users()))
-            total[lastid] = sum / float(counter + variableShrink);
+            total[lastItem] = sum / float(counter + variableShrink);
             counter = 0
             sum = 0
-            lastid = line[1]
-        sum = sum + line[2]
+            lastItem = item
+        sum = sum + rating
         counter = counter + 1
     # Sorting in descending order the list of items
     topN = sorted(total.items(), key=lambda x: x[1], reverse=True)
 
-
 def load_maps():
+    global train
+    train = list(
+        csv.reader(open('data/train.csv', 'rb'), delimiter=','))  # open csv splitting field on the comma character
+    del train[0]  # deletion of the string header
+    train = map(lambda x: map(int, x), train)  # Not so straight to read...map every (sub)element of train to int
+
     global itemsNeverSeen
     itemsNeverSeen = []
     itemsInTrain = dict(((x[1], x[2])) for x in train)
@@ -316,6 +321,12 @@ def load_maps():
     userFeatureEvaluation: the map of the rating given to a feature calculated as average of the votes received through film containing that feature
     userFeatureEvaluationCount: count of the rating given by a user to a film containing that feature
     """
+    global userSet
+    userSet = map(lambda x: x[0], train)
+
+    global itemSet
+    itemSet = set(map(lambda x: x[0], byfeatures))
+
     global userFeatureEvaluation  # define variable as global
     userFeatureEvaluation = {}
     global userFeatureEvaluationCount  # define variable as global
@@ -361,11 +372,18 @@ def load_maps():
             for f in itemFeaturesList[i]:
                 set_user_feature_evaluation_and_count(u, f, r)
 
+    global userItemEvaluation
+    '''return an hashmap structured
+    (K1,K2): V
+    (user,film): evaluation
+    this map is obtained mapping the correct field from train set into an hashmap'''
+    userItemEvaluation = dict((((x[0], x[1]), x[2])) for x in train)
+
 def get_features_list(i):
     try:
         return itemFeaturesList[i]
     except Exception, e:
-        return []
+        return [] # if the item does not appears it has no features
 
 
 def set_user_feature_evaluation_and_count(u, f, r):
@@ -426,28 +444,11 @@ def get_user_feature_evaluation_count(user, feature):
     except Exception, e:
         return 0
 
-
-def num_distinct_items():
-    """
-
-    Getting the number of items that we have in our icm.csv
-
-    :return:
-    """
-    icmRdd = sc.textFile("data/icm.csv").map(lambda line: line.split(","))
-    icmFirstRow = icmRdd.first()
-    icmRdd = icmRdd.filter(lambda x: x != icmFirstRow)
-    numDistinctItems = icmRdd.map(lambda x: map(int, x)).sortByKey(False).keys().first()
-    return numDistinctItems
-
-
 def padding(u, recommendetions):  # recycle from the old recommendetions methods
     personalizedTopN = {}
     for i, v in topN:
         personalizedTopN[i] = math.log(v)
-        if not i in itemFeaturesList:
-            continue
-        for f in itemFeaturesList[i]:
+        for f in get_features_list[i]:
             if not ((get_user_feature_evaluation(u, f) == 0) or (len(get_user_evaluation_list(u)) == 0) or (
                 get_user_feature_evaluation_count(u, f) == 0)):
                 personalizedTopN[i] = personalizedTopN[i] + get_user_feature_evaluation(u, f) / (
@@ -472,10 +473,10 @@ def padding_never_seen(user, recommendetions):
     for item in itemsNeverSeen:
         features = get_features_list(item)
         ratings = map(lambda x: get_user_feature_evaluation(user, x), features)
-        Avg = float(np.sum(ratings)) / len(features)
+        avg = float(np.sum(ratings)) / len(features)
 
-        if Avg in threshold:
-            possibleRecommendetions.append((item, Avg))
+        if avg in threshold:
+            possibleRecommendetions.append((item, avg))
     if len(possibleRecommendetions) == 0:
         return recommendetions
     possibleRecommendetions = sorted(possibleRecommendetions, key=lambda x: x[1], reverse=True)[:5]
@@ -550,7 +551,7 @@ def result_writer(result):
     """
     with open('data/result.csv', 'w') as fp:
         writer = csv.writer(fp, delimiter=',')
-        writer.writerow(["userId,testItems"])
+        writer.writerow(['userId,testItems'])
         writer.writerows(result)
     fp.close
 
@@ -576,76 +577,6 @@ def get_num_ratings():
     """
     return len(train)
 
-
-def get_num_movies():
-    """
-
-    Calculating the number of items that some users rated them
-
-    :return:
-    """
-    numMovies = train_rdd_loader().map(lambda r: r[1]).distinct().count()
-
-
-def load_train():
-    global train
-    train = list(
-        csv.reader(open('data/train.csv', 'rb'), delimiter=','))  # open csv splitting field on the comma character
-    del train[0]  # deletion of the string header
-    train = map(lambda x: map(int, x), train)  # Not so straight to read...map every (sub)element of train to int
-
-
-def train_rdd_loader():
-    """
-
-    Creating the RDD of the train.csv
-
-    :return:
-    """
-    trainRdd = sc.textFile("data/train.csv").map(
-        lambda line: line.split(","))  # open csv splitting field on the comma character
-    '''Getting the header of trainRdd'''
-    trainFirstRow = trainRdd.first()
-    '''Removing the first line of train, that is userId,iteamId,rating'''
-    trainRdd = trainRdd.filter(lambda x: x != trainFirstRow)
-    return trainRdd
-
-
-def load_user_set():
-    """
-
-    Loader of userSet
-
-    :return:
-    """
-    global userSet
-    userSet = list(csv.reader(open('data/test.csv', 'rb'), delimiter=','))
-    del userSet[0]
-    userSet = map(lambda x: x[0], map(lambda x: map(int, x), userSet))
-
-
-def load_item_set():
-    """
-
-    Loader of itemSet
-
-    :return:
-    """
-    global itemSet
-    itemSet = list(csv.reader(open('data/icm.csv', 'rb'), delimiter=','))
-    del itemSet[0]
-    itemSet = set(map(lambda x: x[0], map(lambda x: map(int, x), itemSet)))
-
-
-def load_user_item_evaluation():
-    global userItemEvaluation
-    '''return an hashmap structured
-    (K1,K2): V
-    (user,film): evaluation
-    this map is obtained mapping the correct field from train set into an hashmap'''
-    userItemEvaluation = dict((((x[0], x[1]), x[2])) for x in map(lambda x: map(int, x), train))
-
-
 def main():
     """
 
@@ -657,11 +588,7 @@ def main():
 
     :return:
     """
-    load_train()  # Load the trainset
-    load_user_set()  # Load the userSet
-    load_item_set()
     load_maps()  # Load the needed data structured from the train set
-    load_user_item_evaluation()  # Load the map that associate (user,item) to the rating
     load_top_n()
 
     resultToWrite = []
