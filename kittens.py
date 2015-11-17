@@ -101,8 +101,8 @@ def get_user_based_recommendetions(user):
             if item in itemsUserIterator:
                 numberCommonMovies[userIterator] += 1
                 skip = False
-                ratingsUser.append(get_evaluation(user, item))
-                ratingsUserIterator.append(get_evaluation(userIterator, item))
+                ratingsUser.append(get_evaluation(user, item) - (math.log(get_num_users())/len(get_item_evaluators_list(item))))
+                ratingsUserIterator.append(get_evaluation(userIterator, item) - (math.log(get_num_users())/len(get_item_evaluators_list(item))))
                 itemsUserIterator.remove(item)
         for item in itemsUserIterator:
             features = get_features_list(item)
@@ -322,10 +322,12 @@ def load_maps():
     userFeatureEvaluationCount: count of the rating given by a user to a film containing that feature
     """
     global userSet
-    userSet = map(lambda x: x[0], train)
+    userSet = list(csv.reader(open('data/test.csv','rb'), delimiter=','))
+    del userSet[0]
+    userSet = map(lambda x: x[0], map(lambda x: map(int,x), userSet))
 
     global itemSet
-    itemSet = set(map(lambda x: x[0], byfeatures))
+    itemSet = set(map(lambda x: x[0], byfeature))
 
     global userFeatureEvaluation  # define variable as global
     userFeatureEvaluation = {}
@@ -448,7 +450,7 @@ def padding(u, recommendetions):  # recycle from the old recommendetions methods
     personalizedTopN = {}
     for i, v in topN:
         personalizedTopN[i] = math.log(v)
-        for f in get_features_list[i]:
+        for f in get_features_list(i):
             if not ((get_user_feature_evaluation(u, f) == 0) or (len(get_user_evaluation_list(u)) == 0) or (
                 get_user_feature_evaluation_count(u, f) == 0)):
                 personalizedTopN[i] = personalizedTopN[i] + get_user_feature_evaluation(u, f) / (
@@ -603,7 +605,7 @@ def main():
         # sys.stdout.flush()
         loopTime = time.time()
         recommend = ''
-        recommendetions = get_item_based_recommendetions(user)
+        recommendetions = get_user_based_recommendetions(user)
         recommendetions = sorted(recommendetions, key=lambda x: x[1], reverse=True)[:5]
         print user
         statsPadding = statsPadding + 5 - len(recommendetions)
