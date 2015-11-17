@@ -526,8 +526,7 @@ def pearson_item_based_correlation(itemI, itemJ, listA, listB, shrink):
     :param shrink:
     :return:
     """
-    # avgI = avgItemRating[itemI]
-    # avgJ = avgItemRating[itemJ]
+
     for ratingI, ratingJ in zip(listA, listB):
         listNumeratorI = map(lambda listA: listA, listA)
         listNumeratorJ = map(lambda listB: listB, listB)
