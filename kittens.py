@@ -16,54 +16,10 @@ def cos(v1, v2):
     :param v2:
     :return:
     """
-    return np.dot(v1, v2) / (np.sqrt(np.dot(v1, v1)) * np.sqrt(np.dot(v2, v2)))
 
-
-def load_user_avg_rating():
-    """
-
-    Populate the hashmap with the average given vote by all users
-    :return:
-    """
-
-    global avgUserRating
-    avgUserRating = {}
-    count = {}
-    count = defaultdict(lambda: 0, count)
-    for elem in train:
-        user = elem[0]
-        evaluation = elem[2]
-        try:
-            avgUserRating[user] = (avgUserRating[user] * count[user] + float(evaluation)) / (
-            count[user] + 1)  # running average
-        except Exception, e:
-            avgUserRating[user] = 0.0
-            avgUserRating[user] = (avgUserRating[user] * count[user] + float(evaluation)) / (count[user] + 1)
-        count[user] += 1
-
-
-def load_item_avg_rating():
-    """
-
-    Populate the hashmap with the average taken vote by all items
-    :return:
-    """
-    global avgItemRating
-    avgItemRating = {}
-    count = {}
-    count = defaultdict(lambda: 0, count)
-    for elem in train:
-        item = elem[1]
-        evaluation = elem[2]
-        try:
-            avgItemRating[item] = (avgItemRating[item] * count[item] + float(evaluation)) / (
-            count[item] + 1)  # running average
-        except Exception, e:
-            avgItemRating[item] = 0.0
-            avgItemRating[item] = (avgItemRating[item] * count[item] + float(evaluation)) / (
-            count[item] + 1)  # running average
-        count[item] += 1
-
+    Numerator = np.dot(v1, v2)
+    Denominator = np.sqrt(np.dot(v1, v1)) * np.sqrt(np.dot(v2, v2))
+    return  Numerator/Denominator
 
 def get_user_extended_evaluation_vector(u):
     """
@@ -368,11 +324,35 @@ def load_maps():
     userEvaluationList = {}
     global itemEvaluatorsList  # define variable as global
     itemEvaluatorsList = {}
-
+    global avgUserRating
+    avgUserRating = {}
+    countUserRating = {}
+    countUserRating = defaultdict(lambda: 0, countUserRating)
+    global avgItemRating
+    avgItemRating = {}
+    countItemRating = {}
+    countItemRating = defaultdict(lambda: 0, countItemRating)
     for elem in train:
         u = elem[0]
         i = elem[1]
         r = elem[2]
+
+        try:
+            avgUserRating[u] = (avgUserRating[u] * countUserRating[u] + float(r)) / (
+            countUserRating[u] + 1)  # running average
+        except Exception, e:
+            avgUserRating[u] = 0.0
+            avgUserRating[u] = (avgUserRating[u] * countUserRating[u] + float(r)) / (countUserRating[u] + 1)
+        countUserRating[u] += 1
+
+        try:
+            avgItemRating[item] = (avgItemRating[item] * countItemRating[item] + float(r)) / (
+            countItemRating[item] + 1)  # running average
+        except Exception, e:
+            avgItemRating[i] = 0.0
+            avgItemRating[i] = (avgItemRating[i] * countItemRating[i] + float(r)) / (
+            countItemRating[i] + 1)  # running average
+        countItemRating[i] += 1
 
         set_user_evaluation_list(u, i)
         set_item_evaluators_list(i, u)
@@ -380,7 +360,6 @@ def load_maps():
         if i in itemFeaturesList:
             for f in itemFeaturesList[i]:
                 set_user_feature_evaluation_and_count(u, f, r)
-
 
 def get_features_list(i):
     try:
@@ -682,8 +661,6 @@ def main():
     load_user_set()  # Load the userSet
     load_item_set()
     load_maps()  # Load the needed data structured from the train set
-    load_user_avg_rating()  # Load the map of the average rating per user
-    load_item_avg_rating()  # Load the map of the average rating per item
     load_user_item_evaluation()  # Load the map that associate (user,item) to the rating
     load_top_n()
 
