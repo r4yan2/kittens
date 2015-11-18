@@ -97,20 +97,23 @@ def get_user_based_recommendetions(user):
                             :]  # same as before, this time we need to get a copy of the vector (achieved through [:]) since we are going to modify it
         ratingsUser = []  # will contain the evaluations of User of the common items with userIterator
         ratingsUserIterator = []  # will contain the evaluations of userIterato of the common items with userIterator
-        for item in list(itemsUser):
+        for item in itemsUser:
             if item in itemsUserIterator:
                 numberCommonMovies[userIterator] += 1
                 skip = False
-                ratingsUser.append(get_evaluation(user, item) - (math.log(get_num_users())/len(get_item_evaluators_list(item))))
-                ratingsUserIterator.append(get_evaluation(userIterator, item) - (math.log(get_num_users())/len(get_item_evaluators_list(item))))
+                userInverseFrequency = (math.log(get_num_users(),10)/len(get_item_evaluators_list(item)))
+                ratingsUser.append(get_evaluation(user, item) * userInverseFrequency)
+                ratingsUserIterator.append(get_evaluation(userIterator, item) * userInverseFrequency)
                 itemsUserIterator.remove(item)
+
         for item in itemsUserIterator:
             features = get_features_list(item)
             for feature in features:
                 rating = get_user_feature_evaluation(user, feature)
-                featuresAvg[item] = (featuresAvg[item] * countFeature[item] + float(rating)) / (countFeature[item] + 1)
-                countFeature[item] = countFeature[item] + 1
-            if featuresAvg[item] in threshold:
+                if (rating != 0):
+                    featuresAvg[item] = (featuresAvg[item] * countFeature[item] + float(rating)) / (countFeature[item] + 1)
+                    countFeature[item] = countFeature[item] + 1
+            if (featuresAvg[item] in threshold) and (get_evaluation(userIterator, item) in threshold) :
                 possibleRecommendetions[userIterator].append(item)
 
         if (skip or len(possibleRecommendetions) == 0):
@@ -135,7 +138,7 @@ def get_user_based_recommendetions(user):
                                                         evaluationsList[userIterator][1]) * (
                          numberCommonMovies[userIterator] / avgCommonMovies[userIterator])  # significance weight
 
-        if similarity > 0.4:  # taking into consideration only positive and significant similarities
+        if similarity > 0.19999:  # taking into consideration only positive and significant similarities
             similarities[userIterator] = similarity
 
     return get_user_based_predictions(user, similarities, possibleRecommendetions)  # we need every element to be unique
