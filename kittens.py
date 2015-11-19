@@ -163,7 +163,7 @@ def get_item_based_recommendetions(u):
     :return:
     """
 
-    threshold = xrange(7, 11)  # threshold to be applied to the possible Recommendetions
+    threshold = xrange(2, 10)  # threshold to be applied to the possible Recommendetions
     similarities = {}
     countFeature = {}
     countFeature = defaultdict(lambda: 0, countFeature)
