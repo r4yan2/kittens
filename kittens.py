@@ -20,34 +20,6 @@ def cos(v1, v2):
     denominator = np.sqrt(np.dot(v1, v1)) * np.sqrt(np.dot(v2, v2))
     return  numerator/denominator
 
-def get_user_extended_evaluation_vector(u):
-    """
-    Return the 20k long vector with the user's rating
-    at index corresponding to related item,
-    0 if no evaluation is provided
-
-    :param u:
-    :return:
-    """
-    evaluatedItems = getUserEvaluatedItems(u)
-    userExtendedEvaluationVector = [0] * moviesNumber  # initialization
-    for (user, item), value in userEvaluationList:
-        if (user == u and item in evaluatedItems):
-            userExtendedEvaluationVector[item - 1] = value
-    return userExtendedEvaluationVector
-
-
-def get_evaluation(u, i):
-    """
-
-    Getting the evaluation of a specific film for a user
-    :param u:
-    :param i:
-    :return:
-    """
-    return userItemEvaluation[(u, i)]
-
-
 def get_user_based_recommendetions(user):
     """
     Return the list of the recommendetions
@@ -201,7 +173,8 @@ def get_item_based_recommendetions(u):
 
             if len(preRatingsItemI) == 0:
                 continue
-
+            preRatingsItemsI = filter(lambda (x,y): get_evaluation(x,y) in threshold, preRatingsItemI)
+            preRatingsItemsJ = filter(lambda (x,y): get_evaluation(x,y) in threshold, preRatingsItemJ)
             ratingsItemI = map(lambda x: get_evaluation(x[0], x[1]) - avgUserRating[user], preRatingsItemI)
             ratingsItemJ = map(lambda x: get_evaluation(x[0], x[1]) - avgUserRating[user], preRatingsItemJ)
 
@@ -260,71 +233,6 @@ def get_item_based_predictions(user, similarities):
             listDenominator.append(similarity)
         predictions.append((itemI, float(np.sum(listNumerator)) / (np.sum(listDenominator))))
     return predictions
-
-def get_features_list(i):
-    try:
-        return itemFeaturesList[i]
-    except Exception, e:
-        return [] # if the item does not appears it has no features
-
-
-def set_user_feature_evaluation_and_count(u, f, r):
-    try:  # need to manage the "initialization case" in which the key does not exists
-        userFeatureEvaluation[(u, f)] = (userFeatureEvaluation[(u, f)] * userFeatureEvaluationCount[(u, f)] + float(
-            r)) / (userFeatureEvaluationCount[(u, f)] + 1)
-        userFeatureEvaluationCount[(u, f)] = userFeatureEvaluationCount[(u, f)] + 1
-    except Exception, e:  # if the key is non-initialized, do it
-        if (u, f) not in userFeatureEvaluation:
-            userFeatureEvaluation[(u, f)] = 0.0
-        if (u, f) not in userFeatureEvaluationCount:
-            userFeatureEvaluationCount[(u, f)] = 0
-        userFeatureEvaluation[(u, f)] = (userFeatureEvaluation[(u, f)] * userFeatureEvaluationCount[(u, f)] + float(
-            r)) / (userFeatureEvaluationCount[(u, f)] + 1)
-        userFeatureEvaluationCount[(u, f)] = userFeatureEvaluationCount[(u, f)] + 1
-
-
-def set_user_evaluation_list(u, i):
-    try:  # need to manage the "initialization case" in which the key does not exists
-        userEvaluationList[u].append(i)
-    except Exception, e:  # if the key is non-initialized, do it
-        userEvaluationList[u] = []
-        userEvaluationList[u].append(i)
-
-
-def set_item_evaluators_list(i, u):
-    try:  # need to manage the "initialization case" in which the key does not exists
-        itemEvaluatorsList[i].append(u)
-    except Exception, e:  # if the key is non-initialized, do it
-        itemEvaluatorsList[i] = []
-        itemEvaluatorsList[i].append(u)
-
-
-def get_user_evaluation_list(user):
-    try:
-        return userEvaluationList[user]
-    except Exception, e:
-        return []
-
-
-def get_item_evaluators_list(item):
-    try:
-        return itemEvaluatorsList[item]
-    except Exception, e:
-        return []
-
-
-def get_user_feature_evaluation(user, feature):
-    try:
-        return userFeatureEvaluation[(user, feature)]
-    except Exception, e:
-        return 0
-
-
-def get_user_feature_evaluation_count(user, feature):
-    try:
-        return userFeatureEvaluationCount[(user, feature)]
-    except Exception, e:
-        return 0
 
 def padding(u, recommendetions):  # recycle from the old recommendetions methods
     personalizedTopN = {}
@@ -436,29 +344,7 @@ def result_writer(result):
         writer.writerows(result)
     fp.close
 
-
-def get_num_users():
-    """
-
-    Calculating the number of distinct users that rated some items
-    len(set(map(lambda x: x[0],train) + userSet))=> 15373
-    last element of train=>15374
-
-    :return:
-    """
-    return 15373
-
-
-def get_num_ratings():
-    """
-
-    Calculating the number of ratings that of the items
-
-    :return:
-    """
-    return len(train)
-
-def main():
+def main_user_based():
     """
 
     main loop
@@ -483,6 +369,49 @@ def main():
         loopTime = time.time()
         recommend = ''
         recommendetions = get_user_based_recommendetions(user)
+        recommendetions = sorted(recommendetions, key=lambda x: x[1], reverse=True)[:5]
+        print user
+        statsPadding = statsPadding + 5 - len(recommendetions)
+        if (len(recommendetions) < 5):
+            print "padding needed"
+            recommendetions = padding_never_seen(user, recommendetions)
+        if (len(recommendetions) < 5):
+            recommendetions = padding(user, recommendetions)
+        for i, v in recommendetions:
+            recommend = recommend + (str(i) + ' ')
+        print recommend
+        elem = []
+        elem.append(user)
+        elem.append(recommend)
+        resultToWrite.append(elem)
+    result_writer(resultToWrite)
+    print "Padding needed for %f per cent of recommendetions" % ((float(statsPadding * 100)) / (get_num_users() * 5))
+
+def main_item_based():
+    """
+
+    main loop
+    for all the users in userSet make the recommendetions through getRecommendetions, the output of the function
+    is properly sorted only the first top5 elements are considered, eventually it's possible to get padding for the
+    user which getRecommendetions is unable to fill
+    Includes also percentage and temporization
+
+    :return:
+    """
+    resultToWrite = []
+    loopTime = time.time()
+    statsPadding = 0
+    print "Making UserBased Recommendetions"
+
+    for user in userSet:
+        print "Completion percentage %f, increment %f" % (
+        float(userSet.index(user) * 100) / len(userSet), time.time() - loopTime)
+        completion = float(userSet.index(user) * 100) / len(userSet)
+        # sys.stdout.write("\r%f%%" % completion)
+        # sys.stdout.flush()
+        loopTime = time.time()
+        recommend = ''
+        recommendetions = get_item_based_recommendetions(user)
         recommendetions = sorted(recommendetions, key=lambda x: x[1], reverse=True)[:5]
         print user
         statsPadding = statsPadding + 5 - len(recommendetions)
