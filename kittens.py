@@ -138,7 +138,7 @@ def get_user_based_recommendetions(user):
                                                         evaluationsList[userIterator][1]) * (
                          numberCommonMovies[userIterator] / avgCommonMovies[userIterator])  # significance weight
 
-        if similarity > 0.19999:  # taking into consideration only positive and significant similarities
+        if similarity > 0.60:  # taking into consideration only positive and significant similarities
             similarities[userIterator] = similarity
 
     return get_user_based_predictions(user, similarities, possibleRecommendetions)  # we need every element to be unique
@@ -208,7 +208,7 @@ def get_item_based_recommendetions(u):
             shrink = math.fabs(math.log(float(len(preRatingsItemI)) / get_num_users()))
             similarity = pearson_item_based_correlation(itemJ, itemI, ratingsItemJ, ratingsItemI, shrink)
 
-            if similarity > 0.3:  # taking into consideration only positive and significant similarities
+            if similarity > 0.60:  # taking into consideration only positive and significant similarities
                 similarities[itemI].append((itemJ, similarity))
     return get_item_based_predictions(u, similarities)  # we need every element to be unique
 
