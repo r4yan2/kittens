@@ -42,7 +42,6 @@ def get_user_based_recommendetions(user):
 
     itemsUser = get_user_evaluation_list(user)  # get the vector of the seen items
     threshold = xrange(2, 10)  # threshold to be applied to the possible Recommendetions
-    similarities = {}
     countFeature = {}
     countFeature = defaultdict(lambda: 0, countFeature)
     countForTheAverage = {}
@@ -59,6 +58,7 @@ def get_user_based_recommendetions(user):
     featuresAvg = {}
     featuresAvg = defaultdict(lambda: 0, featuresAvg)
     shrink = {}
+    similarities = {}
 
     for userIterator in trainUserSet:
         skip = True  # if no common film will be found this variable will remain setten and the remain part of the cicle will be skipped
@@ -88,34 +88,13 @@ def get_user_based_recommendetions(user):
                     countFeature[item] = countFeature[item] + 1
             if (featuresAvg[item] in threshold) and (get_evaluation(userIterator, item) in threshold) :
                 possibleRecommendetions[userIterator].append(item)
-
-        if (skip or len(possibleRecommendetions) == 0):
+        if skip:
             blacklist.append(userIterator)
-            continue
-
-        shrink[userIterator] = math.fabs(math.log(float(len(ratingsUserIterator)) / get_num_items()))
-
-        evaluationsList[userIterator].append(ratingsUser)
-        evaluationsList[userIterator].append(ratingsUserIterator)
-
-        avgCommonMovies[userIterator] = (avgCommonMovies[userIterator] * countForTheAverage[userIterator] + len(
-            ratingsUserIterator)) / (countForTheAverage[userIterator] + 1)  # Running Average
-        countForTheAverage[userIterator] += 1
-
-    for userIterator in trainUserSet:
-        if (userIterator in blacklist):
-            continue
-        if numberCommonMovies[userIterator] >= avgCommonMovies[userIterator]:
-            similarity = pearson_user_based_correlation(user, userIterator, evaluationsList[userIterator][0],
-                                                        evaluationsList[userIterator][1],shrink[userIterator])
-        else:
-            similarity = pearson_user_based_correlation(user, userIterator, evaluationsList[userIterator][0],
-                                                        evaluationsList[userIterator][1],shrink[userIterator]) * (
-                         numberCommonMovies[userIterator] / avgCommonMovies[userIterator])  # significance weight
-
-        if similarity > 0.60:  # taking into consideration only positive and significant similarities
-            similarities[userIterator] = similarity
-
+    for userX, userY, similarity in similaritiesReader:
+        if userX == user and userY not in blacklist:
+            similarities[userY] = similarity
+        elif userY == user and userX not in blacklist:
+            similarities[userX] = similarity
     return get_user_based_predictions(user, similarities, possibleRecommendetions)  # we need every element to be unique
 
 
@@ -368,7 +347,7 @@ def main_user_based():
         loopTime = time.time()
         recommend = ''
         recommendetions = get_user_based_recommendetions(user)
-        recommendetions = sorted(recommendetions, key=lambda x: x[1], reverse=True)[:5]
+        recommendetions = sorted(recommendetions, key=lambda x: x[1])[:5]
         print user
         statsPadding = statsPadding + 5 - len(recommendetions)
         if (len(recommendetions) < 5):

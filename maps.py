@@ -122,6 +122,8 @@ def get_user_feature_evaluation_count(user, feature):
         return 0
 
 def load_maps():
+    global similaritiesReader
+    similaritiesReader = map(lambda x: map(float,x),list(csv.reader(open('data/user_based_similarities.csv', 'rb'), delimiter=',')))  # open csv splitting field on the comma and mapping every element to int
     global train
     train = list(csv.reader(open('data/train.csv', 'rb'), delimiter=','))  # open csv splitting field on the comma character
     del train[0]  # deletion of the string header
