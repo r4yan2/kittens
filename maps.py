@@ -14,6 +14,9 @@ def get_num_users():
     """
     return 15373
 
+def get_num_items():
+    return len(itemSet)
+
 
 def get_num_ratings():
     """
@@ -120,8 +123,7 @@ def get_user_feature_evaluation_count(user, feature):
 
 def load_maps():
     global train
-    train = list(
-        csv.reader(open('data/train.csv', 'rb'), delimiter=','))  # open csv splitting field on the comma character
+    train = list(csv.reader(open('data/train.csv', 'rb'), delimiter=','))  # open csv splitting field on the comma character
     del train[0]  # deletion of the string header
     train = map(lambda x: map(int, x), train)  # Not so straight to read...map every (sub)element of train to int
 
@@ -155,7 +157,7 @@ def load_maps():
     userSet = map(lambda x: x[0], map(lambda x: map(int,x), userSet))
 
     global itemSet
-    itemSet = set(map(lambda x: x[0], byfeature))
+    itemSet = set(map(lambda x: int(x[0]),byfeature)+map(lambda x: int(x[1]),train))
 
     global userFeatureEvaluation  # define variable as global
     userFeatureEvaluation = {}
@@ -201,6 +203,12 @@ def load_maps():
         if i in itemFeaturesList:
             for f in itemFeaturesList[i]:
                 set_user_feature_evaluation_and_count(u, f, r)
+    global trainUserSet
+    trainUserSet = userEvaluationList.keys()
+
+    global avgUserRatingCount
+    itemsCount = map(lambda x: len(x), userEvaluationList.values())
+    avgUserRatingCount = (reduce(lambda x, y: x + y, itemsCount)) / get_num_users()
 
     global userItemEvaluation
     '''return an hashmap structured

@@ -41,7 +41,7 @@ def get_user_based_recommendetions(user):
 
 
     itemsUser = get_user_evaluation_list(user)  # get the vector of the seen items
-    threshold = xrange(7, 11)  # threshold to be applied to the possible Recommendetions
+    threshold = xrange(2, 10)  # threshold to be applied to the possible Recommendetions
     similarities = {}
     countFeature = {}
     countFeature = defaultdict(lambda: 0, countFeature)
@@ -58,8 +58,9 @@ def get_user_based_recommendetions(user):
     blacklist = []
     featuresAvg = {}
     featuresAvg = defaultdict(lambda: 0, featuresAvg)
+    shrink = {}
 
-    for userIterator in userSet:
+    for userIterator in trainUserSet:
         skip = True  # if no common film will be found this variable will remain setten and the remain part of the cicle will be skipped
         if (
             userIterator == user):  # if the user which we need to make recommendetion is the same of the one in the iterator we skip this iteration
@@ -92,6 +93,8 @@ def get_user_based_recommendetions(user):
             blacklist.append(userIterator)
             continue
 
+        shrink[userIterator] = math.fabs(math.log(float(len(ratingsUserIterator)) / get_num_items()))
+
         evaluationsList[userIterator].append(ratingsUser)
         evaluationsList[userIterator].append(ratingsUserIterator)
 
@@ -99,15 +102,15 @@ def get_user_based_recommendetions(user):
             ratingsUserIterator)) / (countForTheAverage[userIterator] + 1)  # Running Average
         countForTheAverage[userIterator] += 1
 
-    for userIterator in userSet:
+    for userIterator in trainUserSet:
         if (userIterator in blacklist):
             continue
         if numberCommonMovies[userIterator] >= avgCommonMovies[userIterator]:
             similarity = pearson_user_based_correlation(user, userIterator, evaluationsList[userIterator][0],
-                                                        evaluationsList[userIterator][1])
+                                                        evaluationsList[userIterator][1],shrink[userIterator])
         else:
             similarity = pearson_user_based_correlation(user, userIterator, evaluationsList[userIterator][0],
-                                                        evaluationsList[userIterator][1]) * (
+                                                        evaluationsList[userIterator][1],shrink[userIterator]) * (
                          numberCommonMovies[userIterator] / avgCommonMovies[userIterator])  # significance weight
 
         if similarity > 0.60:  # taking into consideration only positive and significant similarities
@@ -122,7 +125,7 @@ def get_item_based_recommendetions(u):
 
     take an user
     the method work of the vector of the seen items of the usrs. For all the
-    users in the userSet we make similarity with the User for which we are
+    users in the trainUserSet we make similarity with the User for which we are
     recommending by:
     * taking the list of the common items
     * changing the items with the respective evaluation
@@ -175,8 +178,8 @@ def get_item_based_recommendetions(u):
                 continue
             preRatingsItemsI = filter(lambda (x,y): get_evaluation(x,y) in threshold, preRatingsItemI)
             preRatingsItemsJ = filter(lambda (x,y): get_evaluation(x,y) in threshold, preRatingsItemJ)
-            ratingsItemI = map(lambda x: get_evaluation(x[0], x[1]) - avgUserRating[user], preRatingsItemI)
-            ratingsItemJ = map(lambda x: get_evaluation(x[0], x[1]) - avgUserRating[user], preRatingsItemJ)
+            ratingsItemI = map(lambda x: get_evaluation(x[0], x[1]) - avgUserRating[x[0]], preRatingsItemI)
+            ratingsItemJ = map(lambda x: get_evaluation(x[0], x[1]) - avgUserRating[x[0]], preRatingsItemJ)
 
             shrink = math.fabs(math.log(float(len(preRatingsItemI)) / get_num_users()))
             similarity = pearson_item_based_correlation(itemJ, itemI, ratingsItemJ, ratingsItemI, shrink)
@@ -278,7 +281,7 @@ def padding_never_seen(user, recommendetions):
     return recommendetions
 
 
-def pearson_user_based_correlation(u, u2, listA, listB):
+def pearson_user_based_correlation(u, u2, listA, listB, shrink):
     """
 
     Calculating the Pearson Correlation coefficient between two given users
@@ -300,7 +303,7 @@ def pearson_user_based_correlation(u, u2, listA, listB):
         denominatorPearson = math.sqrt(np.sum(listDenU)) * math.sqrt(np.sum(listDenU2))
         if denominatorPearson == 0:
             return 0
-        pearson = numeratorPearson / denominatorPearson
+        pearson = numeratorPearson / (denominatorPearson + shrink)
     return pearson
 
 
@@ -316,21 +319,17 @@ def pearson_item_based_correlation(itemI, itemJ, listA, listB, shrink):
     :param shrink:
     :return:
     """
-
-    for ratingI, ratingJ in zip(listA, listB):
-        listNumeratorI = map(lambda listA: listA, listA)
-        listNumeratorJ = map(lambda listB: listB, listB)
-        numeratorPearson = np.sum([elem1 * elem2 for elem1, elem2 in zip(listNumeratorI, listNumeratorJ)])
-        listDenI = map(lambda listNumeratorI: listNumeratorI ** 2, listNumeratorI)
-        listDenJ = map(lambda listNumeratorJ: listNumeratorJ ** 2, listNumeratorJ)
-        denominatorPearson = math.sqrt(np.sum(listDenI)) * math.sqrt(np.sum(listDenJ))
-        if denominatorPearson == 0:
-            return 0
-        pearson = numeratorPearson / (denominatorPearson + shrink)
+    numeratorPearson = np.sum([elem1 * elem2 for elem1, elem2 in zip(listA, listB)])
+    listDenI = map(lambda listA: listA ** 2, listA)
+    listDenJ = map(lambda listB: listB ** 2, listB)
+    denominatorPearson = math.sqrt(np.sum(listDenI)) * math.sqrt(np.sum(listDenJ))
+    if denominatorPearson == 0:
+        return 0
+    pearson = numeratorPearson / (denominatorPearson + shrink)
     return pearson
 
 
-def result_writer(result):
+def result_writer(result,filename):
     """
 
     Writing Results
@@ -338,7 +337,7 @@ def result_writer(result):
     :param result:
     :return:
     """
-    with open('data/result.csv', 'w') as fp:
+    with open('data/'+filename, 'w') as fp:
         writer = csv.writer(fp, delimiter=',')
         writer.writerow(['userId,testItems'])
         writer.writerows(result)
@@ -384,7 +383,7 @@ def main_user_based():
         elem.append(user)
         elem.append(recommend)
         resultToWrite.append(elem)
-    result_writer(resultToWrite)
+    result_writer(resultToWrite,"user_based_result.csv")
     print "Padding needed for %f per cent of recommendetions" % ((float(statsPadding * 100)) / (get_num_users() * 5))
 
 def main_item_based():
@@ -427,5 +426,5 @@ def main_item_based():
         elem.append(user)
         elem.append(recommend)
         resultToWrite.append(elem)
-    result_writer(resultToWrite)
+    result_writer(resultToWrite,"item_based_result.csv")
     print "Padding needed for %f per cent of recommendetions" % ((float(statsPadding * 100)) / (get_num_users() * 5))
