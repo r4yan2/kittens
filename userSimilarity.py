@@ -5,7 +5,7 @@ import math
 threshold = xrange(2, 10)  # threshold for films, 1 and 10 are removed to avoid the Global Effect
 similarities = [] # list in which will be stored the similarities to be written to file
 
-for userI in trainUserSet: #userSet is the set of all the users (users in train and test)
+for userI in noNewbieTrainUserSet: #userSet is the set of all the users (users in train and test)
 
     completion = float(trainUserSet.index(userI) * 100) / len(trainUserSet) #output percentage visualizer
     sys.stdout.write("\r%f%%" % completion)
@@ -32,7 +32,7 @@ for userI in trainUserSet: #userSet is the set of all the users (users in train 
 
     itemsUserI = get_user_evaluation_list(userI)  # get the vector of the evaluated items
 
-    for userJ in trainUserSet:
+    for userJ in noNewbieTrainUserSet:
         if (userJ > userI):  # since similairty is commutative we don't need to compute similairty of userJ with userI
             itemsUserJ = get_user_evaluation_list(userJ)[
                                 :]  # need to get a copy of the vector (achieved through [:]) since we are going to modify it
@@ -42,9 +42,9 @@ for userI in trainUserSet: #userSet is the set of all the users (users in train 
             for item in itemsUserI:
                 if item in itemsUserJ:
                     numberCommonMovies[userJ] += 1
-                    userInverseFrequency = (math.log(get_num_users(),10)/len(get_item_evaluators_list(item)))
-                    ratingsUserI.append(get_evaluation(userI, item) * userInverseFrequency)
-                    ratingsUserJ.append(get_evaluation(userJ, item) * userInverseFrequency)
+                    userInverseFrequency = (math.log(get_num_users(),10)) - math.log(len(get_item_evaluators_list(item)),10)
+                    ratingsUserI.append((get_evaluation(userI, item) - avgUserRating[userI]) * userInverseFrequency)
+                    ratingsUserJ.append((get_evaluation(userJ, item) - avgUserRating[userJ]) * userInverseFrequency)
 
             if not (len(ratingsUserI) == 0):
 
@@ -59,7 +59,7 @@ for userI in trainUserSet: #userSet is the set of all the users (users in train 
             else :
                 blacklist.append(userJ)
 
-    for userJ in trainUserSet:
+    for userJ in noNewbieTrainUserSet:
         if (userJ > userI) and (userJ not in blacklist):
             if numberCommonMovies[userJ] >= avgCommonMovies[userJ]:
 
@@ -68,7 +68,7 @@ for userI in trainUserSet: #userSet is the set of all the users (users in train 
             else:
                 similarity = pearson_user_based_correlation(userI, userJ, evaluationLists[userJ][0],
                                                             evaluationLists[userJ][1],shrink[userJ]) * (
-                             numberCommonMovies[userJ] / avgCommonMovies[userJ]) # significance weight
+                             numberCommonMovies[userJ] / 50) # significance weight
 
             if similarity > 0.60:  # taking into consideration only positive and significant similarities
                 similarities.append([userI,userJ,similarity])
