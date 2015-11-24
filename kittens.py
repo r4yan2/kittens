@@ -94,6 +94,8 @@ def get_user_based_recommendetions(user):
             similarities[userY] = similarity
         elif userY == user and userX not in blacklist:
             similarities[userX] = similarity
+    similarities = sorted(similarities.items(), key=lambda x: x[1], reverse = True)[:50]
+
     return get_user_based_predictions(user, similarities, possibleRecommendetions)  # we need every element to be unique
 
 def get_item_based_recommendetions(u):
@@ -178,14 +180,19 @@ def get_user_based_predictions(user, similarities, possibleRecommendetions):
     avgu = avgUserRating[user]
     userValues = []
     predictions = []
-    denominator = np.sum(similarities.values())
-    for userIterator in similarities.keys():
+    Similarity = 0
+    for elem in similarities:
+        Similarity = Similarity + elem[1]
+    denominator = Similarity
+    for userIter,sim in similarities:
+        userIterator = userIter
+        similarity = sim
         listNumerator = {}
         listNumerator = defaultdict(list)
         for item in possibleRecommendetions[userIterator]:
             avg2 = avgUserRating[userIterator]
             rating = get_evaluation(userIterator, item)
-            userValues.append(similarities[userIterator] * (rating - avg2))
+            userValues.append(similarity * (rating - avg2))
             listNumerator[item].append(userValues)
         for item in possibleRecommendetions[userIterator]:
             prediction = avgu + float(np.sum(listNumerator[item])) / denominator
