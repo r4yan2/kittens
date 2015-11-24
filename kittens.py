@@ -41,7 +41,8 @@ def get_user_based_recommendetions(user):
 
 
     itemsUser = get_user_evaluation_list(user)  # get the vector of the seen items
-    threshold = xrange(2, 10)  # threshold to be applied to the possible Recommendetions
+    threshold = xrange(6, 11)  # threshold to be applied to the possible Recommendetions
+    similarities = {}
     countFeature = {}
     countFeature = defaultdict(lambda: 0, countFeature)
     countForTheAverage = {}
@@ -58,7 +59,6 @@ def get_user_based_recommendetions(user):
     featuresAvg = {}
     featuresAvg = defaultdict(lambda: 0, featuresAvg)
     shrink = {}
-    similarities = {}
 
     for userIterator in trainUserSet:
         skip = True  # if no common film will be found this variable will remain setten and the remain part of the cicle will be skipped
@@ -72,31 +72,29 @@ def get_user_based_recommendetions(user):
         ratingsUserIterator = []  # will contain the evaluations of userIterato of the common items with userIterator
         for item in itemsUser:
             if item in itemsUserIterator:
-                numberCommonMovies[userIterator] += 1
                 skip = False
-                userInverseFrequency = (math.log(get_num_users(),10)/len(get_item_evaluators_list(item)))
-                ratingsUser.append(get_evaluation(user, item) * userInverseFrequency)
-                ratingsUserIterator.append(get_evaluation(userIterator, item) * userInverseFrequency)
                 itemsUserIterator.remove(item)
 
         for item in itemsUserIterator:
             features = get_features_list(item)
             for feature in features:
                 rating = get_user_feature_evaluation(user, feature)
-                if (rating != 0):
+                if (rating !=0) :
                     featuresAvg[item] = (featuresAvg[item] * countFeature[item] + float(rating)) / (countFeature[item] + 1)
                     countFeature[item] = countFeature[item] + 1
             if (featuresAvg[item] in threshold) and (get_evaluation(userIterator, item) in threshold) :
                 possibleRecommendetions[userIterator].append(item)
-        if skip:
+
+        if (skip or len(possibleRecommendetions) == 0):
             blacklist.append(userIterator)
+            continue
+
     for userX, userY, similarity in similaritiesReader:
         if userX == user and userY not in blacklist:
             similarities[userY] = similarity
         elif userY == user and userX not in blacklist:
             similarities[userX] = similarity
     return get_user_based_predictions(user, similarities, possibleRecommendetions)  # we need every element to be unique
-
 
 def get_item_based_recommendetions(u):
     """
@@ -157,8 +155,8 @@ def get_item_based_recommendetions(u):
                 continue
             preRatingsItemsI = filter(lambda (x,y): get_evaluation(x,y) in threshold, preRatingsItemI)
             preRatingsItemsJ = filter(lambda (x,y): get_evaluation(x,y) in threshold, preRatingsItemJ)
-            ratingsItemI = map(lambda x: get_evaluation(x[0], x[1]) - avgUserRating[x[0]], preRatingsItemI)
-            ratingsItemJ = map(lambda x: get_evaluation(x[0], x[1]) - avgUserRating[x[0]], preRatingsItemJ)
+            ratingsItemI = map(lambda x: get_evaluation(x[0], x[1]) - avgItemRating[x[1]], preRatingsItemI)
+            ratingsItemJ = map(lambda x: get_evaluation(x[0], x[1]) - avgItemRating[x[1]], preRatingsItemJ)
 
             shrink = math.fabs(math.log(float(len(preRatingsItemI)) / get_num_users()))
             similarity = pearson_item_based_correlation(itemJ, itemI, ratingsItemJ, ratingsItemI, shrink)
@@ -322,7 +320,7 @@ def result_writer(result,filename):
         writer.writerows(result)
     fp.close
 
-def main_user_based():
+def main(algorithm):
     """
 
     main loop
@@ -336,25 +334,40 @@ def main_user_based():
     resultToWrite = []
     loopTime = time.time()
     statsPadding = 0
-    print "Making UserBased Recommendetions"
+    print "Making "+algorithm+" Based Recommendetions"
 
     for user in userSet:
-        print "Completion percentage %f, increment %f" % (
-        float(userSet.index(user) * 100) / len(userSet), time.time() - loopTime)
+        print user
         completion = float(userSet.index(user) * 100) / len(userSet)
         # sys.stdout.write("\r%f%%" % completion)
         # sys.stdout.flush()
+
         loopTime = time.time()
-        recommend = ''
-        recommendetions = get_user_based_recommendetions(user)
-        recommendetions = sorted(recommendetions, key=lambda x: x[1])[:5]
-        print user
-        statsPadding = statsPadding + 5 - len(recommendetions)
-        if (len(recommendetions) < 5):
-            print "padding needed"
-            recommendetions = padding_never_seen(user, recommendetions)
+
+        if algorithm == "user":
+            if user in noNewbieTrainUserSet:
+                recommendetions = get_item_based_recommendetions(user)
+                recommendetions = sorted(recommendetions, key=lambda x: x[1], reverse=True)[:5]
+                statsPadding = statsPadding + 5 - len(recommendetions)
+                if (len(recommendetions) < 5):
+                    recommendetions = padding_never_seen(user, recommendetions)
+
+        elif algorithm == "item":
+            recommendetions = get_item_based_recommendetions(user)
+            recommendetions = sorted(recommendetions, key=lambda x: x[1], reverse=True)[:5]
+            statsPadding = statsPadding + 5 - len(recommendetions)
+            if (len(recommendetions) < 5):
+                recommendetions = padding_never_seen(user, recommendetions)
+
+        else:
+            print "Invalid Argument"
+            return -1
+
         if (len(recommendetions) < 5):
             recommendetions = padding(user, recommendetions)
+
+        # writing actual recommendetion string
+        recommend = ''
         for i, v in recommendetions:
             recommend = recommend + (str(i) + ' ')
         print recommend
@@ -362,48 +375,16 @@ def main_user_based():
         elem.append(user)
         elem.append(recommend)
         resultToWrite.append(elem)
-    result_writer(resultToWrite,"user_based_result.csv")
+        print "Completion percentage %f, increment %f" % (completion, time.time() - loopTime)
+    result_writer(resultToWrite, algorithm+"_based_result.csv")
     print "Padding needed for %f per cent of recommendetions" % ((float(statsPadding * 100)) / (get_num_users() * 5))
 
-def main_item_based():
+disclaimer = """
+    --> Kitt<3ns main script to make recommendetions <--
+
+    To use the algorithm please make sure that maps.py load correctly (execfile("maps.py"))
+    then execute main(algorithm) where algorithm is one of the following:
+    'user' to make user based similarities
+    'item' to make item based similarities
     """
-
-    main loop
-    for all the users in userSet make the recommendetions through getRecommendetions, the output of the function
-    is properly sorted only the first top5 elements are considered, eventually it's possible to get padding for the
-    user which getRecommendetions is unable to fill
-    Includes also percentage and temporization
-
-    :return:
-    """
-    resultToWrite = []
-    loopTime = time.time()
-    statsPadding = 0
-    print "Making UserBased Recommendetions"
-
-    for user in userSet:
-        print "Completion percentage %f, increment %f" % (
-        float(userSet.index(user) * 100) / len(userSet), time.time() - loopTime)
-        completion = float(userSet.index(user) * 100) / len(userSet)
-        # sys.stdout.write("\r%f%%" % completion)
-        # sys.stdout.flush()
-        loopTime = time.time()
-        recommend = ''
-        recommendetions = get_item_based_recommendetions(user)
-        recommendetions = sorted(recommendetions, key=lambda x: x[1], reverse=True)[:5]
-        print user
-        statsPadding = statsPadding + 5 - len(recommendetions)
-        if (len(recommendetions) < 5):
-            print "padding needed"
-            recommendetions = padding_never_seen(user, recommendetions)
-        if (len(recommendetions) < 5):
-            recommendetions = padding(user, recommendetions)
-        for i, v in recommendetions:
-            recommend = recommend + (str(i) + ' ')
-        print recommend
-        elem = []
-        elem.append(user)
-        elem.append(recommend)
-        resultToWrite.append(elem)
-    result_writer(resultToWrite,"item_based_result.csv")
-    print "Padding needed for %f per cent of recommendetions" % ((float(statsPadding * 100)) / (get_num_users() * 5))
+print disclaimer
