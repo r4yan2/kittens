@@ -70,7 +70,9 @@ for userI in noNewbieTrainUserSet: #userSet is the set of all the users (users i
                                                             evaluationLists[userJ][1],shrink[userJ]) * (
                              numberCommonMovies[userJ] / 50) # significance weight
 
-            if similarity > 0.60:  # taking into consideration only positive and significant similarities
+            if similarity > 0.8:  # taking into consideration only positive and significant similarities
+                if similarity == 1:
+                    print similarity
                 similarities.append([userI,userJ,similarity])
 
 with open('data/user_based_similarities.csv', 'w') as fp:
