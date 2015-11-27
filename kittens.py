@@ -94,7 +94,7 @@ def get_user_based_recommendetions(user):
             similarities[userY] = similarity
         elif userY == user and userX not in blacklist:
             similarities[userX] = similarity
-    similarities = sorted(similarities.items(), key=lambda x: x[1], reverse = True)[:50]
+    similarities = sorted(similarities.items(), key=lambda x: x[1], reverse = True)
 
     return get_user_based_predictions(user, similarities, possibleRecommendetions)  # we need every element to be unique
 
@@ -184,9 +184,8 @@ def get_user_based_predictions(user, similarities, possibleRecommendetions):
     for elem in similarities:
         Similarity = Similarity + elem[1]
     denominator = Similarity
-    for userIter,sim in similarities:
-        userIterator = userIter
-        similarity = sim
+    for userIterator,similarity in similarities:
+
         listNumerator = {}
         listNumerator = defaultdict(list)
         for item in possibleRecommendetions[userIterator]:
@@ -357,8 +356,7 @@ def main(algorithm):
 
         loopTime = time.time()
         recommendetions = []
-
-        if algorithm == "user":
+       if algorithm == "user":
             countSeen = len(get_user_evaluation_list(user))
             if countSeen <= 5:
                 recommendetions = get_TopN_Personalized(user, recommendetions)
