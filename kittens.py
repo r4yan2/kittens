@@ -221,10 +221,10 @@ def get_item_based_predictions(user, similarities):
         predictions.append((itemI, float(np.sum(listNumerator)) / (np.sum(listDenominator))))
     return predictions
 
-def padding(u, recommendetions):  # recycle from the old recommendetions methods
+def get_TopN_Personalized(u, recommendetions):  # recycle from the old recommendetions methods
     personalizedTopN = {}
     for i, v in topN:
-        personalizedTopN[i] = math.log(v)
+        personalizedTopN[i] = math.log(v,10)
         for f in get_features_list(i):
             if not ((get_user_feature_evaluation(u, f) == 0) or (len(get_user_evaluation_list(u)) == 0) or (
                 get_user_feature_evaluation_count(u, f) == 0)):
@@ -247,13 +247,19 @@ def padding_never_seen(user, recommendetions):
     count = len(recommendetions)
     iterator = 0
     possibleRecommendetions = []
+
     for item in itemsNeverSeen:
         features = get_features_list(item)
-        ratings = map(lambda x: get_user_feature_evaluation(user, x), features)
-        avg = float(np.sum(ratings)) / len(features)
+        featuresRatings = map(lambda x: get_user_feature_evaluation(user, x), features)
+        binaryFeaturesRatings = map(lambda x: 1 if x>0 else 0, featuresRatings)
 
-        if avg in threshold:
-            possibleRecommendetions.append((item, avg))
+        features = filter(lambda x: x>0, ([a*b for a,b in zip(binaryFeaturesRatings,features)]))
+        featuresRatings = filter(lambda x: x>0, featuresRatings)
+
+        shrink = map(lambda x: float(get_user_feature_evaluation_count(user, x))/len(get_user_evaluation_list(user)), features)
+        rating = sum([a/b for a,b in zip(featuresRatings,shrink)])
+
+        possibleRecommendetions.append((item, rating))
     if len(possibleRecommendetions) == 0:
         return recommendetions
     possibleRecommendetions = sorted(possibleRecommendetions, key=lambda x: x[1], reverse=True)[:5]
@@ -350,14 +356,19 @@ def main(algorithm):
         # sys.stdout.flush()
 
         loopTime = time.time()
+        recommendetions = []
 
         if algorithm == "user":
-            if user in noNewbieTrainUserSet:
+            countSeen = len(get_user_evaluation_list(user))
+            if countSeen <= 5:
+                recommendetions = get_TopN_Personalized(user, recommendetions)
+            elif countSeen > 5 and countSeen <= 11:
                 recommendetions = get_item_based_recommendetions(user)
                 recommendetions = sorted(recommendetions, key=lambda x: x[1], reverse=True)[:5]
-                statsPadding = statsPadding + 5 - len(recommendetions)
                 if (len(recommendetions) < 5):
-                    recommendetions = padding_never_seen(user, recommendetions)
+                    recommendetions = get_TopN_Personalized(user, recommendetions)
+            elif countSeen > 11:
+                recommendetions = padding_never_seen(user,recommendetions)
 
         elif algorithm == "item":
             recommendetions = get_item_based_recommendetions(user)
@@ -369,9 +380,6 @@ def main(algorithm):
         else:
             print "Invalid Argument"
             return -1
-
-        if (len(recommendetions) < 5):
-            recommendetions = padding(user, recommendetions)
 
         # writing actual recommendetion string
         recommend = ''
