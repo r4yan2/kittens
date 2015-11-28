@@ -242,7 +242,6 @@ def get_TopN_Personalized(u, recommendetions):  # recycle from the old recommend
 
 
 def padding_never_seen(user, recommendetions):
-    threshold = xrange(8, 11)
     count = len(recommendetions)
     iterator = 0
     possibleRecommendetions = []
@@ -356,7 +355,8 @@ def main(algorithm):
 
         loopTime = time.time()
         recommendetions = []
-       if algorithm == "user":
+       
+        if algorithm == "user":
             countSeen = len(get_user_evaluation_list(user))
             if countSeen <= 5:
                 recommendetions = get_TopN_Personalized(user, recommendetions)
@@ -367,18 +367,18 @@ def main(algorithm):
                     recommendetions = get_TopN_Personalized(user, recommendetions)
             elif countSeen > 11:
                 recommendetions = padding_never_seen(user,recommendetions)
-
+ 
         elif algorithm == "item":
-            recommendetions = get_item_based_recommendetions(user)
-            recommendetions = sorted(recommendetions, key=lambda x: x[1], reverse=True)[:5]
-            statsPadding = statsPadding + 5 - len(recommendetions)
-            if (len(recommendetions) < 5):
-                recommendetions = padding_never_seen(user, recommendetions)
-
+             recommendetions = get_item_based_recommendetions(user)
+             recommendetions = sorted(recommendetions, key=lambda x: x[1], reverse=True)[:5]
+             statsPadding = statsPadding + 5 - len(recommendetions)
+             if (len(recommendetions) < 5):
+                 recommendetions = padding_never_seen(user, recommendetions)
+ 
         else:
-            print "Invalid Argument"
-            return -1
-
+             print "Invalid Argument"
+             return -1
+ 
         # writing actual recommendetion string
         recommend = ''
         for i, v in recommendetions:
