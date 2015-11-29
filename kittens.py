@@ -40,7 +40,9 @@ def get_user_based_recommendetions(user):
     """
 
 
+
     itemsUser = get_user_evaluation_list(user)  # get the vector of the seen items
+    features_items = {}
     threshold = xrange(6, 11)  # threshold to be applied to the possible Recommendetions
     similarities = {}
     countFeature = {}
@@ -59,6 +61,8 @@ def get_user_based_recommendetions(user):
     featuresAvg = {}
     featuresAvg = defaultdict(lambda: 0, featuresAvg)
     shrink = {}
+    predictions = {}
+    ratings = {}
 
     for userIterator in trainUserSet:
         skip = True  # if no common film will be found this variable will remain setten and the remain part of the cicle will be skipped
@@ -71,18 +75,34 @@ def get_user_based_recommendetions(user):
         ratingsUser = []  # will contain the evaluations of User of the common items with userIterator
         ratingsUserIterator = []  # will contain the evaluations of userIterato of the common items with userIterator
         for item in itemsUser:
+            features_items[item] = get_features_list(item)
             if item in itemsUserIterator:
                 skip = False
                 itemsUserIterator.remove(item)
 
         for item in itemsUserIterator:
+            ratings[item] = get_evaluation(userIterator,item)
             features = get_features_list(item)
-            for feature in features:
+            len_features = len(features)
+            if len(features) == 0:
+                continue
+            for item_user in itemsUser:
+                binary_features_user = map(lambda x: 1 if x in features else 0, features_items[item_user])
+                sum_binary_items_user = sum(binary_features_user)
+
+                sim = float(sum_binary_items_user)/len_features
+                if sim > 0.6:
+                    prediction = float(get_evaluation(user,item_user)/get_evaluation(userIterator,item)) * sim
+                    predictions[item] = prediction
+
+        for item in predictions:
+            features_predictions = get_features_list(item)
+            for feature in features_predictions:
                 rating = get_user_feature_evaluation(user, feature)
                 if (rating !=0) :
                     featuresAvg[item] = (featuresAvg[item] * countFeature[item] + float(rating)) / (countFeature[item] + 1)
                     countFeature[item] = countFeature[item] + 1
-            if (featuresAvg[item] in threshold) and (get_evaluation(userIterator, item) in threshold) :
+            if (featuresAvg[item] in threshold and ratings[item] in threshold):
                 possibleRecommendetions[userIterator].append(item)
 
         if (skip or len(possibleRecommendetions) == 0):
@@ -117,7 +137,7 @@ def get_item_based_recommendetions(u):
     :return:
     """
 
-    threshold = xrange(2, 10)  # threshold to be applied to the possible Recommendetions
+    threshold = xrange(6, 11)  # threshold to be applied to the possible Recommendetions
     similarities = {}
     countFeature = {}
     countFeature = defaultdict(lambda: 0, countFeature)
@@ -125,12 +145,26 @@ def get_item_based_recommendetions(u):
     featuresAvg = defaultdict(lambda: 0, featuresAvg)
     similarities = {}
     similarities = defaultdict(list)
+    predictions = []
+    seen = set()
+    for itemJ in filter(lambda x: get_evaluation(u, x) in threshold, get_user_evaluation_list(u)):  # direct filtering out the evaluation not in threshold
+        features_j = get_features_list(itemJ)
+        rating_itemJ = get_evaluation(u,itemJ)
+        tf_idf = {}
+        global_features_frequency = {}
+        for feature in features_j:
+            global_features_frequency[feature] = get_features_global_frequency(feature)
 
-    for itemJ in filter(lambda x: get_evaluation(u, x) in threshold,
-                        get_user_evaluation_list(u)):  # direct filtering out the evaluation not in threshold
+
+        if len(features_j) == 0:
+            continue
+        feature_local_frequency = float(1/len(features_j))
+
         for itemI in itemSet:
             if itemI == itemJ:
                 continue
+
+            features_i = get_features_list(itemI)
 
             usersI = get_item_evaluators_list(itemI)[:]  # take the copy of the users that evaluated itemI
             usersJ = get_item_evaluators_list(itemJ)[:]  # take the copy of the users that evaluated itemJ
@@ -160,12 +194,20 @@ def get_item_based_recommendetions(u):
             ratingsItemI = map(lambda x: get_evaluation(x[0], x[1]) - avgItemRating[x[1]], preRatingsItemI)
             ratingsItemJ = map(lambda x: get_evaluation(x[0], x[1]) - avgItemRating[x[1]], preRatingsItemJ)
 
-            shrink = math.fabs(math.log(float(len(preRatingsItemI)) / get_num_users()))
-            similarity = pearson_item_based_correlation(itemJ, itemI, ratingsItemJ, ratingsItemI, shrink)
+            binary_features_j = map(lambda x: 1 if x in features_i else 0, features_j)
+            sum_binary_j = sum(binary_features_j)
 
-            if similarity > 0.60:  # taking into consideration only positive and significant similarities
-                similarities[itemI].append((itemJ, similarity))
-    return get_item_based_predictions(u, similarities)  # we need every element to be unique
+            len_features_i = len(features_i)
+            if len_features_i == 0:
+                continue
+
+            sim = float(sum_binary_j)/len_features_i
+            for feature in global_features_frequency:
+                tf_idf[feature] = feature_local_frequency * global_features_frequency[feature]
+            prediction = rating_itemJ * sim
+            predictions.append((itemI,prediction))
+    predictions = [item for item in predictions if item[0] not in seen and not seen.add(item[0])]
+    return predictions  # we need every element to be unique
 
 
 def get_user_based_predictions(user, similarities, possibleRecommendetions):
@@ -345,6 +387,7 @@ def main(algorithm):
     resultToWrite = []
     loopTime = time.time()
     statsPadding = 0
+
     print "Making "+algorithm+" Based Recommendetions"
 
     for user in userSet:

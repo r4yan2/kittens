@@ -3,6 +3,16 @@ from collections import defaultdict
 import operator
 import math
 
+def get_features_global_frequency(feature):
+    if feature in featureItemsList:
+        len_items = float(len(itemSet))
+        feature_global_frequency = len(featureItemsList[feature])
+        IDF = math.log(len_items/feature_global_frequency,10)
+    else:
+        IDF = 0
+
+    return IDF
+
 def get_num_users():
     """
 
@@ -130,21 +140,29 @@ def load_maps():
     train = map(lambda x: map(int, x), train)  # Not so straight to read...map every (sub)element of train to int
 
     global itemsNeverSeen
-    itemsNeverSeen = []
+    itemsNeverSeen = set()
     itemsInTrain = dict(((x[1], x[2])) for x in train)
     '''Parsing the item feature list'''
     byfeature = list(
         csv.reader(open('data/icm.csv', 'rb'), delimiter=','))  # open csv splitting field on the comma character
     del byfeature[0]  # header remove
+
     global itemFeaturesList
     itemFeaturesList = {}
+    global featureItemsList
+    featureItemsList = {}
+
     for elem in byfeature:
         elem = map(int, elem)
         if not elem[0] in itemsInTrain:
-            itemsNeverSeen.append(elem[0])
+            itemsNeverSeen.add(elem[0])
         if not elem[0] in itemFeaturesList:
             itemFeaturesList[elem[0]] = []
         itemFeaturesList[elem[0]].append(elem[1])
+
+        if not elem[1] in featureItemsList:
+            featureItemsList[elem[1]] = []
+        featureItemsList[elem[1]].append(elem[0])
 
     """
     Creating some maps
