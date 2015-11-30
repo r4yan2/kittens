@@ -24,6 +24,19 @@ def get_num_users():
     """
     return 15373
 
+def get_num_active_users():
+    """
+
+    Calculating the number of users that has rated some items
+
+    :return:
+    """
+    len_active_users = len(trainUserSet)
+
+    return len_active_users
+
+
+
 def get_num_items():
     return len(itemSet)
 
@@ -175,10 +188,10 @@ def load_maps():
     userSet = list(csv.reader(open('data/test.csv','rb'), delimiter=','))
     del userSet[0]
     userSet = map(lambda x: x[0], map(lambda x: map(int,x), userSet))
-
+    global item_w_features_set
     global itemSet
     itemSet = set(map(lambda x: int(x[0]),byfeature)+map(lambda x: int(x[1]),train))
-
+    item_w_features_set = set(map(lambda x: int(x[0]),byfeature))
     global userFeatureEvaluation  # define variable as global
     userFeatureEvaluation = {}
     global userFeatureEvaluationCount  # define variable as global
@@ -259,7 +272,7 @@ def load_maps():
         item=line[1]
         rating=line[2]
         if (lastItem != item):
-            variableShrink = math.fabs(math.log(float(counter) / get_num_users()))
+            variableShrink = math.fabs(math.log(float(counter) / get_num_active_users()))
             total[lastItem] = sum / float(counter + variableShrink);
             counter = 0
             sum = 0

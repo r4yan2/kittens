@@ -264,13 +264,18 @@ def get_item_based_predictions(user, similarities):
 
 def get_TopN_Personalized(u, recommendetions):  # recycle from the old recommendetions methods
     personalizedTopN = {}
+    user_rated_items = get_user_evaluation_list(u)
+
     for i, v in topN:
         personalizedTopN[i] = math.log(v,10)
         for f in get_features_list(i):
-            if not ((get_user_feature_evaluation(u, f) == 0) or (len(get_user_evaluation_list(u)) == 0) or (
-                get_user_feature_evaluation_count(u, f) == 0)):
-                personalizedTopN[i] = personalizedTopN[i] + get_user_feature_evaluation(u, f) / (
-                    float(get_user_feature_evaluation_count(u, f)) / len(get_user_evaluation_list(u)))
+            user_feature_rating = get_user_feature_evaluation(u,f)
+            number_feature_rated = get_user_feature_evaluation_count(u, f)
+            number_items_seen = len(get_user_evaluation_list(u))
+            if not ((user_feature_rating == 0) or ( number_items_seen == 0) or (
+                 number_feature_rated == 0)):
+                personalizedTopN[i] = personalizedTopN[i] + user_feature_rating * (
+                    float(number_feature_rated) / number_items_seen)
     topNPersonalized = sorted(personalizedTopN.items(), key=lambda x: x[1], reverse=True)
     count = len(recommendetions)
     iterator = 0
@@ -297,7 +302,10 @@ def padding_never_seen(user, recommendetions):
         featuresRatings = filter(lambda x: x>0, featuresRatings)
 
         shrink = map(lambda x: float(get_user_feature_evaluation_count(user, x))/len(get_user_evaluation_list(user)), features)
-        rating = sum([a/b for a,b in zip(featuresRatings,shrink)])
+        if len(featuresRatings) == 0:
+            continue
+
+        rating = (sum([a*b for a,b in zip(featuresRatings,shrink)]))/len(featuresRatings)
 
         possibleRecommendetions.append((item, rating))
     if len(possibleRecommendetions) == 0:
