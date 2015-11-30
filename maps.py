@@ -76,7 +76,11 @@ def get_evaluation(u, i):
     :param i:
     :return:
     """
-    return userItemEvaluation[(u, i)]
+    try:
+        return userItemEvaluation[(u, i)]
+    except Exception, e:
+        return 0 # if the rating does not exist it returns zero
+
 
 
 def get_features_list(i):

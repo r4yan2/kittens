@@ -114,7 +114,6 @@ def get_user_based_recommendetions(user):
             similarities[userY] = similarity
         elif userY == user and userX not in blacklist:
             similarities[userX] = similarity
-    similarities = sorted(similarities.items(), key=lambda x: x[1], reverse = True)
 
     return get_user_based_predictions(user, similarities, possibleRecommendetions)  # we need every element to be unique
 
@@ -222,18 +221,15 @@ def get_user_based_predictions(user, similarities, possibleRecommendetions):
     avgu = avgUserRating[user]
     userValues = []
     predictions = []
-    Similarity = 0
-    for elem in similarities:
-        Similarity = Similarity + elem[1]
-    denominator = Similarity
-    for userIterator,similarity in similarities:
 
+    denominator = np.sum(similarities.values())
+    for userIterator in similarities.keys():
         listNumerator = {}
         listNumerator = defaultdict(list)
         for item in possibleRecommendetions[userIterator]:
             avg2 = avgUserRating[userIterator]
             rating = get_evaluation(userIterator, item)
-            userValues.append(similarity * (rating - avg2))
+            userValues.append(similarities[userIterator] * (rating - avg2))
             listNumerator[item].append(userValues)
         for item in possibleRecommendetions[userIterator]:
             prediction = avgu + float(np.sum(listNumerator[item])) / denominator
@@ -412,7 +408,7 @@ def main(algorithm):
             if countSeen <= 5:
                 recommendetions = get_TopN_Personalized(user, recommendetions)
             elif countSeen > 5 and countSeen <= 11:
-                recommendetions = get_item_based_recommendetions(user)
+                recommendetions = get_user_based_recommendetions(user)
                 recommendetions = sorted(recommendetions, key=lambda x: x[1], reverse=True)[:5]
                 if (len(recommendetions) < 5):
                     recommendetions = get_TopN_Personalized(user, recommendetions)
