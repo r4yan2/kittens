@@ -1,3 +1,4 @@
+#modules
 import csv
 from collections import defaultdict
 import operator
@@ -240,8 +241,10 @@ def load_maps():
         if i in itemFeaturesList:
             for f in itemFeaturesList[i]:
                 set_user_feature_evaluation_and_count(u, f, r)
+    
     global trainUserSet
     trainUserSet = userEvaluationList.keys()
+    
     global noNewbieTrainUserSet
     noNewbieTrainUserSet = filter(lambda x: len(get_user_evaluation_list(x)) >= 5, trainUserSet)
 
