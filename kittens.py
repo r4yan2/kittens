@@ -138,25 +138,24 @@ def get_item_based_recommendetions(u):
 
     threshold = xrange(6, 11)  # threshold to be applied to the possible Recommendetions
     similarities = {}
-    countFeature = {}
-    countFeature = defaultdict(lambda: 0, countFeature)
-    featuresAvg = {}
-    featuresAvg = defaultdict(lambda: 0, featuresAvg)
+    count_feature = {}
+    count_feature = defaultdict(lambda: 0, count_feature)
+    features_avg = {}
+    features_avg = defaultdict(lambda: 0, features_avg)
     similarities = {}
     similarities = defaultdict(list)
     predictions = []
     seen = set()
     for itemJ in filter(lambda x: get_evaluation(u, x) in threshold, get_user_evaluation_list(u)):  # direct filtering out the evaluation not in threshold
         features_j = get_features_list(itemJ)
-        rating_itemJ = get_evaluation(u,itemJ)
+        rating_item_j = get_evaluation(u,itemJ)
         tf_idf = {}
         global_features_frequency = {}
         for feature in features_j:
             global_features_frequency[feature] = get_features_global_frequency(feature)
 
-
-        if len(features_j) == 0:
-            continue
+            if len(features_j) == 0:
+                continue
         feature_local_frequency = float(1/len(features_j))
 
         for itemI in itemSet:
@@ -168,15 +167,15 @@ def get_item_based_recommendetions(u):
             usersI = get_item_evaluators_list(itemI)[:]  # take the copy of the users that evaluated itemI
             usersJ = get_item_evaluators_list(itemJ)[:]  # take the copy of the users that evaluated itemJ
 
-            preRatingsItemI = []  # will contain the evaluations of User of the common items with userIterator
-            preRatingsItemJ = []  # will contain the evaluations of userIterator of the common items with userIterator
+            pre_ratings_item_i = []  # will contain the evaluations of User of the common items with userIterator
+            pre_ratings_item_j = []  # will contain the evaluations of userIterator of the common items
 
             for user in usersJ:
                 if user in usersI:
-                    preRatingsItemI.append((user, itemI))
-                    preRatingsItemJ.append((user, itemJ))
+                    pre_ratings_item_i.append((user, itemI))
+                    pre_ratings_item_j.append((user, itemJ))
 
-            '''for (user,itemI),(dontcare,itemJ) in zip(preRatingsItemI,preRatingsItemJ):
+            '''for (user,itemI),(do_not_care,itemJ) in zip(preRatingsItemI,preRatingsItemJ):
                 features = getFeaturesList(itemI)
                 for feature in features:
                     rating = getUserFeatureEvaluation(u,feature)
@@ -186,12 +185,12 @@ def get_item_based_recommendetions(u):
                     preRatingsItemI.remove((user,itemI))
                     preRatingsItemJ.remove((user,itemJ))'''
 
-            if len(preRatingsItemI) == 0:
+            if len(pre_ratings_item_i) == 0:
                 continue
-            preRatingsItemsI = filter(lambda (x,y): get_evaluation(x,y) in threshold, preRatingsItemI)
-            preRatingsItemsJ = filter(lambda (x,y): get_evaluation(x,y) in threshold, preRatingsItemJ)
-            ratingsItemI = map(lambda x: get_evaluation(x[0], x[1]) - avgItemRating[x[1]], preRatingsItemI)
-            ratingsItemJ = map(lambda x: get_evaluation(x[0], x[1]) - avgItemRating[x[1]], preRatingsItemJ)
+            pre_ratings_items_i = filter(lambda (x,y): get_evaluation(x,y) in threshold, pre_ratings_item_i)
+            pre_ratings_items_j = filter(lambda (x,y): get_evaluation(x,y) in threshold, pre_ratings_item_j)
+            ratings_item_i = map(lambda x: get_evaluation(x[0], x[1]) - avgItemRating[x[1]], pre_ratings_item_i)
+            ratings_item_j = map(lambda x: get_evaluation(x[0], x[1]) - avgItemRating[x[1]], pre_ratings_item_j)
 
             binary_features_j = map(lambda x: 1 if x in features_i else 0, features_j)
             sum_binary_j = sum(binary_features_j)
@@ -203,7 +202,7 @@ def get_item_based_recommendetions(u):
             sim = float(sum_binary_j)/len_features_i
             for feature in global_features_frequency:
                 tf_idf[feature] = feature_local_frequency * global_features_frequency[feature]
-            prediction = rating_itemJ * sim
+            prediction = rating_item_j * sim
             predictions.append((itemI,prediction))
     predictions = [item for item in predictions if item[0] not in seen and not seen.add(item[0])]
     return predictions  # we need every element to be unique
