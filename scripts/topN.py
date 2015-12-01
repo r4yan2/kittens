@@ -28,9 +28,9 @@ for line in train:
     counter=counter+1
 
 # Sorting in descending order the list of items
-topN=sorted(total.items(), key=lambda x:x[1], reverse=True)
+top_n=sorted(total.items(), key=lambda x:x[1], reverse=True)
 
 # Writing Results
 writer = (csv.writer(open('data/topN.csv', 'w'), delimiter=','))
 writer.writerow(["Items", "value"])
-writer.writerows(topN)
+writer.writerows(top_n)

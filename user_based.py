@@ -27,17 +27,17 @@ def get_user_based_recommendetions(user):
     count_feature = defaultdict(lambda: 0)
     count_average = {}
     count_average = defaultdict(lambda: 0)
-    avgCommonMovies = {}
-    avgCommonMovies = defaultdict(lambda: 0.0)
-    numberCommonMovies = {}
-    numberCommonMovies = defaultdict(lambda: 0)
-    possibleRecommendetions = {}
-    possibleRecommendetions = defaultdict(list)
-    evaluationsList = {}
-    evaluationsList = defaultdict(list)
+    avg_common_movies = {}
+    avg_common_movies = defaultdict(lambda: 0.0)
+    number_common_movies = {}
+    number_common_movies = defaultdict(lambda: 0)
+    possible_recommendetions = {}
+    possible_recommendetions = defaultdict(list)
+    evaluations_list = {}
+    evaluations_list = defaultdict(list)
     blacklist = [user]
-    featuresAvg = {}
-    featuresAvg = defaultdict(lambda: 0)
+    features_avg = {}
+    features_avg = defaultdict(lambda: 0)
     shrink = {}
     predictions = {}
     ratings = {}
@@ -47,8 +47,8 @@ def get_user_based_recommendetions(user):
 
         items_user_iterator = get_user_evaluation_list(user_iterator)[
                             :]  # same as before, this time we need to get a copy of the vector (achieved through [:]) since we are going to modify it
-        ratingsUser = []  # will contain the evaluations of User of the common items with userIterator
-        ratingsUserIterator = []  # will contain the evaluations of userIterato of the common items with userIterator
+        ratings_user = []  # will contain the evaluations of User of the common items with userIterator
+        ratings_user_iterator = []  # will contain the evaluations of userIterato of the common items with userIterator
         for item in itemsUser:
             features_items_user[item] = get_features_list(item)
             if item in itemsUserIterator:
@@ -62,7 +62,7 @@ def get_user_based_recommendetions(user):
             if get_evaluation(user_iterator,item) in xrange(7,11):
                 possible_recommendetions[user_iterator].append(item)
 
-        if (skip or len(possibleRecommendetions) == 0):
+        if (skip or len(possible_recommendetions) == 0):
             blacklist.append(userIterator)
             continue
 
@@ -72,7 +72,7 @@ def get_user_based_recommendetions(user):
         elif userY == user and userX not in blacklist:
             similarities[userX] = similarity
 
-    return get_user_based_predictions(user, similarities, possibleRecommendetions)  # we need every element to be unique
+    return get_user_based_predictions(user, similarities, possible_recommendetions)  # we need every element to be unique
 
 
 def get_user_based_predictions(user, similarities, possibleRecommendetions):

@@ -40,7 +40,7 @@ def get_item_based_recommendetions(u):
             continue
         feature_local_frequency = float(1/len(features_j))
 
-        for itemI in itemSet:
+        for itemI in item_set:
             if itemI == itemJ:
                 continue
 

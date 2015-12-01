@@ -27,13 +27,14 @@ def cos(v1, v2):
     denominator = np.sqrt(np.dot(v1, v1)) * np.sqrt(np.dot(v2, v2))
     return  numerator/denominator
 
+
 def main(*args):
     """
 
     main loop
     for all the users in userSet make the recommendetions through getRecommendetions, the output of the function
     is properly sorted only the first top5 elements are considered, eventually it's possible to get padding for the
-    user which getRecommendetions is unable to fill
+    user which get_recommendetions is unable to fill
     Includes also percentage and temporization
 
     :return:
@@ -83,11 +84,12 @@ def main(*args):
             recommend = recommend + (str(i) + ' ')
         if debug:
             print recommend
+            print "Completion percentage %f, increment %f" % (completion, time.time() - loopTime)
+
         elem = []
         elem.append(user)
         elem.append(recommend)
         resultToWrite.append(elem)
-        print "Completion percentage %f, increment %f" % (completion, time.time() - loopTime)
     result_writer(resultToWrite, "result.csv")
     print "Padding needed for %f per cent of recommendetions" % ((float(statsPadding * 100)) / (get_num_users() * 5))
 
@@ -95,10 +97,10 @@ disclaimer = """
     --> Kitt<3ns main script to make recommendetions <--
 
     To use the algorithm please make sure that maps.py load correctly (execfile("maps.py"))
-    then execute main([Boolean]) where the algorithm is choosen automagically on the user's evaluation list:
+    then execute main([Boolean]) where the algorithm is chosen automagically on the user's evaluation list:
     0 <= x < 3 Top-N Personalized
     3 <= x < 6 Item-Based Content Based Filtering
-    6 <= x < 12 User-Based Neighborghood
+    6 <= x < 12 User-Based Neighborhood
     12 <= x Never-Seen
     
     NOTE:
