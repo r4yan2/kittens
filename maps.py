@@ -1,7 +1,6 @@
 # modules
 import csv
 from collections import defaultdict
-import operator
 import math
 
 
@@ -9,11 +8,11 @@ def get_features_global_frequency(feature):
     if feature in feature_items_list:
         len_items = float(len(item_set))
         feature_global_frequency = len(feature_items_list[feature])
-        IDF = math.log(len_items/feature_global_frequency,10)
+        idf = math.log(len_items/feature_global_frequency, 10)
     else:
-        IDF = 0
+        idf = 0
 
-    return IDF
+    return idf
 
 
 def get_num_users():
@@ -145,7 +144,7 @@ def load_maps():
     global items_never_seen
     items_never_seen = set()
     items_in_train = dict((x[1], x[2]) for x in train)
-    by_feature = list(csv.reader(open('data/icm.csv', 'rb'), delimiter=','))  # open csv splitting field on the comma character
+    by_feature = list(csv.reader(open('data/icm.csv', 'rb'), delimiter=','))  # open csv splitting field on the commas
     del by_feature[0]  # header remove
 
     global item_features_list

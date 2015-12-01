@@ -1,18 +1,16 @@
-import sys
-import math
-import csv
-import time
-import operator
 import numpy as np
-from scipy.spatial.distance import cosine
-from collections import defaultdict
+import sys
+import time
 
-#user defined
+# user defined
+import maps
+from maps import get_user_evaluation_list, get_num_users
 from writer import result_writer
-from user_based import get_user_based_recommendetions
-from item_based import get_item_based_recommendetions
+from user_based import get_user_based_recommendations
+from item_based import get_item_based_recommendations
 from topN import get_TopN_Personalized
 from never_seen import recommend_never_seen
+
 
 def cos(v1, v2):
     """
@@ -25,76 +23,75 @@ def cos(v1, v2):
 
     numerator = np.dot(v1, v2)
     denominator = np.sqrt(np.dot(v1, v1)) * np.sqrt(np.dot(v2, v2))
-    return  numerator/denominator
+    return numerator / denominator
 
 
 def main(*args):
     """
 
     main loop
-    for all the users in userSet make the recommendetions through getRecommendetions, the output of the function
+    for all the users in userSet make the recommendations through get_recommendations, the output of the function
     is properly sorted only the first top5 elements are considered, eventually it's possible to get padding for the
-    user which get_recommendetions is unable to fill
-    Includes also percentage and temporization
+    user which get_recommendations is unable to fill
+    Includes also percentage
 
     :return:
     """
     debug = 0
     if True in args[0]:
         debug = 1
-        loopTime = time.time()
-        statsPadding = 0
+        loop_time = time.time()
+        stats_padding = 0
 
-    resultToWrite = []
-    print "Making Recommendetions"
+    result_to_write = []
+    print "Making recommendations"
 
-    for user in userSet:
+    for user in maps.user_set:
 
-        completion = float(userSet.index(user) * 100) / len(userSet)
+        completion = float(maps.user_set.index(user) * 100) / len(maps.user_set)
 
         if debug:
             print user
-            loopTime = time.time()
+            loop_time = time.time()
         else:
             sys.stdout.write("\r%f%%" % completion)
             sys.stdout.flush()
 
-        recommendetions = []
-        countSeen = len(get_user_evaluation_list(user))
+        recommendations = []
+        count_seen = len(get_user_evaluation_list(user))
 
-        if countSeen >= 0 and countSeen <3:
-            recommendetions = get_TopN_Personalized(user,recommendetions)
+        if 0 <= count_seen < 3:
+            recommendations = get_TopN_Personalized(user, recommendations)
 
-        elif countSeen >= 3 and countSeen < 6:
-            recommendetions = get_item_based_recommendetions(user)
+        elif 3 <= count_seen < 6:
+            recommendations = get_item_based_recommendations(user)
 
-        elif countSeen >= 6 and countSeen < 12:
-            recommendetions = get_user_based_recommendetions(user)
+        elif 6 <= count_seen < 12:
+            recommendations = get_user_based_recommendations(user)
 
-        elif countSeen > 11:
-            recommendetions = recommend_never_seen(user,recommendetions)
+        elif count_seen > 11:
+            recommendations = recommend_never_seen(user, recommendations)
 
-        recommendetions = sorted(recommendetions, key=lambda x: x[1], reverse=True)[:5]
+        recommendations = sorted(recommendations, key=lambda x: x[1], reverse=True)[:5]
 
-        if (len(recommendetions) < 5):
-            recommendetions = get_TopN_Personalized(user, recommendetions)
-           # writing actual recommendetion string
+        if len(recommendations) < 5:
+            recommendations = get_TopN_Personalized(user, recommendations)
+            # writing actual recommendation string
         recommend = ''
-        for i, v in recommendetions:
-            recommend = recommend + (str(i) + ' ')
+        for i, v in recommendations:
+            recommend += str(i) + ' '
         if debug:
             print recommend
-            print "Completion percentage %f, increment %f" % (completion, time.time() - loopTime)
+            print "Completion percentage %f, increment %f" % (completion, time.time() - loop_time)
 
-        elem = []
-        elem.append(user)
-        elem.append(recommend)
-        resultToWrite.append(elem)
-    result_writer(resultToWrite, "result.csv")
-    print "Padding needed for %f per cent of recommendetions" % ((float(statsPadding * 100)) / (get_num_users() * 5))
+        elem = [user, recommend]
+        result_to_write.append(elem)
+    result_writer(result_to_write, "result.csv")
+    print 'Padding needed for %f per cent of recommendations' % ((float(stats_padding * 100)) / (get_num_users() * 5))
+
 
 disclaimer = """
-    --> Kitt<3ns main script to make recommendetions <--
+    --> Kitt<3ns main script to make recommendations <--
 
     To use the algorithm please make sure that maps.py load correctly (execfile("maps.py"))
     then execute main([Boolean]) where the algorithm is chosen automagically on the user's evaluation list:
