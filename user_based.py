@@ -4,9 +4,7 @@ import numpy as np
 
 import math
 
-import maps
-
-from maps import get_user_evaluation_list
+from maps import get_features_list,get_train_user_set,get_user_evaluation_list,get_evaluation
 
 
 def get_user_based_recommendations(user):
@@ -50,8 +48,9 @@ def get_user_based_recommendations(user):
     shrink = {}
     predictions = {}
     ratings = {}
-
-    for user_iterator in maps.train_user_set:
+    
+    train_user_set = get_train_user_set()
+    for user_iterator in train_user_set:
         skip = True  # if no common film will be found this variable will remain fixed
         # and the remaining part of the cycle will be skipped
 
@@ -63,28 +62,23 @@ def get_user_based_recommendations(user):
         ratings_user_iterator = []  # will contain the evaluations of user_iterator
         # of the common items with user_iterator
         for item in items_user:
-            features_items_user[item] = maps.get_features_list(item)
+            features_items_user[item] = get_features_list(item)
             if item in items_user_iterator:
                 skip = False
                 items_user_iterator.remove(item)
 
         for item in items_user_iterator:
-            ratings[item] = maps.get_evaluation(user_iterator, item)
-            features = maps.get_features_list(item)
+            ratings[item] = get_evaluation(user_iterator, item)
+            features = get_features_list(item)
             len_features = len(features)
-            if maps.get_evaluation(user_iterator, item) in xrange(7, 11):
+            if get_evaluation(user_iterator, item) in xrange(7, 11):
                 possible_recommendations[user_iterator].append(item)
 
         if skip or len(possible_recommendations) == 0:
             blacklist.append(user_iterator)
             continue
 
-    for userX, userY, similarity in maps.similarities_reader:
-        if userX == user and userY not in blacklist:
-            similarities[userY] = similarity
-        elif userY == user and userX not in blacklist:
-            similarities[userX] = similarity
-
+    similarities = populate_user_similarities(user,blacklist)
     return get_user_based_predictions(user, similarities,
                                       possible_recommendations)  # we need every element to be unique
 

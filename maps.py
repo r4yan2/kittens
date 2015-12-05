@@ -111,6 +111,8 @@ def get_user_evaluation_list(user):
     except Exception:
         return []
 
+def get_items_never_seen():
+    return items_never_seen
 
 def get_item_evaluators_list(item):
     try:
@@ -132,11 +134,23 @@ def get_user_feature_evaluation_count(user, feature):
     except Exception:
         return 0
 
+def get_item_set():
+    return item_set
+
 def get_user_to_recommend_evaluation_count():
     return sorted(Counter(map(lambda x: len(get_user_evaluation_list(x)),user_set)).items(),key=lambda x: x[1],reverse=True)
 
+def get_user_set():
+    return user_set
+
+def get_top_n():
+    return top_n
+
+def get_top_viewed():
+    return top_viewed
 
 def load_maps():
+    
     global similarities_reader
     similarities_reader = map(lambda x: map(float, x), list(csv.reader(open('data/user_based_similarities.csv', 'rb'), delimiter=',')))  # mapping every element to int
     global train
@@ -273,5 +287,18 @@ def load_maps():
         counter += 1
     # Sorting in descending order the list of items
     top_n = sorted(total.items(), key=lambda x: x[1], reverse=True)
+    global top_viewed
+    top_viewed = sorted(item_evaluators_list.items(),key=lambda x: len(x[1]),reverse=True)
+
+def get_train_user_set():
+    return train_user_set
+def populate_user_similarities(user,blacklist):
+    similarities = {}
+    for userX, userY, similarity in similarities_reader:
+        if userX == user and userY not in blacklist:
+            similarities[userY] = similarity
+        elif userY == user and userX not in blacklist:
+            similarities[userX] = similarity
+    return similarities
 
 load_maps()

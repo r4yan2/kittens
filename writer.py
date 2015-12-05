@@ -1,5 +1,6 @@
 import csv
 
+
 def result_writer(result,filename):
     """
 

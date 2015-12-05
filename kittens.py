@@ -3,12 +3,11 @@ import sys
 import time
 
 # user defined
-import maps
-from maps import get_user_evaluation_list, get_num_users
+from topN import *
+from maps import *
 from writer import result_writer
 from user_based import get_user_based_recommendations
 from item_based import get_item_based_recommendations
-from topN import get_TopN_Personalized
 from never_seen import recommend_never_seen
 from binary_based import get_binary_based_recommendations
 
@@ -45,10 +44,10 @@ def main(*args):
 
     result_to_write = []
     print "Making recommendations"
+    user_set = get_user_set()
+    for user in user_set:
 
-    for user in maps.user_set:
-
-        completion = float(maps.user_set.index(user) * 100) / len(maps.user_set)
+        completion = float(user_set.index(user) * 100) / len(user_set)
 
         if debug:
             print user
@@ -61,10 +60,10 @@ def main(*args):
         count_seen = len(get_user_evaluation_list(user))
 
         if count_seen == 1:
-            recommendetions = get_binary_based_recommendations(user)
+            recommendations = get_binary_based_recommendations(user)
 
         elif 1 < count_seen < 3:
-            recommendations = get_TopN_Personalized(user, recommendations)
+            recommendations = get_top_n_personalized(user, recommendations)
 
         elif 3 <= count_seen < 6:
             recommendations = get_item_based_recommendations(user)
@@ -75,9 +74,11 @@ def main(*args):
         elif count_seen > 11:
             recommendations = recommend_never_seen(user, recommendations)
 
+        if recommendations < 5:
+            recommendations = get_top_viewed_recommendations(user,recommendations)
+ 
         recommendations = sorted(recommendations, key=lambda x: x[1], reverse=True)[:5]
-
-        # writing actual recommendation string
+        
         recommend = ''
         for i, v in recommendations:
             recommend += str(i) + ' '
