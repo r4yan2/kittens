@@ -132,6 +132,9 @@ def get_user_feature_evaluation_count(user, feature):
     except Exception:
         return 0
 
+def get_user_to_recommend_evaluation_count():
+    return sorted(Counter(map(lambda x: len(get_user_evaluation_list(x)),user_set)).items(),key=lambda x: x[1],reverse=True)
+
 
 def load_maps():
     global similarities_reader

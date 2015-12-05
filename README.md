@@ -37,3 +37,8 @@ $$ \frac {evaluation(user, feature)}{\frac { \\# times\ that\ user\ evaluated\ t
 else recommendTopN to faggots
 
 next we'll take the first K film and we will apply the item-based approach 
+
+
+Current Evaluation
+
+NeverSeen: rating = sum(features_ratings)/len(features_ratings)  

@@ -27,8 +27,8 @@ def recommend_never_seen(user, recommendetions):
 
         # Rating composition
 
-        rating = (sum([a*b for a,b in zip(features_ratings,shrink)]))/len(features_ratings)
-        # rating = sum(features_ratings)/len(features_ratings)
+        #rating = (sum([a*b for a,b in zip(features_ratings,shrink)]))/len(features_ratings)
+        rating = sum(features_ratings)/len(features_ratings)
         possible_recommendetions.append((item, rating))
     
     if len(possible_recommendetions) == 0:

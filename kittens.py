@@ -10,7 +10,7 @@ from user_based import get_user_based_recommendations
 from item_based import get_item_based_recommendations
 from topN import get_TopN_Personalized
 from never_seen import recommend_never_seen
-
+from binary_based import get_binary_based_recommendations
 
 def cos(v1, v2):
     """
@@ -38,7 +38,7 @@ def main(*args):
     :return:
     """
     debug = 0
-    if True in args[0]:
+    if args[0]:
         debug = 1
         loop_time = time.time()
         stats_padding = 0
@@ -60,7 +60,10 @@ def main(*args):
         recommendations = []
         count_seen = len(get_user_evaluation_list(user))
 
-        if 0 <= count_seen < 3:
+        if count_seen == 1:
+            recommendetions = get_binary_based_recommendations(user)
+
+        elif 1 < count_seen < 3:
             recommendations = get_TopN_Personalized(user, recommendations)
 
         elif 3 <= count_seen < 6:
@@ -74,9 +77,7 @@ def main(*args):
 
         recommendations = sorted(recommendations, key=lambda x: x[1], reverse=True)[:5]
 
-        if len(recommendations) < 5:
-            recommendations = get_TopN_Personalized(user, recommendations)
-            # writing actual recommendation string
+        # writing actual recommendation string
         recommend = ''
         for i, v in recommendations:
             recommend += str(i) + ' '

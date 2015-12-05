@@ -16,11 +16,24 @@ def get_TopN_Personalized(u, recommendetions):  # recycle from the old recommend
     count = len(recommendetions)
     iterator = 0
     while count < 5:
-        if not ((topNPersonalized[iterator][0] in get_user_evaluation_list(u)) or (
-            topNPersonalized[iterator][0] in recommendetions)):
+        item = topNPersonalized[iterator][0] 
+        if not ((item in get_user_evaluation_list(u)) or (
+            item in recommendetions)):
             recommendetions.append(topNPersonalized[iterator])
             count = count + 1
         iterator = iterator + 1
     return recommendetions
 
+def get_Top_Viewed(u, recommendetions):
 
+    top_rated = sorted(item_evaluators_list.items(),key=lambda x: len(x[1]),reverse=True)
+    count = len(recommendetions)
+    iterator = 0
+    while count < 5:
+        item = top_rated[iterator][0]
+        if not ((item in get_user_evaluation_list(u)) or (
+            item in recommendetions)):
+            recommendetions.append((item,0)) #magic number 0 needed for compatibility with recommendation parser in kittens
+            count = count + 1
+        iterator = iterator + 1
+    return recommendetions
