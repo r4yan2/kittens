@@ -301,4 +301,7 @@ def populate_user_similarities(user,blacklist):
             similarities[userX] = similarity
     return similarities
 
+def get_avg_user_rating(user):
+    return avg_user_rating[user]
+
 load_maps()

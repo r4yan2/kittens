@@ -4,7 +4,7 @@ import numpy as np
 
 import math
 
-from maps import get_features_list,get_train_user_set,get_user_evaluation_list,get_evaluation
+from maps import get_avg_user_rating, populate_user_similarities, get_features_list, get_train_user_set, get_user_evaluation_list, get_evaluation
 
 
 def get_user_based_recommendations(user):
@@ -48,6 +48,7 @@ def get_user_based_recommendations(user):
     shrink = {}
     predictions = {}
     ratings = {}
+    global_possible_recommendations = set()
     
     train_user_set = get_train_user_set()
     for user_iterator in train_user_set:
@@ -77,7 +78,7 @@ def get_user_based_recommendations(user):
         if skip or len(possible_recommendations) == 0:
             blacklist.append(user_iterator)
             continue
-
+        global_possible_recommendations.update(possible_recommendations[user_iterator])
     similarities = populate_user_similarities(user,blacklist)
     return get_user_based_predictions(user, similarities,
                                       possible_recommendations)  # we need every element to be unique
@@ -92,23 +93,28 @@ def get_user_based_predictions(user, similarities, possible_recommendations):
     :param possible_recommendations:
     :return:
     """
-    avg_u = maps.avg_user_rating[user]
-    user_values = []
+    avg_u = get_avg_user_rating(user)
     predictions = []
+    for possible_recommendetion in global_possible_recommendations:
+        list_denominator = {}
+        list_denominator = defaultdict(list)
 
-    denominator = np.sum(similarities.values())
-    for userIterator in similarities.keys():
-        list_numerator = {}
-        list_numerator = defaultdict(list)
-        for item in possible_recommendations[userIterator]:
-            avg2 = maps.avg_user_rating[userIterator]
-            rating = maps.get_evaluation(userIterator, item)
-            user_values.append(similarities[userIterator] * (rating - avg2))
-            list_numerator[item].append(user_values)
-        for item in possible_recommendations[userIterator]:
-            prediction = avg_u + float(np.sum(list_numerator[item])) / denominator
-            predictions.append((item, prediction))
-    return predictions
+        denominator = sum(similarities.values())
+        for userIterator in similarities.keys():
+            list_numerator = {}
+            list_numerator = defaultdict(list)
+
+            for item in possible_recommendations[userIterator]:
+                user_value = []
+                avg2 = get_avg_user_rating(userIterator)
+                rating = get_evaluation(userIterator, item)
+                user_value = similarities[userIterator] * (rating - avg2)
+                list_numerator[item].append(user_value)
+
+            for item in possible_recommendations[userIterator]:
+                prediction = avg_u + float(sum(list_numerator[item])) / denominator
+                predictions.append((item, prediction))
+        return predictions
 
 
 def pearson_user_based_correlation(u, u2, list_a, list_b, shrink):
@@ -123,14 +129,14 @@ def pearson_user_based_correlation(u, u2, list_a, list_b, shrink):
     :param list_b:
     :return:
     """
-    avg_u = maps.avg_user_rating[u]
-    avg_u2 = maps.avg_user_rating[u2]
+    avg_u = get_avg_user_rating(u)
+    avg_u2 = get_avg_user_rating(u2)
     list_numerator_u = map(lambda x: x - avg_u, list_a)
     list_numerator_u2 = map(lambda x: x - avg_u2, list_b)
-    numerator_pearson = np.sum([elem1 * elem2 for elem1, elem2 in zip(list_numerator_u, list_numerator_u2)])
+    numerator_pearson = sum([elem1 * elem2 for elem1, elem2 in zip(list_numerator_u, list_numerator_u2)])
     list_den_u = map(lambda x: x ** 2, list_numerator_u)
     list_den_u2 = map(lambda x: x ** 2, list_numerator_u2)
-    denominator_pearson = math.sqrt(np.sum(list_den_u)) * math.sqrt(np.sum(list_den_u2))
+    denominator_pearson = math.sqrt(sum(list_den_u)) * math.sqrt(sum(list_den_u2))
     if denominator_pearson == 0:
         return 0
     pearson = numerator_pearson / (denominator_pearson + shrink)

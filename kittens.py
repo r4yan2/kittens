@@ -36,9 +36,8 @@ def main(*args):
 
     :return:
     """
-    debug = 0
-    if args[0]:
-        debug = 1
+    debug = args[0]
+    if debug:
         loop_time = time.time()
         stats_padding = 0
 
@@ -74,7 +73,8 @@ def main(*args):
         elif count_seen > 11:
             recommendations = recommend_never_seen(user, recommendations)
 
-        if recommendations < 5:
+        if len(recommendations) < 5:
+            stats_padding += 5 - len(recommendations)
             recommendations = get_top_viewed_recommendations(user,recommendations)
  
         recommendations = sorted(recommendations, key=lambda x: x[1], reverse=True)[:5]
@@ -82,6 +82,7 @@ def main(*args):
         recommend = ''
         for i, v in recommendations:
             recommend += str(i) + ' '
+        
         if debug:
             print recommend
             print "Completion percentage %f, increment %f" % (completion, time.time() - loop_time)
