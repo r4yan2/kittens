@@ -305,9 +305,9 @@ def get_avg_user_rating(user):
     return avg_user_rating[user]
 
 def get_avg_item_rating(item):
-    return avg_item_rating(item)
+    return avg_item_rating[item]
 
 def get_feature_items_list(feature):
-    return feature_items_list(feature)
+    return feature_items_list[feature]
 
 load_maps()

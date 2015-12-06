@@ -1,4 +1,4 @@
-from maps import get_features_list, get_user_feature_evaluation, get_user_feature_evaluation_count
+from maps import get_features_list, get_user_feature_evaluation, get_user_feature_evaluation_count, get_items_never_seen, get_user_evaluation_list
 
 def recommend_never_seen(user, recommendations):
     count = len(recommendations)

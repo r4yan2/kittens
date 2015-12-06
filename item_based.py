@@ -2,7 +2,7 @@ from collections import defaultdict
 
 import math
 
-from maps import get_item_evaluators_list, get_evaluation, get_user_evaluation_list, get_features_list, get_features_global_frequency
+from maps import get_item_evaluators_list, get_evaluation, get_user_evaluation_list, get_features_list, get_features_global_frequency, get_item_set, get_avg_item_rating
 
 def get_item_based_recommendations(u):
     """
@@ -104,7 +104,8 @@ def get_item_based_predictions(user, similarities):
             similarity = elem[1]
             list_numerator.append(get_evaluation(user, item_j) * similarity)
             list_denominator.append(similarity)
-        predictions.append((itemI, float(sum(list_numerator)) / (sum(list_denominator))))
+	    prediction = float(sum(list_numerator)) / (sum(list_denominator))
+        predictions.append((itemI, prediction))
     return predictions
 
 

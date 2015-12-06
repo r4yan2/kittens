@@ -37,9 +37,12 @@ def main(*args):
     :return:
     """
     debug = args[0]
+    start_time = time.time()
+
     if debug:
         loop_time = time.time()
-        stats_padding = 0
+        
+    stats_padding = 0
 
     result_to_write = []
     print "Making recommendations"
@@ -47,9 +50,9 @@ def main(*args):
     for user in user_set:
 
         completion = float(user_set.index(user) * 100) / len(user_set)
+	padding = float(stats_padding * 100) / (get_num_users() * 5)
 
         if debug:
-            print user
             loop_time = time.time()
         else:
             sys.stdout.write("\r%f%%" % completion)
@@ -68,8 +71,10 @@ def main(*args):
             recommendations = get_item_based_recommendations(user)
 
         elif 6 <= count_seen < 12:
-            recommendations = get_user_based_recommendations(user)
-
+            try:
+		recommendations = get_user_based_recommendations(user)
+	    except ZeroDivisionError:
+		recommendations = get_item_based_recommendations(user)
         elif count_seen > 11:
             recommendations = recommend_never_seen(user, recommendations)
 
@@ -78,20 +83,19 @@ def main(*args):
             recommendations = get_top_viewed_recommendations(user,recommendations)
  
         recommendations = sorted(recommendations, key=lambda x: x[1], reverse=True)[:5]
-        
         recommend = ''
         for i, v in recommendations:
             recommend += str(i) + ' '
         
         if debug:
+	    print user
             print recommend
-            print "Completion percentage %f, increment %f" % (completion, time.time() - loop_time)
+            print "Completion percentage %f, increment %f, padding %f" % (completion, time.time() - loop_time, padding)
 
         elem = [user, recommend]
         result_to_write.append(elem)
     result_writer(result_to_write, "result.csv")
-    print 'Padding needed for %f per cent of recommendations' % ((float(stats_padding * 100)) / (get_num_users() * 5))
-
+    print "\n100% Completed\nResult writed to file correctly\nPadding needed for %f per cent of recommendations\nCompletion time %f" % (padding, time.time() - start_time)
 
 disclaimer = """
     --> Kitt<3ns main script to make recommendations <--

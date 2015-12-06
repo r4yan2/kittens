@@ -1,8 +1,8 @@
 import math
 from maps import *
 
-top_n = get_top_n()
 def get_top_n_personalized(u, recommendations):  # recycle from the old recommendations methods
+    top_n = get_top_n()
     personalized_top_n = {}
     user_rated_items = get_user_evaluation_list(u)
 
@@ -28,7 +28,7 @@ def get_top_n_personalized(u, recommendations):  # recycle from the old recommen
         iterator += 1
     return recommendations
 
-def get_top_viewed_recommendetions(u, recommendations):
+def get_top_viewed_recommendations(u, recommendations):
 
     top_viewed = get_top_viewed()
     count = len(recommendations)
