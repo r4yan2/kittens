@@ -1,12 +1,8 @@
 from collections import defaultdict
 
-import numpy as np
-
 import math
 
-import maps
-from maps import get_evaluation, get_user_evaluation_list, get_features_list, get_features_global_frequency
-
+from maps import get_item_evaluators_list, get_evaluation, get_user_evaluation_list, get_features_list, get_features_global_frequency
 
 def get_item_based_recommendations(u):
     """
@@ -49,14 +45,14 @@ def get_item_based_recommendations(u):
             continue
         feature_local_frequency = float(1/len(features_j))
 
-        for itemI in maps.item_set:
+        for itemI in get_item_set():
             if itemI == itemJ:
                 continue
 
             features_i = get_features_list(itemI)
 
-            users_i = maps.get_item_evaluators_list(itemI)[:]  # take the copy of the users that evaluated itemI
-            users_j = maps.get_item_evaluators_list(itemJ)[:]  # take the copy of the users that evaluated itemJ
+            users_i = get_item_evaluators_list(itemI)[:]  # take the copy of the users that evaluated itemI
+            users_j = get_item_evaluators_list(itemJ)[:]  # take the copy of the users that evaluated itemJ
 
             pre_ratings_item_i = []  # will contain the evaluations of User of the common items with userIterator
             pre_ratings_item_j = []  # will contain the evaluations of
@@ -71,8 +67,8 @@ def get_item_based_recommendations(u):
                 continue
             pre_ratings_items_i = filter(lambda (x, y): get_evaluation(x, y) in threshold, pre_ratings_item_i)
             pre_ratings_items_j = filter(lambda (x, y): get_evaluation(x, y) in threshold, pre_ratings_item_j)
-            ratings_item_i = map(lambda x: get_evaluation(x[0], x[1]) - maps.avg_item_rating[x[1]], pre_ratings_item_i)
-            ratings_item_j = map(lambda x: get_evaluation(x[0], x[1]) - maps.avg_item_rating[x[1]], pre_ratings_item_j)
+            ratings_item_i = map(lambda x: get_evaluation(x[0], x[1]) - get_avg_item_rating(x[1]), pre_ratings_item_i)
+            ratings_item_j = map(lambda x: get_evaluation(x[0], x[1]) - get_avg_item_rating(x[1]), pre_ratings_item_j)
 
             binary_features_j = map(lambda x: 1 if x in features_i else 0, features_j)
             sum_binary_j = sum(binary_features_j)
@@ -108,7 +104,7 @@ def get_item_based_predictions(user, similarities):
             similarity = elem[1]
             list_numerator.append(get_evaluation(user, item_j) * similarity)
             list_denominator.append(similarity)
-        predictions.append((itemI, float(np.sum(list_numerator)) / (np.sum(list_denominator))))
+        predictions.append((itemI, float(sum(list_numerator)) / (sum(list_denominator))))
     return predictions
 
 
@@ -122,10 +118,10 @@ def pearson_item_based_correlation(list_a, list_b, shrink):
     :param shrink:
     :return:
     """
-    numerator_pearson = np.sum([elem1 * elem2 for elem1, elem2 in zip(list_a, list_b)])
+    numerator_pearson = sum([elem1 * elem2 for elem1, elem2 in zip(list_a, list_b)])
     list_den_i = map(lambda x: x ** 2, list_a)
     list_den_j = map(lambda x: x ** 2, list_b)
-    denominator_pearson = math.sqrt(np.sum(list_den_i)) * math.sqrt(np.sum(list_den_j))
+    denominator_pearson = math.sqrt(sum(list_den_i)) * math.sqrt(sum(list_den_j))
     if denominator_pearson == 0:
         return 0
     pearson = numerator_pearson / (denominator_pearson + shrink)

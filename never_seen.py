@@ -1,4 +1,4 @@
-from maps import *
+from maps import get_features_list, get_user_feature_evaluation, get_user_feature_evaluation_count
 
 def recommend_never_seen(user, recommendations):
     count = len(recommendations)
@@ -8,7 +8,7 @@ def recommend_never_seen(user, recommendations):
     for item in get_items_never_seen():
         # take list of features
         features = get_features_list(item)
-        
+
         # map every feature with the corresponding rating given bu user
         features_ratings = map(lambda x: get_user_feature_evaluation(user, x), features)
 

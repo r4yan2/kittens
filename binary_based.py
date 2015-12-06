@@ -1,11 +1,11 @@
-from maps import *
+from maps import get_user_evaluation_list, get_num_items, get_feature_items_list, get_item_set, get_features_list, get_features_global_frequency
 
 recommendations = {}
 
 def get_binary_based_recommendations(user):
     item = get_user_evaluation_list(user)[0]
     features = get_features_list(item)
-    idf = map(lambda feature: math.log(float(get_num_items())/len(feature_items_list[feature]),10),features)
+    idf = map(lambda feature: get_features_global_frequency(feature),features)
     
     for item_iterator in get_item_set():
         features_item_iterator = get_features_list(item_iterator)
