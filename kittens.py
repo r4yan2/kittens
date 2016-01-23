@@ -1,7 +1,6 @@
 import numpy as np
 import sys
 import time
-
 # user defined
 from topN import *
 from maps import *
@@ -10,6 +9,7 @@ from user_based import get_user_based_recommendations
 from item_based import get_item_based_recommendations
 from never_seen import recommend_never_seen
 from binary_based import get_binary_based_recommendations
+
 
 def cos(v1, v2):
     """
@@ -41,7 +41,7 @@ def main(*args):
 
     if debug:
         loop_time = time.time()
-        
+
     stats_padding = 0
 
     result_to_write = []
@@ -50,7 +50,7 @@ def main(*args):
     for user in user_set:
 
         completion = float(user_set.index(user) * 100) / len(user_set)
-	padding = float(stats_padding * 100) / (get_num_users() * 5)
+        padding = float(stats_padding * 100) / (get_num_users() * 5)
 
         if debug:
             loop_time = time.time()
@@ -72,30 +72,32 @@ def main(*args):
 
         elif 6 <= count_seen < 12:
             try:
-		recommendations = get_user_based_recommendations(user)
-	    except ZeroDivisionError:
-		recommendations = get_item_based_recommendations(user)
+                recommendations = get_user_based_recommendations(user)
+            except ZeroDivisionError:
+                recommendations = get_item_based_recommendations(user)
         elif count_seen > 11:
             recommendations = recommend_never_seen(user, recommendations)
 
         if len(recommendations) < 5:
             stats_padding += 5 - len(recommendations)
-            recommendations = get_top_viewed_recommendations(user,recommendations)
- 
+            recommendations = recommend_never_seen(user, recommendations)
+
         recommendations = sorted(recommendations, key=lambda x: x[1], reverse=True)[:5]
         recommend = ''
         for i, v in recommendations:
             recommend += str(i) + ' '
-        
+
         if debug:
-	    print user
+            print user
             print recommend
             print "Completion percentage %f, increment %f, padding %f" % (completion, time.time() - loop_time, padding)
 
         elem = [user, recommend]
         result_to_write.append(elem)
     result_writer(result_to_write, "result.csv")
-    print "\n100% Completed\nResult writed to file correctly\nPadding needed for %f per cent of recommendations\nCompletion time %f" % (padding, time.time() - start_time)
+    print "\n100% Completed\nResult writed to file correctly\nPadding needed for %f per cent of recommendations\nCompletion time %f" % (
+    padding, time.time() - start_time)
+
 
 disclaimer = """
     --> Kitt<3ns main script to make recommendations <--

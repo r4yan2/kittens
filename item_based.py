@@ -1,8 +1,8 @@
 from collections import defaultdict
-
 import math
+from maps import get_item_evaluators_list, get_evaluation, get_user_evaluation_list, get_features_list, \
+    get_features_global_frequency, get_item_set, get_avg_item_rating
 
-from maps import get_item_evaluators_list, get_evaluation, get_user_evaluation_list, get_features_list, get_features_global_frequency, get_item_set, get_avg_item_rating
 
 def get_item_based_recommendations(u):
     """
@@ -33,17 +33,18 @@ def get_item_based_recommendations(u):
     similarities = defaultdict(list)
     predictions = []
     seen = set()
-    for itemJ in filter(lambda x: get_evaluation(u, x) in threshold, get_user_evaluation_list(u)):  # direct filtering out the evaluation not in threshold
+    for itemJ in filter(lambda x: get_evaluation(u, x) in threshold,
+                        get_user_evaluation_list(u)):  # direct filtering out the evaluation not in threshold
         features_j = get_features_list(itemJ)
         rating_item_j = get_evaluation(u, itemJ)
         tf_idf = {}
         global_features_frequency = {}
         for feature in features_j:
-                global_features_frequency[feature] = get_features_global_frequency(feature)
+            global_features_frequency[feature] = get_features_global_frequency(feature)
 
         if len(features_j) == 0:
             continue
-        feature_local_frequency = float(1/len(features_j))
+        feature_local_frequency = float(1 / len(features_j))
 
         for itemI in get_item_set():
             if itemI == itemJ:
@@ -77,7 +78,7 @@ def get_item_based_recommendations(u):
             if len_features_i == 0:
                 continue
 
-            sim = float(sum_binary_j)/len_features_i
+            sim = float(sum_binary_j) / len_features_i
             for feature in global_features_frequency:
                 tf_idf[feature] = feature_local_frequency * global_features_frequency[feature]
             prediction = rating_item_j * sim
@@ -104,7 +105,7 @@ def get_item_based_predictions(user, similarities):
             similarity = elem[1]
             list_numerator.append(get_evaluation(user, item_j) * similarity)
             list_denominator.append(similarity)
-	    prediction = float(sum(list_numerator)) / (sum(list_denominator))
+            prediction = float(sum(list_numerator)) / (sum(list_denominator))
         predictions.append((itemI, prediction))
     return predictions
 
@@ -127,5 +128,3 @@ def pearson_item_based_correlation(list_a, list_b, shrink):
         return 0
     pearson = numerator_pearson / (denominator_pearson + shrink)
     return pearson
-
-

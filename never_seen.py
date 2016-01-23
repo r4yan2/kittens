@@ -1,4 +1,6 @@
-from maps import get_features_list, get_user_feature_evaluation, get_user_feature_evaluation_count, get_items_never_seen, get_user_evaluation_list
+from maps import get_features_list, get_user_feature_evaluation, get_user_feature_evaluation_count, \
+    get_items_never_seen, get_user_evaluation_list
+
 
 def recommend_never_seen(user, recommendations):
     count = len(recommendations)
@@ -17,7 +19,7 @@ def recommend_never_seen(user, recommendations):
 
         # filter out zeros from the element-wise multiplication of the previous defined two lists,
         # obtaining the list of the features rated positively by the user
-        features = filter(lambda x: x > 0, ([a*b for a, b in zip(binary_features_ratings, features)]))
+        features = filter(lambda x: x > 0, ([a * b for a, b in zip(binary_features_ratings, features)]))
 
         # filter out zeros from the ratings of the features
         features_ratings = filter(lambda x: x > 0, features_ratings)
@@ -30,10 +32,10 @@ def recommend_never_seen(user, recommendations):
 
         # Rating composition
 
-        #rating = (sum([a*b for a,b in zip(features_ratings,shrink)]))/len(features_ratings)
-        rating = sum(features_ratings)/len(features_ratings)
+        # rating = (sum([a*b for a,b in zip(features_ratings,shrink)]))/len(features_ratings)
+        rating = sum(features_ratings) / len(features_ratings)
         possible_recommendations.append((item, rating))
-   
+
     if len(possible_recommendations) == 0:
         return recommendations
     possible_recommendations = sorted(possible_recommendations, key=lambda x: x[1], reverse=True)
