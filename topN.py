@@ -1,6 +1,7 @@
 import math
 from maps import *
 
+
 def get_top_n_personalized(u, recommendations):  # recycle from the old recommendations methods
     top_n = get_top_n()
     personalized_top_n = {}
@@ -8,7 +9,7 @@ def get_top_n_personalized(u, recommendations):  # recycle from the old recommen
 
     for i, v in top_n:
         personalized_top_n[i] = math.log(v, 10)
-        if len(get_user_evaluation_list(u)) ==2:
+        if len(get_user_evaluation_list(u)) == 2:
             for f in get_features_list(i):
                 user_feature_rating = get_user_feature_evaluation(u, f)
                 number_feature_rated = get_user_feature_evaluation_count(u, f)
@@ -28,16 +29,17 @@ def get_top_n_personalized(u, recommendations):  # recycle from the old recommen
         iterator += 1
     return recommendations
 
-def get_top_viewed_recommendations(u, recommendations):
 
+def get_top_viewed_recommendations(u, recommendations):
     top_viewed = get_top_viewed()
     count = len(recommendations)
     iterator = 0
     while count < 5:
         item = top_viewed[iterator][0]
         if not ((item in get_user_evaluation_list(u)) or (
-            item in recommendations)):
-            recommendations.append((item,0)) #magic number 0 needed for compatibility with recommendation parser in kittens
-            count = count + 1
-        iterator = iterator + 1
+                    item in recommendations)):
+            recommendations.append(
+                (item, 0))  # magic number 0 needed for compatibility with recommendation parser in kittens
+            count += 1
+        iterator += 1
     return recommendations

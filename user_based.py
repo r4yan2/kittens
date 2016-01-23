@@ -1,8 +1,7 @@
 from collections import defaultdict
-
 import math
-
-from maps import get_avg_user_rating, populate_user_similarities, get_features_list, get_train_user_set, get_user_evaluation_list, get_evaluation
+from maps import get_avg_user_rating, populate_user_similarities, get_features_list, get_train_user_set, \
+    get_user_evaluation_list, get_evaluation
 
 
 def get_user_based_recommendations(user):
@@ -48,7 +47,7 @@ def get_user_based_recommendations(user):
     ratings = {}
     global global_possible_recommendations
     global_possible_recommendations = set()
-    
+
     train_user_set = get_train_user_set()
     for user_iterator in train_user_set:
         skip = True  # if no common film will be found this variable will remain fixed
@@ -78,7 +77,7 @@ def get_user_based_recommendations(user):
             blacklist.append(user_iterator)
             continue
         global_possible_recommendations.update(possible_recommendations[user_iterator])
-    similarities = populate_user_similarities(user,blacklist)
+    similarities = populate_user_similarities(user, blacklist)
     return get_user_based_predictions(user, similarities,
                                       possible_recommendations)  # we need every element to be unique
 
@@ -104,7 +103,8 @@ def get_user_based_predictions(user, similarities, possible_recommendations):
             user_value = similarities[userIterator] * (rating - avg2)
             list_numerator[item].append(user_value)
 
-    predictions = map(lambda item: (item, avg_u + float(sum(list_numerator[item])) / denominator), global_possible_recommendations)
+    predictions = map(lambda x: (x, avg_u + float(sum(list_numerator[x])) / denominator),
+                      global_possible_recommendations)
     return predictions
 
 

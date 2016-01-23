@@ -1,6 +1,6 @@
 # modules
 import csv
-from collections import defaultdict
+from collections import defaultdict, Counter
 import math
 
 
@@ -8,7 +8,7 @@ def get_features_global_frequency(feature):
     if feature in feature_items_list:
         len_items = float(len(item_set))
         feature_global_frequency = len(feature_items_list[feature])
-        idf = math.log(len_items/feature_global_frequency, 10)
+        idf = math.log(len_items / feature_global_frequency, 10)
     else:
         idf = 0
 
@@ -76,7 +76,8 @@ def get_features_list(i):
 
 def set_user_feature_evaluation_and_count(u, f, r):
     try:  # need to manage the "initialization case" in which the key does not exists
-        user_feature_evaluation[(u, f)] = (user_feature_evaluation[(u, f)] * user_feature_evaluation_count[(u, f)] + float(
+        user_feature_evaluation[(u, f)] = (user_feature_evaluation[(u, f)] * user_feature_evaluation_count[
+            (u, f)] + float(
             r)) / (user_feature_evaluation_count[(u, f)] + 1)
         user_feature_evaluation_count[(u, f)] += 1
     except Exception:  # if the key is non-initialized, do it
@@ -84,7 +85,8 @@ def set_user_feature_evaluation_and_count(u, f, r):
             user_feature_evaluation[(u, f)] = 0.0
         if (u, f) not in user_feature_evaluation_count:
             user_feature_evaluation_count[(u, f)] = 0
-        user_feature_evaluation[(u, f)] = (user_feature_evaluation[(u, f)] * user_feature_evaluation_count[(u, f)] + float(
+        user_feature_evaluation[(u, f)] = (user_feature_evaluation[(u, f)] * user_feature_evaluation_count[
+            (u, f)] + float(
             r)) / (user_feature_evaluation_count[(u, f)] + 1)
         user_feature_evaluation_count[(u, f)] += 1
 
@@ -111,8 +113,10 @@ def get_user_evaluation_list(user):
     except Exception:
         return []
 
+
 def get_items_never_seen():
     return items_never_seen
+
 
 def get_item_evaluators_list(item):
     try:
@@ -134,25 +138,32 @@ def get_user_feature_evaluation_count(user, feature):
     except Exception:
         return 0
 
+
 def get_item_set():
     return item_set
 
+
 def get_user_to_recommend_evaluation_count():
-    return sorted(Counter(map(lambda x: len(get_user_evaluation_list(x)),user_set)).items(),key=lambda x: x[1],reverse=True)
+    return sorted(Counter(map(lambda x: len(get_user_evaluation_list(x)), user_set)).items(), key=lambda x: x[1],
+                  reverse=True)
+
 
 def get_user_set():
     return user_set
 
+
 def get_top_n():
     return top_n
+
 
 def get_top_viewed():
     return top_viewed
 
+
 def load_maps():
-    
     global similarities_reader
-    similarities_reader = map(lambda x: map(float, x), list(csv.reader(open('data/user_based_similarities.csv', 'rb'), delimiter=',')))  # mapping every element to int
+    similarities_reader = map(lambda x: map(float, x), list(
+        csv.reader(open('data/user_based_similarities.csv', 'rb'), delimiter=',')))  # mapping every element to int
     global train
     train = list(csv.reader(open('data/train.csv', 'rb'), delimiter=','))  # splitting csv on the comma character
     del train[0]  # deletion of the string header
@@ -168,7 +179,8 @@ def load_maps():
     item_features_list = {}
     global feature_items_list
     feature_items_list = {}
-
+    global features_set
+    features_set = set()
     for elem in by_feature:
         elem = map(int, elem)
         if not elem[0] in items_in_train:
@@ -180,6 +192,8 @@ def load_maps():
         if not elem[1] in feature_items_list:
             feature_items_list[elem[1]] = []
         feature_items_list[elem[1]].append(elem[0])
+
+        features_set.add(elem[1])
 
     """
     Creating some maps
@@ -195,7 +209,7 @@ def load_maps():
     global item_w_features_set
     global item_set
     item_set = set(map(lambda x: int(x[0]), by_feature) + map(lambda x: int(x[1]), train))
-    item_w_features_set = set(map(lambda x: int(x[0]),by_feature))
+    item_w_features_set = set(map(lambda x: int(x[0]), by_feature))
     global user_feature_evaluation  # define variable as global
     user_feature_evaluation = {}
     global user_feature_evaluation_count  # define variable as global
@@ -226,8 +240,8 @@ def load_maps():
         count_user_rating[u] += 1
 
         try:
-            avg_item_rating[item] = (avg_item_rating[item] * count_item_rating[item] + float(r)) / (
-                count_item_rating[item] + 1)  # running average
+            avg_item_rating[i] = (avg_item_rating[i] * count_item_rating[i] + float(r)) / (
+                count_item_rating[i] + 1)  # running average
         except Exception:
             avg_item_rating[i] = 0.0
             avg_item_rating[i] = (avg_item_rating[i] * count_item_rating[i] + float(r)) / (
@@ -240,10 +254,10 @@ def load_maps():
         if i in item_features_list:
             for f in item_features_list[i]:
                 set_user_feature_evaluation_and_count(u, f, r)
-    
+
     global train_user_set
     train_user_set = user_evaluation_list.keys()
-    
+
     global no_newbie_train_user_set
     no_newbie_train_user_set = filter(lambda x: len(get_user_evaluation_list(x)) >= 5, train_user_set)
 
@@ -288,11 +302,14 @@ def load_maps():
     # Sorting in descending order the list of items
     top_n = sorted(total.items(), key=lambda x: x[1], reverse=True)
     global top_viewed
-    top_viewed = sorted(item_evaluators_list.items(),key=lambda x: len(x[1]),reverse=True)
+    top_viewed = sorted(item_evaluators_list.items(), key=lambda x: len(x[1]), reverse=True)
+
 
 def get_train_user_set():
     return train_user_set
-def populate_user_similarities(user,blacklist):
+
+
+def populate_user_similarities(user, blacklist):
     similarities = {}
     for userX, userY, similarity in similarities_reader:
         if userX == user and userY not in blacklist:
@@ -301,13 +318,17 @@ def populate_user_similarities(user,blacklist):
             similarities[userX] = similarity
     return similarities
 
+
 def get_avg_user_rating(user):
     return avg_user_rating[user]
+
 
 def get_avg_item_rating(item):
     return avg_item_rating[item]
 
+
 def get_feature_items_list(feature):
     return feature_items_list[feature]
+
 
 load_maps()
