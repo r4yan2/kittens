@@ -1,0 +1,3 @@
+execfile("maps.py")
+execfile("kittens.py")
+main(True)
