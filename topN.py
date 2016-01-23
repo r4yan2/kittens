@@ -1,22 +1,29 @@
 import math
 from maps import *
 
+#TODO make the top N using the tf-idf for the features of the film
+# prendi quelli generalmente votati bene in base al voto > voto medio dell'utente - media voti utenti()
+# applica la binary per le feature e ricava il voto atteso dell-utente moltiplicato per la tf-idf delle feature e fai la top-n personalized 
+
 def get_top_n_personalized(u, recommendations):  # recycle from the old recommendations methods
     top_n = get_top_n()
     personalized_top_n = {}
     user_rated_items = get_user_evaluation_list(u)
 
     for i, v in top_n:
-        personalized_top_n[i] = math.log(v, 10)
-        if len(get_user_evaluation_list(u)) ==2:
-            for f in get_features_list(i):
-                user_feature_rating = get_user_feature_evaluation(u, f)
-                number_feature_rated = get_user_feature_evaluation_count(u, f)
-                number_items_seen = len(get_user_evaluation_list(u))
-                if not ((user_feature_rating == 0) or (number_items_seen == 0) or (
-                            number_feature_rated == 0)):
-                    personalized_top_n[i] += user_feature_rating * (
-                        float(number_feature_rated) / number_items_seen)
+        personalized_top_n[i] = v if v > 7 else 0
+        for f in get_features_list(i):
+            user_feature_rating = get_user_feature_evaluation(u, f)
+            number_feature_rated = get_user_feature_evaluation_count(u, f)
+            number_items_seen = len(get_user_evaluation_list(u))
+            features = get_features_list(item)
+            num_features = len(features)
+            tf = 1.0/num_features
+            tf_idf = map(lambda feature: get_features_global_frequency(feature) * tf,features)
+            if not ((user_feature_rating == 0) or (number_items_seen == 0) or (
+                        number_feature_rated == 0)):
+                personalized_top_n[i] += user_feature_rating * (
+                    float(number_feature_rated) / number_items_seen)
     top_n_personalized = sorted(personalized_top_n.items(), key=lambda x: x[1], reverse=True)
     count = len(recommendations)
     iterator = 0
@@ -37,7 +44,7 @@ def get_top_viewed_recommendations(u, recommendations):
         item = top_viewed[iterator][0]
         if not ((item in get_user_evaluation_list(u)) or (
             item in recommendations)):
-            recommendations.append((item,0)) #magic number 0 needed for compatibility with recommendation parser in kittens
+            recommendations.append((item,iterator)) #some tuple padding is needed for compatibility with recommendation parser in kittens
             count = count + 1
         iterator = iterator + 1
     return recommendations

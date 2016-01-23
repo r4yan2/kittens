@@ -289,6 +289,7 @@ def load_maps():
     top_n = sorted(total.items(), key=lambda x: x[1], reverse=True)
     global top_viewed
     top_viewed = sorted(item_evaluators_list.items(),key=lambda x: len(x[1]),reverse=True)
+    top_viewed_w_index = map(lambda x: (x,top_viewed.index(x)),top_viewed)
 
 def get_train_user_set():
     return train_user_set
