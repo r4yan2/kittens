@@ -25,20 +25,8 @@ should have been applied to items
 
 Currently work in progress, it's known to be the best user-similarity
 
-## Current idea
+# Here is missing a huge part of our work, because of faggotry of the repo owner in first place, and monkey coding something that eventually was discovered not working well causing depression and shit storming in both coders who decided both to drop documentation
 
-graduatory in which we apply the base point 
+## Return to the CBF
 
-
-if #seen by user > 5
-
-$$ \frac {evaluation(user, feature)}{\frac { \\# times\ that\ user\ evaluated\ that\ specific\ feature}{\\#user\ evaluations}} $$
-
-else recommendTopN to faggots
-
-next we'll take the first K film and we will apply the item-based approach 
-
-
-Current Evaluation
-
-NeverSeen: rating = sum(features_ratings)/len(features_ratings)  
+Since the CF approach as gone wild, we now came back to a pure and simple CBF in which the binary based approach is applied to all the dataset  

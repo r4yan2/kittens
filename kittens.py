@@ -1,6 +1,7 @@
 import numpy as np
 import sys
 import time
+import math
 # user defined
 from topN import *
 from maps import *
@@ -9,21 +10,6 @@ from user_based import get_user_based_recommendations
 from item_based import get_item_based_recommendations
 from never_seen import recommend_never_seen
 from binary_based import get_binary_based_recommendations
-
-
-def cos(v1, v2):
-    """
-
-    Cosine similarity, hand implementation with numpy libraries
-    :param v1:
-    :param v2:
-    :return:
-    """
-
-    numerator = np.dot(v1, v2)
-    denominator = np.sqrt(np.dot(v1, v1)) * np.sqrt(np.dot(v2, v2))
-    return numerator / denominator
-
 
 def main(*args):
     """
@@ -59,6 +45,7 @@ def main(*args):
             sys.stdout.flush()
 
         recommendations = []
+        """
         count_seen = len(get_user_evaluation_list(user))
 
         if count_seen == 1:
@@ -81,11 +68,20 @@ def main(*args):
         if len(recommendations) < 5:
             stats_padding += 5 - len(recommendations)
             recommendations = recommend_never_seen(user, recommendations)
-
-        recommendations = sorted(recommendations, key=lambda x: x[1], reverse=True)[:5]
+        """
+        recommendations = get_binary_based_recommendations(user)
+        #recommendations = sorted(recommendations, key=lambda x: x[1], reverse=True)
         recommend = ''
-        for i, v in recommendations:
-            recommend += str(i) + ' '
+        recommended = []
+        count = 0
+        iterator = 0
+        while (count < 5)
+            (item,value) = recommendations.pop(iterator % (len(get_user_evaluation_list(user))-1))
+            iterator += 1
+            if item not in recommended:
+                recommend += str(item) + ' '
+                recommended.append(item)
+                count += 1
 
         if debug:
             print user
@@ -103,12 +99,13 @@ disclaimer = """
     --> Kitt<3ns main script to make recommendations <--
 
     To use the algorithm please make sure that maps.py load correctly (execfile("maps.py"))
-    then execute main([Boolean]) where the algorithm is chosen automagically on the user's evaluation list:
-    0 <= x < 3 Top-N Personalized
-    3 <= x < 6 Item-Based Content Based Filtering
-    6 <= x < 12 User-Based Neighborhood
-    12 <= x Never-Seen
+    then execute main([Boolean])
     
+    The algorithm execute first a pass to fill the URM with prediction obtained by CBF and then
+    a second pass to extract real recommendetions using CF (Pearson)
+
+    An Hybrid recommender system using weighted hybrid system between CBF and CF techniques
+
     NOTE:
     - Optionally Boolean can be set to True to enable debug info
     """
