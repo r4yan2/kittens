@@ -20,6 +20,6 @@ def get_binary_based_recommendations(user):
             num_features_item_iterator = len(features_item_iterator)
             if num_features_item_iterator == 0:
                 continue
-            similarities.append((item_iterator,sum([a * b for a, b in zip(binary_features, tf_idf)]) / num_features_item_iterator))
-        recommendations.append(similarities.sort(key=lambda x: x[1],reverse=False)
+            similarities.append([item_iterator,sum([a * b for a, b in zip(binary_features, tf_idf)]) / num_features_item_iterator])
+        recommendations.append(sorted(similarities, key=lambda x: x[1], reverse=False)
     return recommendations

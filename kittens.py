@@ -75,8 +75,8 @@ def main(*args):
         recommended = []
         count = 0
         iterator = 0
-        while (count < 5)
-            (item,value) = recommendations.pop(iterator % (len(get_user_evaluation_list(user))))
+        while (count < 5):
+            (item,value) = recommendations[iterator % (len(recommendetions))].pop()
             iterator += 1
             if item not in recommended:
                 recommend += str(item) + ' '
