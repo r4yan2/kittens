@@ -11,7 +11,7 @@ def get_top_n_personalized(u, recommendations):  # recycle from the old recommen
     user_rated_items = get_user_evaluation_list(u)
 
     for i, v in top_n:
-       personalized_top_n[i] = math.log(v, 10)
+        personalized_top_n[i] = math.log(v, 10)
         if len(get_user_evaluation_list(u)) == 2:
             for f in get_features_list(i):
                 user_feature_rating = get_user_feature_evaluation(u, f)

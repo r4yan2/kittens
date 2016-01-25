@@ -4,6 +4,7 @@ from maps import get_user_evaluation_list, get_num_items, get_feature_items_list
 
 def get_binary_based_recommendations(user):
     recommendations = []
+    similarities = []
     for item in get_user_evaluation_list(user):
         features = get_features_list(item)
         num_features = len(features)
@@ -21,5 +22,5 @@ def get_binary_based_recommendations(user):
             if num_features_item_iterator == 0:
                 continue
             similarities.append([item_iterator,sum([a * b for a, b in zip(binary_features, tf_idf)]) / num_features_item_iterator])
-        recommendations.append(sorted(similarities, key=lambda x: x[1], reverse=False))
-    return recommendations
+        #recommendations.append(sorted(similarities, key=lambda x: x[1], reverse=False))
+    return similarities

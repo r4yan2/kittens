@@ -34,7 +34,6 @@ def main(*args):
     print "Making recommendations"
     user_set = get_user_set()
     for user in user_set:
-
         completion = float(user_set.index(user) * 100) / len(user_set)
         padding = float(stats_padding * 100) / (get_num_users() * 5)
 
@@ -70,18 +69,24 @@ def main(*args):
             recommendations = recommend_never_seen(user, recommendations)
         """
         recommendations = get_binary_based_recommendations(user)
-        #recommendations = sorted(recommendations, key=lambda x: x[1], reverse=True)
+        recommendations = sorted(recommendations, key=lambda x: x[1], reverse=False)
         recommend = ''
         recommended = []
         count = 0
         iterator = 0
         while (count < 5):
-            (item,value) = recommendations[iterator % (len(recommendations))].pop()
+	    try:
+                (item,value) = recommendations.pop()
+	    except IndexError:
+                recommendations = get_top_n_personalized(user, recommendations)
+                recommend = " ".join(map(lambda x: str(x[0]),recommendations))
+                break
             iterator += 1
             if item not in recommended:
                 recommend += str(item) + ' '
                 recommended.append(item)
                 count += 1
+		print "value check:"+str(value)
 
         if debug:
             print user
@@ -91,7 +96,7 @@ def main(*args):
         elem = [user, recommend]
         result_to_write.append(elem)
     result_writer(result_to_write, "result.csv")
-    print "\n100% Completed\nResult writed to file correctly\nPadding needed for %f per cent of recommendations\nCompletion time %f" % (
+    print "\nCompleted!\nResult writed to file correctly\nPadding needed for %f per cent of recommendations\nCompletion time %f" % (
     padding, time.time() - start_time)
 
 
