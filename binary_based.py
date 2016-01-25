@@ -23,4 +23,4 @@ def get_binary_based_recommendations(user):
                 continue
             similarities.append([item_iterator,sum([a * b for a, b in zip(binary_features, tf_idf)]) / num_features_item_iterator])
         #recommendations.append(sorted(similarities, key=lambda x: x[1], reverse=False))
-    return similarities
+    return sorted(similarities,key=lambda x: x[1],reverse=True)[:5]

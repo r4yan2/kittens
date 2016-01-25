@@ -44,31 +44,19 @@ def main(*args):
             sys.stdout.flush()
 
         recommendations = []
-        """
+        
         count_seen = len(get_user_evaluation_list(user))
 
-        if count_seen == 1:
-            recommendations = get_binary_based_recommendations(user)
-
-        elif 1 < count_seen < 3:
-            recommendations = get_top_n_personalized(user, recommendations)
-
-        elif 3 <= count_seen < 6:
-            recommendations = get_item_based_recommendations(user)
-
-        elif 6 <= count_seen < 12:
+        if count_seen < 2:
+            recommendations = get_user_based_recommendations(user)
+        else:
             try:
-                recommendations = get_user_based_recommendations(user)
-            except ZeroDivisionError:
-                recommendations = get_item_based_recommendations(user)
-        elif count_seen > 11:
-            recommendations = recommend_never_seen(user, recommendations)
-
-        if len(recommendations) < 5:
-            stats_padding += 5 - len(recommendations)
-            recommendations = recommend_never_seen(user, recommendations)
-        """
-        recommendations = get_binary_based_recommendations(user)
+                recommendations = recommend_never_seen(user,recommendations)
+            except Exception as e:
+                print e
+                recommendations = get_top_n_personalized(user, recommendations)
+        recommend = " ".join(map(lambda x: str(x[0]),recommendations))
+	"""
         recommendations = sorted(recommendations, key=lambda x: x[1], reverse=False)
         recommend = ''
         recommended = []
@@ -87,7 +75,7 @@ def main(*args):
                 recommended.append(item)
                 count += 1
 		print "value check:"+str(value)
-
+	"""
         if debug:
             print user
             print recommend
