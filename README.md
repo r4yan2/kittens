@@ -60,3 +60,5 @@ def get_binary_based_recommendations(user):
 298 Points
 
 The result are taken as a round robin of the columns of recommendations
+
+Changing the way recommendation are taken, so sorting by the higher similairty value the result obtained is: 307
