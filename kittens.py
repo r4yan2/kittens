@@ -47,7 +47,7 @@ def main(*args):
         
         count_seen = len(get_user_evaluation_list(user))
 
-        if count_seen < 2:
+        if count_seen < 3:
             recommendations = get_user_based_recommendations(user)
         else:
             try:

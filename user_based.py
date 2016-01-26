@@ -70,7 +70,7 @@ def get_user_based_recommendations(user):
             ratings[item] = get_evaluation(user_iterator, item)
             features = get_features_list(item)
             len_features = len(features)
-            if get_evaluation(user_iterator, item) in xrange(7, 11):
+            if get_evaluation(user_iterator, item) in xrange(0, 11):
                 possible_recommendations[user_iterator].append(item)
 
         if skip or len(possible_recommendations) == 0:
