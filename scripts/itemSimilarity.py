@@ -6,7 +6,6 @@ from item_based import pearson_item_based_correlation
 
 def get_item_similarities(itemI):
 
-
     similarities = []
     
     for itemJ in get_item_set():
