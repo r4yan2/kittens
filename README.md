@@ -62,3 +62,5 @@ def get_binary_based_recommendations(user):
 The result are taken as a round robin of the columns of recommendations
 
 Changing the way recommendation are taken, so sorting by the higher similairty value the result obtained is: 307
+
+Using the CF and than the CBF over the possible films to recommend, result obtained is: 319

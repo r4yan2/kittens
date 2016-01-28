@@ -1,5 +1,5 @@
 from maps import get_features_list, get_user_feature_evaluation, get_user_feature_evaluation_count, \
-    get_item_set, get_user_evaluation_list
+    get_items_never_seen, get_user_evaluation_list
 
 
 def recommend_never_seen(user, recommendations):
@@ -7,7 +7,7 @@ def recommend_never_seen(user, recommendations):
     iterator = 0
     possible_recommendations = []
 
-    for item in get_item_set():
+    for item in get_items_never_seen():
         # take list of features
         features = get_features_list(item)
 
@@ -34,7 +34,7 @@ def recommend_never_seen(user, recommendations):
 
         #rating = (sum([a*b for a,b in zip(features_ratings,shrink)]))/len(features_ratings)
         rating = sum(features_ratings) / len(features_ratings)
-        possible_recommendations.append((item, rating))
+        possible_recommendations.append([item, rating])
 
     if len(possible_recommendations) == 0:
         return recommendations

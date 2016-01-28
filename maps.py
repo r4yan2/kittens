@@ -140,7 +140,7 @@ def get_user_feature_evaluation_count(user, feature):
 
 
 def get_item_set():
-    return item_set
+    return sorted(item_set)
 
 
 def get_user_to_recommend_evaluation_count():
@@ -163,7 +163,7 @@ def get_top_viewed():
 def load_maps():
     global similarities_reader
     similarities_reader = map(lambda x: map(float, x), list(
-        csv.reader(open('data/user_based_similarities.csv', 'rb'), delimiter=',')))  # mapping every element to int
+        csv.reader(open('data/user_similarities.csv', 'rb'), delimiter=',')))  # mapping every element to int
     global train
     train = list(csv.reader(open('data/train.csv', 'rb'), delimiter=','))  # splitting csv on the comma character
     del train[0]  # deletion of the string header
@@ -308,13 +308,11 @@ def get_train_user_set():
     return train_user_set
 
 
-def populate_user_similarities(user, blacklist):
+def populate_user_similarities(user):
     similarities = {}
     for userX, userY, similarity in similarities_reader:
-        if userX == user and userY not in blacklist:
+	if userX == user:
             similarities[userY] = similarity
-        elif userY == user and userX not in blacklist:
-            similarities[userX] = similarity
     return similarities
 
 

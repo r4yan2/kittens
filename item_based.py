@@ -82,8 +82,8 @@ def get_item_based_recommendations(u):
             for feature in global_features_frequency:
                 tf_idf[feature] = feature_local_frequency * global_features_frequency[feature]
             prediction = rating_item_j * sim
-            predictions.append((itemI, prediction))
-    predictions = [item for item in predictions if item[0] not in seen and not seen.add(item[0])]
+            predictions.append([itemI, prediction])
+    #predictions = [item for item in predictions if item[0] not in seen and not seen.add(item[0])]
     return predictions  # we need every element to be unique
 
 
