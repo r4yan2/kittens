@@ -4,4 +4,3 @@ sys.dont_write_bytecode = True
 
 execfile("maps.py")
 execfile("kittens.py")
-main(True,0)

@@ -64,3 +64,4 @@ The result are taken as a round robin of the columns of recommendations
 Changing the way recommendation are taken, so sorting by the higher similairty value the result obtained is: 307
 
 Using the CF and than the CBF over the possible films to recommend, result obtained is: 319
+Using the new_kittens_recommendations and binary for the users with more than 2 films seen, result obtained is: 327

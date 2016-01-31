@@ -13,7 +13,7 @@ from binary_based import get_binary_based_recommendations
 from kittens_similarity import get_kittens_recommendations
 from userSimilarity import get_user_similarities
 from itemSimilarity import get_item_similarities
-
+from item_correlation import get_new_kittens_recommendations
 def main(*args):
     """
 
@@ -33,12 +33,12 @@ def main(*args):
         loop_time = time.time()
 
     stats_padding = 0
-
+    explosions = 0
     result_to_write = []
     print "Making recommendations"
     user_set = get_user_set()
     
-    with open('data/result.csv', 'w', 0) as fp:
+    with open('data/'+args[2]+'.csv', 'w', 0) as fp:
         writer = csv.writer(fp, delimiter=',')
         writer.writerow(['userId,testItems'])
 
@@ -77,12 +77,14 @@ def main(*args):
 	    if (len(recommendations) < 5):
 	        recommendations = get_binary_based_recommendations(user)
             """
-            recommendations = get_item_based_recommendations(user)
-            if len(recommendations) !=0:
-                recommendations = sorted(recommendations, key = lambda x: x[1], reverse = True)[:5]
-	    else:
+            try:
+                recommendations = get_new_kittens_recommendations(user)
+            except Exception:
+                explosions += 1
                 recommendations = get_binary_based_recommendations(user)
-            recommend = " ".join(map(lambda x: str(x[0]),recommendations))
+            if len(recommendations) == 0:
+                recommendations = get_top_n_personalized(user,recommendations)
+            recommend = " ".join(map(str,recommendations))
             
 	    """
             recommendations = sorted(recommendations, key=lambda x: x[1], reverse=False)
@@ -107,11 +109,13 @@ def main(*args):
             if debug:
                 print user
                 print recommend
-                print "Completion percentage %f, increment %f, padding %f" % (completion, time.time() - loop_time, padding)
-
+                print "Completion percentage %f, increment %f, padding %f, esplosioni schivate %i" % (completion, time.time() - loop_time, padding, explosions)
+                print "\n=====================<3==================\n"
             elem = [user, recommend]
             writer.writerow(elem)
-    print "\nCompleted!\nResult writed to file correctly\nPadding needed for %f per cent of recommendations\nCompletion time %f" % (
+    print "\nCompleted!"
+    if not debug:
+        print "\nResult writed to file correctly\nPadding needed for %f per cent of recommendations\nCompletion time %f" % (
     padding, time.time() - start_time)
 
 def user_similarities_to_csv():
@@ -148,7 +152,8 @@ disclaimer = """
     An Hybrid recommender system using weighted hybrid system between CBF and CF techniques
 
     NOTE:
-    - Boolean can be set to True to enable debug info
-    - Int can be set to the last user before an error to resume execution from that point
+    - [0] Boolean have to be set to True to enable debug info, False will show only computation percentage
+    - [1] Int have to be set to the user from which start the computation
+    - [2] String have to contain the name of the csv where to save results of the computation
     """
 print disclaimer
