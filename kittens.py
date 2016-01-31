@@ -14,6 +14,7 @@ from kittens_similarity import get_kittens_recommendations
 from userSimilarity import get_user_similarities
 from itemSimilarity import get_item_similarities
 from item_correlation import get_new_kittens_recommendations
+from tf_idf_recommendations import get_tf_idf_based_recommendations
 def main(*args):
     """
 
@@ -77,13 +78,24 @@ def main(*args):
 	    if (len(recommendations) < 5):
 	        recommendations = get_binary_based_recommendations(user)
             """
-            try:
-                recommendations = get_new_kittens_recommendations(user)
-            except Exception:
-                explosions += 1
-                recommendations = get_binary_based_recommendations(user)
+            if user not in motherfuckers:
+                try:
+                    recommendations = get_tf_idf_based_recommendations(user)
+                except Exception:
+                    explosions += 1
+                    try:
+                        recommendations = get_new_kittens_recommendations(user)
+                    except Exception:
+                        explosions +=1
+                        recommendations = get_binary_based_recommendations(user)
+            else:
+                try:
+                    recommendations = get_new_kittens_recommendations(user)
+                except Exception:
+                    explosions +=1
+                    recommendations = get_binary_based_recommendations(user)
             if len(recommendations) == 0:
-                recommendations = get_top_n_personalized(user,recommendations)
+                    recommendations = get_top_n_personalized(user,recommendations)
             recommend = " ".join(map(str,recommendations))
             
 	    """

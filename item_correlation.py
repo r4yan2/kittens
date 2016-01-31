@@ -22,22 +22,24 @@ def feature_correlation(user):
     recommendations = sorted(map.items(), key = lambda x: x[1][0], reverse = True)
     
     last = recommendations[0][1][0]
+    global max_count_features
+    max_count_features = recommendations[0][1][0]
     partial_count = 0
     total_count = 0
     to_push = []
     stack = []
     for recommendation in recommendations:
         if recommendation[1][0] == last :
-            to_push.append([recommendation[1][1], recommendation[0]])
+            to_push.append(recommendation)
             partial_count += 1
         else:
             
             total_count += partial_count
-            stack.append(to_push)
+            stack.extend(to_push)
 
             if total_count < 5:
                 last = recommendation[1][0]
-                to_push = [[recommendation[1][1], recommendation[0]]]
+                to_push = [recommendation]
                 partial_count = 1
             else :
                 return stack
@@ -49,7 +51,7 @@ def tf_idf(x,y):
 
 def get_recommendations(elem, counter,user):
     
-    mean = map(lambda x: (x[1], np.mean(map(lambda y: tf_idf(x[1],y), get_features_list(x[1]))) * (get_evaluation(user,x[0]) - get_avg_user_rating(user))), elem)
+    mean = map(lambda x: (x[0], np.mean(map(lambda y: tf_idf(x[0],y), get_features_list(x[0]))) * get_evaluation(user,x[1][1]) * (float(x[1][0])/max_count_features)), elem)
     ordered = sorted(mean, key = lambda x: x[1], reverse = True)[:counter]
     filtered = map(lambda x: x[0], ordered)
     return filtered
@@ -58,12 +60,5 @@ def get_recommendations(elem, counter,user):
 def get_new_kittens_recommendations(user):
     
     possible_recommendations = feature_correlation(user) 
-    count = 0
-    recommendations = []
-    for elem in possible_recommendations:
-        if len(elem) <= (5 - count):
-            recommendations.extend(map(lambda x: x[1],elem)) 
-            count += len(elem) 
-        else:
-            recommendations.extend(get_recommendations(elem, 5 - count,user))
+    recommendations = (get_recommendations(possible_recommendations, 5, user))
     return recommendations

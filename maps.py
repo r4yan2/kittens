@@ -2,7 +2,7 @@
 import csv
 from collections import defaultdict, Counter
 import math
-
+from collections import Counter
 
 def get_features_global_frequency(feature):
     if feature in feature_items_list:
@@ -13,6 +13,23 @@ def get_features_global_frequency(feature):
         idf = 0
 
     return idf
+
+def get_features_partial_frequency(user, feature):
+    user_items_list = get_user_evaluation_list(user)
+    user_features_list = map(lambda x: get_features_list(x), user_items_list)
+    flattened = [item for sublist in user_features_list for item in sublist]
+    if feature in flattened:
+        occurrence = flattened.count(feature)
+        len_items = float(len(user_items_list))
+        feature_partial_frequency = occurrence
+        idf = math.log(((len_items / feature_partial_frequency) * get_user_feature_evaluation(user, feature)), 10)
+        tf_idf = occurrence * idf
+        feature_prediction = tf_idf 
+    else:
+        feature_prediction = 0
+
+    return feature_prediction
+
 
 
 def get_num_users():
@@ -161,6 +178,8 @@ def get_top_viewed():
 
 
 def load_maps():
+ 
+
     global similarities_reader
     similarities_reader = map(lambda x: map(float, x), list(
         csv.reader(open('data/user_similarities.csv', 'rb'), delimiter=',')))  # mapping every element to int
@@ -207,6 +226,7 @@ def load_maps():
     del user_set[0]
     user_set = map(lambda x: x[0], map(lambda x: map(int, x), user_set))
     global item_w_features_set
+    
     global item_set
     item_set = set(map(lambda x: int(x[0]), by_feature) + map(lambda x: int(x[1]), train))
     item_w_features_set = set(map(lambda x: int(x[0]), by_feature))
@@ -303,6 +323,9 @@ def load_maps():
     top_n = sorted(total.items(), key=lambda x: x[1], reverse=True)
     global top_viewed
     top_viewed = sorted(item_evaluators_list.items(), key=lambda x: len(x[1]), reverse=True)
+
+    global motherfuckers
+    motherfuckers = map(lambda z: z[0],(filter(lambda x: len(x[1])==1 and (sum(x[1])==10 or sum(x[1])==1),map(lambda x: (x,map(lambda y: get_evaluation(x,y),get_user_evaluation_list(x))), user_set))))
 
 def get_train_user_set():
     return train_user_set

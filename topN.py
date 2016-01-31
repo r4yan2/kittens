@@ -29,7 +29,7 @@ def get_top_n_personalized(u, recommendations):  # recycle from the old recommen
             recommendations.append(top_n_personalized[iterator])
             count += 1
         iterator += 1
-    return recommendations
+    return map(lambda x: x[0],recommendations)
 
 
 def get_top_viewed_recommendations(u, recommendations):
