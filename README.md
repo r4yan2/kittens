@@ -1,5 +1,20 @@
 # kittens
 
+**2017/18**
+
+## Random
+
+Really nothing to say, the algorithm try 5 random items which have not been evaluated by the user
+
+## Top-N recommendations
+
+* Basic recommendation algorithm, assign to every user the best-evaluated or the most-evaluated items
+* The "advanced" one uses a variable shrink
+* The "ultimate" one uses a variable shrink and is feature-aware
+
+
+**2015/16**
+
 ## Top-N Personalized
 
 __Features__

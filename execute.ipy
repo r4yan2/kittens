@@ -1,6 +1,0 @@
-import sys
-
-sys.dont_write_bytecode = True
-
-execfile("maps.py")
-execfile("kittens.py")
