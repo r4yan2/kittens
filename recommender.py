@@ -8,13 +8,12 @@ import time
 import warnings
 import random
 # local modules
-import helper
+from helper import Helper
+
 
 class Recommender:
-    def __init__(self, db, test=False):
-
+    def __init__(self, db):
         self.db = db
-        self.test = test
 
     def check_recommendations(self, user, recommendations):
         test_set = self.db.get_test_set()
@@ -32,14 +31,15 @@ class Recommender:
         else:
             raise LookupError
 
-    def run(self, choice, debug=False, filename="result", start_from=0):
+    def run(self, choice, debug=False, test=False, filename="result", start=0, end=4197, identifier=0):
 
+        if not test:
+            helper = Helper(filename+str(identifier), ["userId", "testItems"])
         start_time = time.time()
         to_write = []
-
         if debug:
             loop_time = time.time()
-        if self.test:
+        if test:
             accuracy = {}
         stats_padding = 0
         explosions = 0
@@ -47,7 +47,8 @@ class Recommender:
         user_set = self.db.get_user_set()
 
         for user in user_set:
-            if user < start_from:
+            index = user_set.index(user)
+            if index < start or index >= end:
                 continue
             completion = float(user_set.index(user) * 100) / (len(user_set) - 1)
             padding = float(stats_padding * 100) / (self.db.get_num_users() * 5)
@@ -55,7 +56,7 @@ class Recommender:
             if debug:
                 loop_time = time.time()
             else:
-                sys.stdout.write("\r%f%%" % completion)
+                sys.stdout.write("\r"+"\t"*identifier+"%f%%" % completion)
                 sys.stdout.flush()
                 if completion >= 100.0:
                     print "\n"
@@ -72,11 +73,11 @@ class Recommender:
             elif choice == 4:
                 recommendations = self.make_top_n_personalized(user, recommendations)
             if debug:
-                print "user",user,"recommendations:",recommendations
+                print "user", user, "recommendations:", recommendations
                 print "Completion percentage %f, increment %f, padding %f, esplosioni schivate %i" % (
                 completion, time.time() - loop_time, padding, explosions)
                 print "\n=====================<3==================\n"
-            if self.test:
+            if test:
                 try:
                     accuracy[user] = self.check_recommendations(user, recommendations)
                 except LookupError:
@@ -85,20 +86,17 @@ class Recommender:
                     pass
             else:
                 elem = [user]
-                while len(elem < 6):
-                    elem.append(recommendations.pop()[0])
+                while len(elem) < 6:
+                    elem.append(recommendations.pop(0)[0])
                 to_write.append(elem)
-        if self.test:
+        if test:
             try:
                 print "Running in test mode, avg accuracy: ", sum(accuracy.values())/float(len(accuracy.items())), "%"
             except ZeroDivisionError:
                 print "Running in test mode\nMaybe is better something else..."
         else:
-            with open('data/' + filename + '.csv', 'w', 0) as fp:
-                writer = csv.writer(fp, delimiter=',', quoting=csv.QUOTE_NONE)
-                writer.writerow(["userId", "testItems"])
-                writer.writerows(to_write)
-            print "\nCompleted!"
+            helper.write(to_write)
+            print "\nIdentifier", identifier, "Completed!"
             if not debug:
                 print "\nResult writed to /data/"+filename+".csv correctly\nPadding needed for %f per cent of recommendations\nCompletion time %f" % (
                     padding, time.time() - start_time)
@@ -120,6 +118,26 @@ class Recommender:
 
         top_n = self.db.get_top_n_w_shrink() if shrink else self.db.get_top_n()
         return top_n
+
+    def make_top_n_feature_aware_recommendations(self, user):
+        '''
+        Questa raccomendazione dovrebbe tenere in conto le feature presenti in un film, ad esempio
+        se un film ha 5 feature che l'utente ha valutato 8 allora la media delle 5 risulta 8. Il problema
+        sorge quando non tutte le feature sono state valutate dall'utente, es 5 feature 7 8 9 0 0.
+        Bisogna stabilire un parametro per capire se raccomandare o meno quel film, es le feature che contano 0
+        vengono scartate o vengono considerate come se valessero 5 o viene stabilita una penalty
+        in base al numero di feature valutate sul totale delle feature di un film.
+        :param user:
+        :return:
+        '''
+        item_set = self.db.get_item_set()
+        for item in item_set:
+            features = self.db.get_features(item)
+            for feature in features:
+                user_evaluation = self.db.get_user_feature_evaluation(user, feature)
+                if user_evaluation > 0:
+                    pass
+
 
     def make_top_n_personalized(self, u, recommendations):  # recycle from the old recommendations methods
         top_n = self.db.get_top_n_w_shrink() # get the top-N with shrink as base to be more accurate
@@ -380,7 +398,7 @@ class Recommender:
         possible_recommendations = defaultdict(list, {})
         evaluations_list = defaultdict(list, {})
         blacklist = [user]
-        features_avg = defaultdict(lambda: 0,{})
+        features_avg = defaultdict(lambda: 0, {})
         shrink = {}
         predictions = {}
         ratings = {}
@@ -606,14 +624,14 @@ class Recommender:
             predictions.append((itemI, prediction))
         return predictions
 
-    def get_kittens_recommendations(self, user):
+    def get_kittens_recommendations(self, helper, user):
         user_items = self.db.get_user_evaluations(user)
         similarities = self.db.get_user_similarities(user)
         recommendations = []
         possible_recommendations = []
         for user_iterator in map(lambda x: x[1], similarities):
            user_iterator_items = self.db.get_user_evaluations(user_iterator)
-           possible_recommendations.extend(helper.diff(user_iterator_items, user_items))
+           possible_recommendations.extend(helper.diff_list(user_iterator_items, user_items))
         recommendations = self.items_similarities(user_items, set(possible_recommendations))
         return sorted(recommendations, key = lambda x: x[1], reverse = True)[:5]
 

@@ -577,7 +577,8 @@ class Database:
         :return:
         """
         train = self.get_train_list()
-        threshold = (95.0/100) * self.get_max_votes()
+        # Higher threshold give high accuracy...but over 85% does not have more that 10 items
+        threshold = (50.0/100) * self.get_max_votes()
         summation = 0
         counter = 0
         total = {}
@@ -600,6 +601,7 @@ class Database:
 
         # Sorting in descending order the list of items
         if shrink:
+            # rebalance need to put back on scale the list
             maximum = max(total.values())
             rebalancer = 10.0/maximum
             total = map(lambda x: (x[0], x[1]*rebalancer), total.items())

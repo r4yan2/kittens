@@ -12,71 +12,33 @@ Really nothing to say, the algorithm try 5 random items which have not been eval
 * The "advanced" one uses a variable shrink
 * The "ultimate" one uses a variable shrink and is feature-aware
 
+__Notes on top-n__
 
-**2015/16**
+The algorithm need a certain threshold to avoid that film with low number of rating will bump in high places.
+So a good threshold need to ensure that an item have at least a certain number of votes.
+A threshold has been defined as x*max_votes, where x is the percentage representing the threshold and max_votes
+is the maximum number of votes taken by a single film.
+The problem with the threshold is that by using a too low value there is a few (but still significant) improvement.
+If the threshol is high (80%+) the recommendation accuracy is HIGH, but there are no more than few film in the top-n
+so a good compromise coul be using top-n with high threshold in conjunction with other recommendations algorithm
 
-## Top-N Personalized
+## Advanced Options
 
-__Features__
+### Test-Utils
 
-* variable shrink value 
-$$|\log(\frac{\\#rating}{\\#users})| $$
+Is it possible to run the Engine in "Test Mode", which mean that:
 
-* for every item in the topN, for every feature of that film, if the user has evaluated that feature the item rating get boosted of a value equal to $$ \frac {evaluation(user, feature)}{\frac { \\# times\ that\ user\ evaluated\ that\ specific\ feature}{\\#user\ evaluations}} $$
+* 20980 row are randomly taken away from train set to form the test set
+* consequently train is used without that test set
+* after all the recommendations are computed, tests are run to measure the average precision of the chosen algorithm
 
-Than the result is sorted and the first 5 items are recommended
+### Debug Mode
 
-Is a successful approach is a TopN + CBF and has been proved to have a good base
+Is it possible to specify a debug run for the application in which more stats
+are displayed during the run
 
-Can be improved playing with the coefficient and the _point system_
+### Parallel Processing
 
-## Cosine Similarity
-
-applied to users...
-failed!
-should have been applied to items
-
-## Pearson Similarity
-
-Currently work in progress, it's known to be the best user-similarity
-
-# Here is missing a huge part of our work, because of faggotry of the repo owner in first place, and monkey coding something that eventually was discovered not working well causing depression and shit storming in both coders who decided both to drop documentation
-
-## Return to the CBF
-
-Since the CF approach as gone wild, we now came back to a pure and simple CBF in which the binary based approach is applied to all the dataset.
-
-Applied to all users the binary based:
-
-'''
-def get_binary_based_recommendations(user):
-    recommendations = []
-    for item in get_user_evaluation_list(user):
-        features = get_features_list(item)
-        num_features = len(features)
-        if num_features == 0:
-            continue
-            tf = 1.0 / num_features
-            tf_idf = map(lambda feature: get_features_global_frequency(feature) * tf, features)
-            similarities = []
-            for item_iterator in get_item_set():
-                if item == item_iterator:
-                    continue
-                features_item_iterator = get_features_list(item_iterator)
-                binary_features = map(lambda x: 1 if x in features_item_iterator else 0, features)
-                num_features_item_iterator = len(features_item_iterator)
-                if num_features_item_iterator == 0:
-                    continue
-                similarities.append([item_iterator,sum([a * b for a, b in zip(binary_features, tf_idf)]) / num_features_item_iterator])
-            recommendations.append(sorted(similarities, key=lambda x: x[1], reverse=False))
- return recommendations
- '''python
-
-298 Points
-
-The result are taken as a round robin of the columns of recommendations
-
-Changing the way recommendation are taken, so sorting by the higher similairty value the result obtained is: 307
-
-Using the CF and than the CBF over the possible films to recommend, result obtained is: 319
-Using the new_kittens_recommendations and binary for the users with more than 2 films seen, result obtained is: 327
+Is it possible to take advantage of a multi-core architecture splitting the user set by the number of core assigning
+a portion of each core
+_Note that the recommendations algorithm are parallelizable by design_
