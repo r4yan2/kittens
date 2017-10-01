@@ -1,7 +1,5 @@
 # kittens
 
-**2017/18**
-
 ## Random
 
 Really nothing to say, the algorithm try 5 random items which have not been evaluated by the user
@@ -20,7 +18,7 @@ A threshold has been defined as x*max_votes, where x is the percentage represent
 is the maximum number of votes taken by a single film.
 The problem with the threshold is that by using a too low value there is a few (but still significant) improvement.
 If the threshol is high (80%+) the recommendation accuracy is HIGH, but there are no more than few film in the top-n
-so a good compromise coul be using top-n with high threshold in conjunction with other recommendations algorithm
+so a good compromise could be using top-n with high threshold in conjunction with other recommendations algorithm
 
 ## Advanced Options
 
@@ -34,8 +32,7 @@ Is it possible to run the Engine in "Test Mode", which mean that:
 
 ### Debug Mode
 
-Is it possible to specify a debug run for the application in which more stats
-are displayed during the run
+Is it possible to specify a debug run for the application in which more stats are displayed during the run
 
 ### Parallel Processing
 

@@ -1,7 +1,6 @@
 from recommender import Recommender
 from database import Database
 from multiprocessing import Process
-import helper
 
 config = {'test': 'True',
          'debug': 'False',
@@ -22,8 +21,8 @@ disclaimer = """
     Please wait until the Engine is ready, then select your choice
     """
 print disclaimer
-test = False
-parallel = False
+test = True
+parallel = True
 db = Database(test)
 recommender_system = Recommender(db)
 choice = input("Please select one >  ")
@@ -33,10 +32,10 @@ if parallel:
     pieces = 2
     piece = (len(to_recommend)+1) / pieces
     for i in xrange(pieces):
-        p = Process(target=recommender_system.run, args=(choice, False, False, "result", i*piece, (i+1)*piece, i, ))
+        p = Process(target=recommender_system.run, args=(choice, False, test, "result", i*piece, (i+1)*piece, i, ))
         p.daemon = True
         p.start()
     for i in xrange(pieces):
         p.join()
 else:
-    recommender_system.run(choice)
+    recommender_system.run(choice, False, test)

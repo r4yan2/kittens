@@ -2,7 +2,7 @@
 import csv
 from collections import defaultdict
 import math
-import numpy
+# import numpy
 import sys
 import time
 import warnings
@@ -43,7 +43,6 @@ class Recommender:
             accuracy = {}
         stats_padding = 0
         explosions = 0
-        print "Making recommendations"
         user_set = self.db.get_user_set()
 
         for user in user_set:
@@ -56,10 +55,8 @@ class Recommender:
             if debug:
                 loop_time = time.time()
             else:
-                sys.stdout.write("\r"+"\t"*identifier+"%f%%" % completion)
+                sys.stdout.write("\r"+"\t"*2*identifier+"%.2f%%" % completion)
                 sys.stdout.flush()
-                if completion >= 100.0:
-                    print "\n"
 
             recommendations = []
             if choice == 0:
@@ -74,9 +71,9 @@ class Recommender:
                 recommendations = self.make_top_n_personalized(user, recommendations)
             if debug:
                 print "user", user, "recommendations:", recommendations
-                print "Completion percentage %f, increment %f, padding %f, esplosioni schivate %i" % (
-                completion, time.time() - loop_time, padding, explosions)
-                print "\n=====================<3==================\n"
+                print "Completion percentage %f, increment %f, padding %f, esplosioni schivate %i"\
+                      % (completion, time.time() - loop_time, padding, explosions)
+                print "\n=====================<3===    ===============\n"
             if test:
                 try:
                     accuracy[user] = self.check_recommendations(user, recommendations)
@@ -86,20 +83,24 @@ class Recommender:
                     pass
             else:
                 elem = [user]
+                iterator = 0
                 while len(elem) < 6:
-                    elem.append(recommendations.pop(0)[0])
+                    elem.append(recommendations[iterator][0])
+                    iterator += 1
                 to_write.append(elem)
         if test:
             try:
-                print "Running in test mode, avg accuracy: ", sum(accuracy.values())/float(len(accuracy.items())), "%"
+                print "\nRunning in test mode, avg accuracy: ", sum(accuracy.values())/float(len(accuracy.items())), "%"
             except ZeroDivisionError:
-                print "Running in test mode\nMaybe is better something else..."
+                print "\nRunning in test mode\nMaybe is better something else..."
         else:
             helper.write(to_write)
-            print "\nIdentifier", identifier, "Completed!"
-            if not debug:
-                print "\nResult writed to /data/"+filename+".csv correctly\nPadding needed for %f per cent of recommendations\nCompletion time %f" % (
-                    padding, time.time() - start_time)
+            if not debug and identifier == 0:
+                print "\nCompleted!" \
+                      "\nResult writed to file correctly!" \
+                      "\nPadding needed for %f per cent of recommendations" \
+                      "\nCompletion time %f"\
+                      % (padding, time.time() - start_time)
 
     def make_random_recommendations(self, user):
         recommendations = []
