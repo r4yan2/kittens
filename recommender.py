@@ -31,7 +31,7 @@ class Recommender:
 
     def run(self, choice, db, q_in, q_out):
 
-        # Retrieve the sb from the list of arguments
+        # Retrieve the db from the list of arguments
         self.db = db
 
         # main loop for the worker

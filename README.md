@@ -15,6 +15,7 @@ Really nothing to say, the algorithm try 5 random items which have not been eval
 TODO
 
 
+
 ## Advanced Options
 
 ### Test-Utils
@@ -24,3 +25,10 @@ Is it possible to run the Engine in "Test Mode", which mean that:
 * "some" row are randomly taken away from train set to form the test set
 * consequently train is used without that test set
 * after all the recommendations are computed, tests are run to measure the average precision of the chosen algorithm
+
+## Table of results
+
+|Algorithm|Score|
+|---|---|
+|Random|0,0000|
+|top-listened|0,0002|
