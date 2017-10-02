@@ -1,21 +1,26 @@
-import csv
 import math
 from collections import defaultdict, Counter
+import helper
 import random
 
 class Database:
     def __init__(self, test=False):
-        self.train_csv = csv.reader(open('data/train.csv', 'rb'), delimiter=',')  # splitting csv on the comma character
+        """
+        initializing the database:
+
+        * if we are in test execution train set is splitted and test_set is generated
+        :param test:
+        """
         if test:
             self.test_set = []
             self.compute_test_set()
-        self.user_similarities_csv = None#csv.reader(open('data/user_similarities.csv', 'rb'), delimiter=',')
-        self.item_features_csv = csv.reader(open('data/icm.csv', 'rb'), delimiter=',')
-        self.test_csv = csv.reader(open('data/test.csv', 'rb'), delimiter=',')
-        self.generate_lists_from_icm()
-        self.generate_lists_from_train()
 
     def get_test_set(self):
+        """
+        getter for the test_set, used when the engine is run in Test Mode
+        if the set is not defined compute it with the appropriate method
+        :return:
+        """
         try:
             return self.test_set
         except AttributeError:
@@ -23,28 +28,63 @@ class Database:
             return self.test_set
 
     def compute_test_set(self):
+        """
+        computing the test set if Testing mode is enabled:
+
+        * REMOVE a number of lines from the train set and put them in the test set
+        * every line is randomly choosen to avoid overfitting of the test set
+        :return:
+        """
         train = self.get_train_list()
-        for i in xrange(0, 20980):
+        lenght = len(self.get_target_playlist()) * 5
+        for i in xrange(0, lenght):
             line = random.randint(0, len(train) - 1)
             self.test_set.append(train.pop(line))
 
+    def compute_train_list(self):
+        train_list = list(helper.read("train_final"))
+        self.train_list = map(lambda x: [int(x[0]), int(x[1])], train_list[1:])
+
     def get_train_list(self):
+        """
+        getter for the train_list
+
+        :return:
+        """
         try:
             return self.train_list
         except AttributeError:
-            train_list = list(self.train_csv)
-            del train_list[0]
-            self.train_list = map(lambda x: map(int, x), train_list)
+            self.compute_train_list()
             return self.train_list
 
-    def get_test_list(self):
+    def get_target_playlists(self):
+        """
+        getter for the target playlists for which recommend tracks in target_tracks
+        if the target_playlists does not exists it create the list from the corresponding csv
+        :return:
+        """
         try:
-            return self.test_list
+            return self.target_playlists
         except AttributeError:
-            test_list = list(self.test_csv)
-            del test_list[0]
-            self.test_list = map(lambda x: int(x[0]), test_list)
-            return self.test_list
+            self.compute_target_playlists()
+            return self.target_playlists
+
+    def compute_target_playlists(self):
+        target_playlists = list(helper.read("target_playlists"))
+        self.target_playlists = map(lambda x: int(x[0]), target_playlists[1:])
+
+    def get_target_tracks(self):
+        """
+        getter for the tracks to be recommended
+        if the target_tracks does not exists it create the list from the corresponding csv
+        :return:
+        """
+        try:
+            return self.target_tracks
+        except AttributeError:
+            target_tracks = list(helper.read("target_tracks"))
+            self.target_tracks = map(lambda x: int(x[0]), target_tracks[1:])
+            return self.target_tracks
 
     def get_users_similarities_list(self):
         try:
@@ -54,14 +94,30 @@ class Database:
             self.user_similarities_list = map(lambda x: map(float, x), user_similarities_list)
             return self.user_similarities_list
 
-    def get_item_features_list(self):
-        try:
-            return self.item_features_list_int
-        except AttributeError:
-            item_features_list = list(self.item_features_csv)
-            del item_features_list[0]
-            self.item_features_list_int = map(lambda x: map(int,x), item_features_list)
-            return self.item_features_list_int
+    def get_tracks(self):
+        return self.tracks
+
+    def compute_tracks(self):
+        tracks = list(self.tracks_csv)
+        self.tracks = []
+        for track in tracks[1:]:
+            track_id = int(track[0])
+            artist_id = int(track[1])
+            duration = int(track[2])
+            try:
+                playcount = float(track[3])
+            except ValueError:
+                playcount = 0.0
+            album = eval(track[4])
+            try:
+                album = int(album[0])
+            except TypeError:
+                album = 0
+            except IndexError:
+                album = 0
+            tags = eval(track[5])
+            self.tracks.append([track_id, artist_id, duration, playcount, album, tags])
+        return self.tracks
 
     def get_items_in_train(self):
         try:
@@ -87,14 +143,20 @@ class Database:
             self.user_set = test_list
             return self.user_set
 
-    def get_item_set(self):
+    def get_tracks_set(self):
+        """
+        gettter for the tracks set.
+        get_tracks and get_tracks_set are different because the former return the dataset taken from tracks_final
+        the latter return a set containing the id of all the tracks in the dataset
+        :return:
+        """
         try:
-            return self.item_set
+            return self.tracks_set
         except AttributeError:
-            train_list = self.get_train_list()
-            item_features_list = self.get_item_features_list()
-            self.item_set = set(map(lambda x: x[0], item_features_list) + map(lambda x: x[1], train_list))
-            return self.item_set
+            train = self.get_train_list()
+            tracks = self.get_tracks()
+            self.tracks_set = set(map(lambda x: x[0], tracks) + map(lambda x: x[1], train))
+            return self.tracks_set
 
     def get_item_w_features_set(self):
         try:
@@ -184,7 +246,13 @@ class Database:
 
         :return:
         """
-        return 15373
+        try:
+            return self.num_users
+        except AttributeError:
+            playlists = self.get_playlists()
+            self.num_users = len(set(map(lambda x: x[5], playlists)))
+            return self.num_users
+
 
     def get_num_active_users(self):
         """
@@ -196,12 +264,12 @@ class Database:
         active_users = self.get_active_users_set()
         return len(active_users)
 
-    def get_num_items(self):
+    def get_num_tracks(self):
         try:
-            return self.num_items
+            return self.num_tracks
         except AttributeError:
-            self.num_items = len(self.get_item_set())
-            return self.num_items
+            self.num_tracks = len(self.get_tracks())
+            return self.num_tracks
 
     def get_num_ratings(self):
         """
@@ -236,12 +304,10 @@ class Database:
         except Exception:
             return []  # if the item does not appears it has no features
 
-    def get_user_evaluations(self, user):
-        try:
-            user_evaluations_list = self.get_user_evaluations_list()
-            return user_evaluations_list[user]
-        except KeyError:
-            return []
+    def get_playlist_tracks(self, playlist):
+        playlists = self.get_train_list()
+        tracks = map(lambda x: x[1], filter(lambda x: x[0] == playlist, playlists))
+        return tracks
 
     def get_user_evaluations_list(self):
         try:
@@ -257,12 +323,17 @@ class Database:
             self.generate_lists_from_icm()
             return self.items_never_seen
 
-    def get_item_evaluators_list(self):
+    def get_track_playlists_map(self):
         try:
-            return self.item_evaluators_list
+            return self.track_playlists_map
         except AttributeError:
-            self.generate_lists_from_train()
-            return self.item_evaluators_list
+            self.track_playlists_map = defaultdict(lambda: [], {})
+            tracks = self.get_tracks_set()
+            playlists = self.get_train_list()
+            for track in tracks:
+                playlists = map(lambda x: x[0], filter(lambda x: x[1] == track, playlists))
+                self.track_playlist_map[track] = playlists
+            return self.track_playlists_map
 
     def get_item_evaluators(self, item):
         try:
@@ -292,18 +363,17 @@ class Database:
         return sorted(Counter(map(lambda x: len(self.get_user_evaluation_list(x)), self.user_set)).items(), key=lambda x: x[1],
                       reverse=True)
 
-    def get_top_viewed(self):
+    def get_top_listened(self):
         '''
-        return a list of tuples (item, value) where
-        item is the film
-        value is the number of votes received
+        return a list of tuples (track, value) where
+        value is the number of featured playlists
         '''
         try:
-            return self.top_viewed
+            return self.top_listened
         except AttributeError:
-            item_evaluators_list = self.get_item_evaluators_list()
-            self.top_viewed = sorted(item_evaluators_list.items(), key=lambda x: len(x[1]), reverse=True)
-            return self.top_viewed
+            tracks = self.get_tracks()
+            self.top_listened = sorted(map(lambda x: [x[0], x[3]], tracks), key=lambda x: x[1], reverse=True)
+            return self.top_listened
 
     def populate_user_similarities(self, user):
         similarities = {}

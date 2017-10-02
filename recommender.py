@@ -7,13 +7,11 @@ import sys
 import time
 import warnings
 import random
-# local modules
-from helper import Helper
 
 
 class Recommender:
-    def __init__(self, db):
-        self.db = db
+    def __init__(self):
+        pass
 
     def check_recommendations(self, user, recommendations):
         test_set = self.db.get_test_set()
@@ -31,87 +29,28 @@ class Recommender:
         else:
             raise LookupError
 
-    def run(self, choice, debug=False, test=False, filename="result", start=0, end=4197, identifier=0):
-
-        if not test:
-            helper = Helper(filename+str(identifier), ["userId", "testItems"])
-        start_time = time.time()
-        to_write = []
-        if debug:
-            loop_time = time.time()
-        if test:
-            accuracy = {}
-        stats_padding = 0
-        explosions = 0
-        user_set = self.db.get_user_set()
-
-        for user in user_set:
-            index = user_set.index(user)
-            if index < start or index >= end:
-                continue
-            completion = float(user_set.index(user) * 100) / (len(user_set) - 1)
-            padding = float(stats_padding * 100) / (self.db.get_num_users() * 5)
-
-            if debug:
-                loop_time = time.time()
-            else:
-                sys.stdout.write("\r"+"\t"*2*identifier+"%.2f%%" % completion)
-                sys.stdout.flush()
-
-            recommendations = []
+    def run(self, choice, db, q_in, q_out):
+        self.db = db
+        while True:
+            (identifier, target) = q_in.get()
+            if target == -1:
+                break
             if choice == 0:
-                recommendations = self.make_random_recommendations(user)
+                recommendations = self.make_random_recommendations(target)
             elif choice == 1:
-                recommendations = self.make_top_n_recommendations(user, False)
-            elif choice == 2:
-                recommendations = self.make_top_n_recommendations(user, True)
-            elif choice == 3:
-                recommendations = self.make_top_viewed_recommendations(user, recommendations)
-            elif choice == 4:
-                recommendations = self.make_top_n_personalized(user, recommendations)
-            if debug:
-                print "user", user, "recommendations:", recommendations
-                print "Completion percentage %f, increment %f, padding %f, esplosioni schivate %i"\
-                      % (completion, time.time() - loop_time, padding, explosions)
-                print "\n=====================<3===    ===============\n"
-            if test:
-                try:
-                    accuracy[user] = self.check_recommendations(user, recommendations)
-                except LookupError:
-                    pass
-                except ZeroDivisionError:
-                    pass
-            else:
-                elem = [user]
-                iterator = 0
-                while len(elem) < 6:
-                    elem.append(recommendations[iterator][0])
-                    iterator += 1
-                to_write.append(elem)
-        if test:
-            try:
-                print "\nRunning in test mode, avg accuracy: ", sum(accuracy.values())/float(len(accuracy.items())), "%"
-            except ZeroDivisionError:
-                print "\nRunning in test mode\nMaybe is better something else..."
-        else:
-            helper.write(to_write)
-            if not debug and identifier == 0:
-                print "\nCompleted!" \
-                      "\nResult writed to file correctly!" \
-                      "\nPadding needed for %f per cent of recommendations" \
-                      "\nCompletion time %f"\
-                      % (padding, time.time() - start_time)
+                recommendations = self.make_top_listened_recommendations(target)
+            q_out.put([identifier, target, recommendations])
 
-    def make_random_recommendations(self, user):
+    def make_random_recommendations(self, playlist):
         recommendations = []
         count = 0
-        already_seen = self.db.get_user_evaluations(user)
-        items_count = self.db.get_num_items()
-        items_list = self.db.get_item_set()
+        already_included = self.db.get_playlist_tracks(playlist)
+        target_tracks = self.db.get_target_tracks()
+        num_target_tracks = len(target_tracks)
         while count < 5:
-            item = random.randint(0, items_count)
-            if (item in items_list) and (item not in already_seen):
-                recommendations.append(item)
+            track = random.randint(0, num_target_tracks)
+            if (track not in already_included) and (track not in recommendations):
+                recommendations.append(track)
                 count += 1
         return recommendations
 
@@ -139,7 +78,6 @@ class Recommender:
                 if user_evaluation > 0:
                     pass
 
-
     def make_top_n_personalized(self, u, recommendations):  # recycle from the old recommendations methods
         top_n = self.db.get_top_n_w_shrink() # get the top-N with shrink as base to be more accurate
         personalized_top_n = {} # will now personalize it basing on the feature set
@@ -164,18 +102,19 @@ class Recommender:
             iterator += 1
         return map(lambda x: x[0],recommendations)
 
-    def make_top_viewed_recommendations(self, user, recommendations):
-        top_viewed = self.db.get_top_viewed()
+    def make_top_listened_recommendations(self, playlist):
+        recommendations = []
+        top_listened = self.db.get_top_listened()
         iterator = 0
-        count = len(recommendations)
-        already_seen = self.db.get_user_evaluations(user)
+        count = 0
+        already_included = self.db.get_playlist_tracks(playlist)
         while count < 5:
-            item = top_viewed[iterator][0]
-            if (item not in already_seen) and (
-                        item not in recommendations):
+            item = top_listened[iterator][0]
+            if (item not in already_included) and (item not in recommendations):
                 recommendations.append(item)
                 count += 1
             iterator += 1
+
         return recommendations
 
     def recommend_never_seen(self, user, recommendations):

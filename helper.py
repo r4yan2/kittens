@@ -28,3 +28,13 @@ class Helper:
     def tick(completion):
         sys.stdout.write("\r%f%%" % completion)
         sys.stdout.flush()
+
+def read(what):
+    return csv.reader(open('data/'+what+'.csv', 'rb'), delimiter='\t')
+    '''
+    self.train_csv = csv.reader(open('data/train_final.csv', 'rb'), delimiter='\t')
+    self.playlists_csv = csv.reader(open('data/playlists_final.csv', 'rb'), delimiter='\t')
+    self.tracks_csv = csv.reader(open('data/tracks_final.csv', 'rb'), delimiter='\t')
+    self.target_playlists_csv = csv.reader(open('data/target_playlists.csv', 'rb'), delimiter='\t')
+    self.target_tracks_csv = csv.reader(open('data/target_tracks.csv', 'rb'), delimiter='\t')
+'''
