@@ -39,6 +39,8 @@ class Recommender:
                 recommendations = self.make_random_recommendations(target)
             elif choice == 1:
                 recommendations = self.make_top_listened_recommendations(target)
+            elif choice == 3:
+                recommendations = self.make_top_included_recommendations(target)
             q_out.put([identifier, target, recommendations])
 
     def make_random_recommendations(self, playlist):
@@ -116,6 +118,19 @@ class Recommender:
             iterator += 1
 
         return recommendations
+
+    def make_top_included_recommendations(self, playlist):
+        recommendations = []
+        top_included = self.db.get_top_included()
+        iterator = 0
+        count = 0
+        already_included = self.db.get_playlist_tracks(playlist)
+        while count < 5:
+            item = top_included[iterator][0]
+            if (item not in already_included) and (item not in recommendations):
+                recommendations.append(item)
+                count += 1
+            iterator += 1
 
     def recommend_never_seen(self, user, recommendations):
         count = len(recommendations)

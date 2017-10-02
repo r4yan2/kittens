@@ -6,9 +6,7 @@ Really nothing to say, the algorithm try 5 random items which have not been eval
 
 ## Top-N recommendations
 
-* Basic recommendation algorithm, assign to every user the best-evaluated or the most-evaluated items
-* The "advanced" one uses a variable shrink
-* The "ultimate" one uses a variable shrink and is feature-aware
+* Basic Top-N, assign to every user the most-listened or the most-included tracks
 
 __Notes on top-n__
 

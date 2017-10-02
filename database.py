@@ -95,11 +95,15 @@ class Database:
             return self.user_similarities_list
 
     def get_tracks(self):
-        return self.tracks
+        try:
+            return self.tracks
+        except AttributeError:
+            self.tracks = self.compute_tracks()
+            return self.tracks
 
     def compute_tracks(self):
-        tracks = list(self.tracks_csv)
-        self.tracks = []
+        tracks = list(helper.read("tracks_final"))
+        result = []
         for track in tracks[1:]:
             track_id = int(track[0])
             artist_id = int(track[1])
@@ -116,8 +120,8 @@ class Database:
             except IndexError:
                 album = 0
             tags = eval(track[5])
-            self.tracks.append([track_id, artist_id, duration, playcount, album, tags])
-        return self.tracks
+            result.append([track_id, artist_id, duration, playcount, album, tags])
+        return result
 
     def get_items_in_train(self):
         try:
@@ -323,16 +327,23 @@ class Database:
             self.generate_lists_from_icm()
             return self.items_never_seen
 
+    def get_track_playlists(self, track):
+        try:
+            return self.track_playlists_map[track]
+        except AttributeError:
+            track_playlists_map = self.get_track_playlists_map()
+            return track_playlists_map[track]
+
     def get_track_playlists_map(self):
         try:
             return self.track_playlists_map
         except AttributeError:
             self.track_playlists_map = defaultdict(lambda: [], {})
-            tracks = self.get_tracks_set()
             playlists = self.get_train_list()
-            for track in tracks:
-                playlists = map(lambda x: x[0], filter(lambda x: x[1] == track, playlists))
-                self.track_playlist_map[track] = playlists
+            for row in playlists:
+                playlist = row[0]
+                track = row[1]
+                self.track_playlists_map[track].append(playlist)
             return self.track_playlists_map
 
     def get_item_evaluators(self, item):
@@ -363,10 +374,23 @@ class Database:
         return sorted(Counter(map(lambda x: len(self.get_user_evaluation_list(x)), self.user_set)).items(), key=lambda x: x[1],
                       reverse=True)
 
-    def get_top_listened(self):
+    def get_top_included(self):
         '''
         return a list of tuples (track, value) where
         value is the number of featured playlists
+        '''
+        try:
+            return self.top_included
+        except AttributeError:
+            track_playlists_map = self.get_track_playlists_map()
+            track_playlists = track_playlists_map.items()
+            self.top_included = sorted(map(lambda x: [x[0], len(x[1])], track_playlists), key=lambda x: x[1], reverse=True)
+            return self.top_included
+
+    def get_top_listened(self):
+        '''
+        return a list of tuples (track, value) where
+        value is the number of times played
         '''
         try:
             return self.top_listened

@@ -11,7 +11,8 @@ disclaimer = """
     USAGE:
 
     [0] Random
-    [1] Top Viewed
+    [1] Top Listened
+    [2] Top Included
 
     Please wait until the Engine is ready, then select your choice
     """
@@ -21,7 +22,7 @@ db = Database(test)
 manager = Manager()
 ns = manager.Namespace()
 ns.db = db
-recommender_system = Recommender(db)
+recommender_system = Recommender()
 choice = input("Please select one >  ")
 start_time = time.time()
 to_write = []
