@@ -42,6 +42,10 @@ class Database:
             self.test_set.append(train.pop(line))
 
     def compute_train_list(self):
+        """
+        return the list from the train csv with the header removed
+        :return:
+        """
         train_list = list(helper.read("train_final"))
         self.train_list = map(lambda x: [int(x[0]), int(x[1])], train_list[1:])
 
@@ -70,6 +74,10 @@ class Database:
             return self.target_playlists
 
     def compute_target_playlists(self):
+        """
+        return the list from the csv of the target_playlist, with the first row removed
+        :return:
+        """
         target_playlists = list(helper.read("target_playlists"))
         self.target_playlists = map(lambda x: int(x[0]), target_playlists[1:])
 
@@ -95,6 +103,10 @@ class Database:
             return self.user_similarities_list
 
     def get_tracks(self):
+        """
+        getter for tracks list
+        :return:
+        """
         try:
             return self.tracks
         except AttributeError:
@@ -102,6 +114,10 @@ class Database:
             return self.tracks
 
     def compute_tracks(self):
+        """
+        parse tracks_final.csv dividing all field into the corresponding part of the list
+        :return:
+        """
         tracks = list(helper.read("tracks_final"))
         result = []
         for track in tracks[1:]:
@@ -269,6 +285,10 @@ class Database:
         return len(active_users)
 
     def get_num_tracks(self):
+        """
+        getter of the total of tracks in the dataset
+        :return:
+        """
         try:
             return self.num_tracks
         except AttributeError:
@@ -309,6 +329,11 @@ class Database:
             return []  # if the item does not appears it has no features
 
     def get_playlist_tracks(self, playlist):
+        """
+        return all the tracks into the specified playlist
+        :param playlist:
+        :return:
+        """
         playlists = self.get_train_list()
         tracks = map(lambda x: x[1], filter(lambda x: x[0] == playlist, playlists))
         return tracks
@@ -328,6 +353,11 @@ class Database:
             return self.items_never_seen
 
     def get_track_playlists(self, track):
+        """
+        return all the playlists which includes the specified track
+        :param track:
+        :return:
+        """
         try:
             return self.track_playlists_map[track]
         except AttributeError:
@@ -335,6 +365,10 @@ class Database:
             return track_playlists_map[track]
 
     def get_track_playlists_map(self):
+        """
+        return the hashmap which links track and playlists which includes the track
+        :return:
+        """
         try:
             return self.track_playlists_map
         except AttributeError:

@@ -30,9 +30,17 @@ class Recommender:
             raise LookupError
 
     def run(self, choice, db, q_in, q_out):
+
+        # Retrieve the sb from the list of arguments
         self.db = db
+
+        # main loop for the worker
         while True:
+
+            # getting the data from the queue in
             (identifier, target) = q_in.get()
+
+            # if is the end stop working
             if target == -1:
                 break
             if choice == 0:
@@ -41,9 +49,16 @@ class Recommender:
                 recommendations = self.make_top_listened_recommendations(target)
             elif choice == 3:
                 recommendations = self.make_top_included_recommendations(target)
+            # put the result into the out queue
             q_out.put([identifier, target, recommendations])
 
     def make_random_recommendations(self, playlist):
+        """
+        take 5 random tracks and recommend them
+
+        :param playlist:
+        :return:
+        """
         recommendations = []
         count = 0
         already_included = self.db.get_playlist_tracks(playlist)
@@ -52,9 +67,51 @@ class Recommender:
         while count < 5:
             track = random.randint(0, num_target_tracks)
             if (track not in already_included) and (track not in recommendations):
-                recommendations.append(track)
+                recommendations.append(target_tracks[track])
                 count += 1
         return recommendations
+
+    def make_top_listened_recommendations(self, playlist):
+        """
+        recommend the top listened tracks
+
+        :param playlist:
+        :return:
+        """
+        recommendations = []
+        top_listened = self.db.get_top_listened()
+        iterator = 0
+        count = 0
+        already_included = self.db.get_playlist_tracks(playlist)
+        target_tracks = self.db.get_target_tracks()
+        while count < 5:
+            item = top_listened[iterator][0]
+            if (item not in already_included) and (item not in recommendations) and (item in target_tracks):
+                recommendations.append(item)
+                count += 1
+            iterator += 1
+
+        return recommendations
+
+    def make_top_included_recommendations(self, playlist):
+        """
+        recommend the most playlists-included tracks
+
+        :param playlist:
+        :return:
+        """
+        recommendations = []
+        top_included = self.db.get_top_included()
+        iterator = 0
+        count = 0
+        already_included = self.db.get_playlist_tracks(playlist)
+        target_tracks = self.db.get_target_tracks()
+        while count < 5:
+            item = top_included[iterator][0]
+            if (item not in already_included) and (item not in recommendations) and (item in target_tracks):
+                recommendations.append(item)
+                count += 1
+            iterator += 1
 
     def make_top_n_recommendations(self, user, shrink):
 
@@ -103,34 +160,6 @@ class Recommender:
                 count += 1
             iterator += 1
         return map(lambda x: x[0],recommendations)
-
-    def make_top_listened_recommendations(self, playlist):
-        recommendations = []
-        top_listened = self.db.get_top_listened()
-        iterator = 0
-        count = 0
-        already_included = self.db.get_playlist_tracks(playlist)
-        while count < 5:
-            item = top_listened[iterator][0]
-            if (item not in already_included) and (item not in recommendations):
-                recommendations.append(item)
-                count += 1
-            iterator += 1
-
-        return recommendations
-
-    def make_top_included_recommendations(self, playlist):
-        recommendations = []
-        top_included = self.db.get_top_included()
-        iterator = 0
-        count = 0
-        already_included = self.db.get_playlist_tracks(playlist)
-        while count < 5:
-            item = top_included[iterator][0]
-            if (item not in already_included) and (item not in recommendations):
-                recommendations.append(item)
-                count += 1
-            iterator += 1
 
     def recommend_never_seen(self, user, recommendations):
         count = len(recommendations)

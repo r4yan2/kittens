@@ -17,47 +17,74 @@ disclaimer = """
     Please wait until the Engine is ready, then select your choice
     """
 print disclaimer
-test = False
-db = Database(test)
+
+test = False # should be True when the test mode is tun
+db = Database(test) # the database depends on which mode is on (Normal/Test)
+
+# Initializing the recommender istance
+recommender_system = Recommender()
+
+# Getting input from user
+choice = input("Please select one >  ")
+
+# Just some debug information
+start_time = time.time()
+
+# This list will store the result just before writing to file
+to_write = []
+
+# This list store the result from the worker process (identifier, playlist, [recommendation])
+recommendations = []
+
+# The following lines are needed to pass the db object between all process (multiprocessing always on)
 manager = Manager()
 ns = manager.Namespace()
 ns.db = db
-recommender_system = Recommender()
-choice = input("Please select one >  ")
-start_time = time.time()
-to_write = []
-result = []
-helper = Helper("result", ["playlist_id", "track_ids"])
-q_in = Queue()
-q_out = Queue()
+
 core = cpu_count()
 print "\nVROOOOOOOOOMMMMMMMMMMMMMMMMMMMMMMM\n" \
       "Parallel Engine ACTIVATION\n"+\
       "CORE TRIGGERED\n"*core+\
       "VROOOOOOOOOMMMMMMMMMMMMMMMMMMMMMMM\n"
-target = db.get_target_playlists()
-[q_in.put((i, x)) for i, x in enumerate(target)]
+
+target_playlists = db.get_target_playlists()
+
+# Queue(s) for the process, one for input data to the process, the other for the output data to the main process
+q_in = Queue()
+q_out = Queue()
+[q_in.put((i, x)) for i, x in enumerate(target_playlists)]
+# When a process see the -1 know that is the end of the processing
 [q_in.put((-1, -1)) for _ in xrange(core)]
+
+# Starting the process
 proc = [Process(target=recommender_system.run, args=(choice, ns.db, q_in, q_out))
         for i in xrange(core)]
 for p in proc:
     p.daemon = True
     p.start()
 
-for i in xrange(len(target)):
-    completion = (i*100.0)/len(target)
+# Retrieve results from the out queue and display percentage
+for i in xrange(len(target_playlists)):
+    completion = (i*100.0)/len(target_playlists)
     sys.stdout.write("\r%.2f%%" % completion)
     sys.stdout.flush()
     r = q_out.get()
-    result.append(r)
+    recommendations.append(r)
+
+# Terminate worker process
 [p.join() for p in proc]
 
-result = map(lambda x: [x[1], x[2]], sorted(result, key=lambda x: x[0]))
-for playlist, recommendation in result:
+# Parse result, from
+result = map(lambda x: [x[1], x[2]], sorted(recommendations, key=lambda x: x[0]))
+for playlist, recommendation in recommendations:
     elem = [playlist, reduce(lambda x, y: str(x) + ' ' + str(y), recommendation)]
     to_write.append(elem)
 
+# Initialize the helper instance to write the csv
+helper = Helper("result", ["playlist_id", "track_ids"])
 helper.write(to_write)
+
+# END
 print "\nCompleted!" \
       "\nResult writed to file correctly!" \
       "\nCompletion time %f" \
