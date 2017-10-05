@@ -36,7 +36,7 @@ end_test="
          Average Accuracy $value
 "
 
-whiptail --msgbox "$disclaimer" 30 70
+whiptail --msgbox "$disclaimer" 20 70
 whiptail --yesno "Enable Test Mode?" 10 50
 test=$?
 choice=$(whiptail --menu "Select Recommendations Method" 20 70 5 \
@@ -46,10 +46,10 @@ choice=$(whiptail --menu "Select Recommendations Method" 20 70 5 \
 3 "Top Tags" 3>&2 2>&1 1>&3)
 case $choice in
     0)
-        /usr/bin/python kittens.py "$test" 0 | whiptail --gauge "$running" 30 70 0
+        /usr/bin/python kittens.py "$test" 0 | whiptail --gauge "$running" 10 60 0
     ;;
     *)
-        /usr/bin/pypy kittens.py "$test" "$choice" | whiptail --gauge "$running" 30 70 0
+        /usr/bin/pypy kittens.py "$test" "$choice" | whiptail --gauge "$running" 10 60 0
     ;;
 esac
 case $test in

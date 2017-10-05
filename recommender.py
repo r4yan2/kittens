@@ -134,7 +134,10 @@ class Recommender:
             if track not in already_included:
                 tags = self.db.get_track_tags(track)
                 matched = filter(lambda x: x in active_tags_set, tags)
-                value = len(matched)/float(len(active_tags_set))
+                try:
+                    value = len(matched)/float(len(active_tags_set))
+                except ZeroDivisionError:
+                    value = 0
                 top_tracks.append([track, value])
 
         recommendations = sorted(top_tracks, key=lambda x: x[1], reverse=True)[0:5]

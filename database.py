@@ -51,14 +51,6 @@ class Database:
             line = random.randint(0, len(train) - 1)
             train_part.append(train.pop(line))
         self.train_test = train_part
-        '''
-        for line in train_part:
-            playlist = line[0]
-            if playlist not in test_map:
-                tracks = map(lambda x: x[1], filter(lambda item: item[0] == playlist, train_part))
-                test_map[playlist] = tracks
-        self.test_playlists = test_map.keys()
-        '''
         self.target_tracks = map(lambda x: x[1], train_part)
 
     def compute_train_list(self):
@@ -348,11 +340,27 @@ class Database:
         :param track:
         :return:
         """
+        track_tags_map = self.get_track_tags_map()
+        try:
+            return track_tags_map[track]
+        except LookupError:
+            return []
 
-        tracks = self.get_tracks() # retrieve track_final
-        line = [x for x in tracks if x[0] == track][0] # filter the correct line
-        tags = line[5] # get tags from the line calculated above
-        return tags # return it!
+    def get_track_tags_map(self):
+        """
+        compute hashmap to store track -> [tag1, tag2, ...] for fast retrieval
+        :return:
+        """
+        try:
+            return self.track_tags_map
+        except AttributeError:
+            self.track_tags_map = {}
+            tracks = self.get_tracks()
+            for track in tracks:
+                id = track[0]
+                tags = track[5]
+                self.track_tags_map[id] = tags
+        return self.track_tags_map
 
     def get_playlist_tracks(self, playlist):
         """
