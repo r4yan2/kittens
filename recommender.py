@@ -13,23 +13,15 @@ class Recommender:
     def __init__(self):
         pass
 
-    def check_recommendations(self, user, recommendations):
+    def check_recommendations(self, playlist, recommendations):
         test_set = self.db.get_test_set()
-        test = filter(lambda x: x[0] == user, test_set)
         ok = 0
-        item_match = 0
-        if not len(test) == 0:
-            for line in test:
-                item = line[1]
-                rating = line[2]
-                item_match += len(filter(lambda x: x[0] == item, recommendations))
-                ok += len(filter(lambda x: x[0] == item and (math.fabs(x[1] - rating) <= 0.5), recommendations))
+        for track in recommendations:
+            test = filter(lambda x: x[0] == playlist and x[1] == track, test_set)
+            ok += len(test)
+        return (ok * 100.0)/len(recommendations)
 
-            return (ok * 100.0)/item_match
-        else:
-            raise LookupError
-
-    def run(self, choice, db, q_in, q_out):
+    def run(self, choice, db, q_in, q_out, test):
 
         # Retrieve the db from the list of arguments
         self.db = db
@@ -47,10 +39,22 @@ class Recommender:
                 recommendations = self.make_random_recommendations(target)
             elif choice == 1:
                 recommendations = self.make_top_listened_recommendations(target)
-            elif choice == 3:
+            elif choice == 2:
                 recommendations = self.make_top_included_recommendations(target)
-            # put the result into the out queue
-            q_out.put([identifier, target, recommendations])
+            elif choice == 3:
+                recommendations = self.make_top_tag_recommendations(target)
+
+            # doing testing things if test mode enabled
+            if test:
+                try:
+                    test_result = self.check_recommendations(target, recommendations)
+                except LookupError:
+                    test_result = -1
+                q_out.put(test_result)
+
+            else:
+                # else put the result into the out queue
+                q_out.put([identifier, target, recommendations])
 
     def make_random_recommendations(self, playlist):
         """
@@ -112,6 +116,28 @@ class Recommender:
                 recommendations.append(item)
                 count += 1
             iterator += 1
+
+        return recommendations
+
+    def make_top_tag_recommendations(self, active_playlist):
+        already_included = self.db.get_playlist_tracks(active_playlist)
+        active_tracks = self.db.get_playlist_tracks(active_playlist)
+        active_tags = map(lambda x: self.db.get_track_tags(x), active_tracks)
+        active_flat_tags = [item for sublist in active_tags for item in sublist]
+        active_tags_set = set(active_flat_tags)
+
+        tracks_to_recommend = self.db.get_target_tracks()
+        top_tracks = []
+
+        for track in tracks_to_recommend:
+            if track not in already_included:
+                tags = self.db.get_track_tags(track)
+                matched = filter(lambda x: x in active_tags_set, tags)
+                value = len(matched)/float(len(active_tags_set))
+                top_tracks.append([track, value])
+
+        recommendations = sorted(top_tracks, key=lambda x: x[1], reverse=True)[0:5]
+        return recommendations
 
     def make_top_n_recommendations(self, user, shrink):
 

@@ -4,17 +4,15 @@ The Engine is by default parallel but it's optimized to consume less RAM with re
 
 ## Random
 
-Really nothing to say, the algorithm try 5 random items which have not been evaluated by the user (0.0000)
+Really nothing to say, the algorithm try 5 random items which have not been evaluated by the user
 
 ## Top-N recommendations
 
-* Basic Top-N, assign to every user the most-listened (0.00012) or the most-included tracks
+Basic Top-N, assign to every user the most-listened or the most-included tracks
 
 ## Feature Based
 
 TODO
-
-
 
 ## Advanced Options
 
@@ -29,6 +27,7 @@ Is it possible to run the Engine in "Test Mode", which mean that:
 ## Table of results
 
 |Algorithm|Score|
-|---|---|
+|:-------:|:---:|
 |Random|0,0000|
 |top-listened|0,0002|
+|top-included|0,0100|

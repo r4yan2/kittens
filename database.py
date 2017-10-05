@@ -12,7 +12,6 @@ class Database:
         :param test:
         """
         if test:
-            self.test_set = []
             self.compute_test_set()
 
     def get_test_set(self):
@@ -22,10 +21,19 @@ class Database:
         :return:
         """
         try:
-            return self.test_set
+            return self.train_test
         except AttributeError:
             self.compute_test_set()
-            return self.test_set
+            return self.train_test
+
+    def get_playlists(self):
+        """
+        return the playlists set
+        :return:
+        """
+        playlists = self.get_train_list()
+        playlists = map(lambda x: x[0], playlists)
+        return set(playlists)
 
     def compute_test_set(self):
         """
@@ -35,11 +43,23 @@ class Database:
         * every line is randomly choosen to avoid overfitting of the test set
         :return:
         """
+        test_map = {}
         train = self.get_train_list()
-        lenght = len(self.get_target_playlist()) * 5
+        lenght = len(self.get_target_playlists()) * 5
+        train_part = []
         for i in xrange(0, lenght):
             line = random.randint(0, len(train) - 1)
-            self.test_set.append(train.pop(line))
+            train_part.append(train.pop(line))
+        self.train_test = train_part
+        '''
+        for line in train_part:
+            playlist = line[0]
+            if playlist not in test_map:
+                tracks = map(lambda x: x[1], filter(lambda item: item[0] == playlist, train_part))
+                test_map[playlist] = tracks
+        self.test_playlists = test_map.keys()
+        '''
+        self.target_tracks = map(lambda x: x[1], train_part)
 
     def compute_train_list(self):
         """
@@ -321,12 +341,18 @@ class Database:
         except KeyError:
             return 0  # if the rating does not exist it returns zero
 
-    def get_features_list(self, i):
-        try:
-            item_features_list = self.get_item_features_list()
-            return item_features_list[i]
-        except Exception:
-            return []  # if the item does not appears it has no features
+    def get_track_tags(self, track):
+        """
+        compute tags from tracks_final given a specific track
+
+        :param track:
+        :return:
+        """
+
+        tracks = self.get_tracks() # retrieve track_final
+        line = filter(lambda x: x[0] == track, tracks) # filter the correct line
+        tags = line[5] # get tags from the line calculated above
+        return tags # return it!
 
     def get_playlist_tracks(self, playlist):
         """
