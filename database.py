@@ -350,7 +350,7 @@ class Database:
         """
 
         tracks = self.get_tracks() # retrieve track_final
-        line = filter(lambda x: x[0] == track, tracks) # filter the correct line
+        line = [x for x in tracks if x[0] == track][0] # filter the correct line
         tags = line[5] # get tags from the line calculated above
         return tags # return it!
 

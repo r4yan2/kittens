@@ -58,7 +58,7 @@ for i in xrange(len(target_playlists)):
 # Parse result, depending if test mode in on or off
 if test:
     results = filter(lambda x: x>=0, results)
-    average = (sum(results)*100.0)/len(results)
+    average = float(sum(results))/len(results)
     helper = Helper("result", average)
     helper.close()
 else:

@@ -10,8 +10,9 @@ import random
 
 
 class Recommender:
-    def __init__(self):
-        pass
+    def __init__(self, db=None):
+        if db:
+            self.db = db # only useful for debug
 
     def check_recommendations(self, playlist, recommendations):
         test_set = self.db.get_test_set()
