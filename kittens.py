@@ -45,11 +45,12 @@ for p in proc:
 completion = 0
 for i in xrange(len(target_playlists)):
     percentage = (i*100)/len(target_playlists)
-    if percentage != completion:
+    if percentage > completion:
         sys.stdout.write("%i\n" % percentage)
         sys.stdout.flush()
         completion = percentage
     r = q_out.get()
+    print r
     results.append(r)
 
 # Terminate worker process
@@ -59,7 +60,7 @@ for i in xrange(len(target_playlists)):
 if test:
     results = filter(lambda x: x>=0, results)
     average = float(sum(results))/len(results)
-    helper = Helper("result", average)
+    helper = Helper("result", [average])
     helper.close()
 else:
     result = map(lambda x: [x[1], x[2]], sorted(results, key=lambda x: x[0]))

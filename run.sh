@@ -46,10 +46,10 @@ choice=$(whiptail --menu "Select Recommendations Method" 20 70 5 \
 3 "Top Tags" 3>&2 2>&1 1>&3)
 case $choice in
     0)
-        /usr/bin/python kittens.py "$test" 0 | whiptail --gauge "$running" 10 60 0
+        /usr/bin/python kittens.py "$test" 0 | whiptail --gauge "$running" 15 60 0
     ;;
     *)
-        /usr/bin/pypy kittens.py "$test" "$choice" | whiptail --gauge "$running" 10 60 0
+        /usr/bin/pypy kittens.py "$test" "$choice" | whiptail --gauge "$running" 15 60 0
     ;;
 esac
 case $test in

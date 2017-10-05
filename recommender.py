@@ -7,7 +7,7 @@ import sys
 import time
 import warnings
 import random
-
+from operator import itemgetter
 
 class Recommender:
     def __init__(self, db=None):
@@ -18,8 +18,8 @@ class Recommender:
         test_set = self.db.get_test_set()
         ok = 0
         for track in recommendations:
-            test = filter(lambda x: x[0] == playlist and x[1] == track, test_set)
-            ok += len(test)
+            test = 1 if [playlist, track] in test_set else 0
+            ok += test
         return (ok * 100.0)/len(recommendations)
 
     def run(self, choice, db, q_in, q_out, test):
@@ -44,7 +44,6 @@ class Recommender:
                 recommendations = self.make_top_included_recommendations(target)
             elif choice == 3:
                 recommendations = self.make_top_tag_recommendations(target)
-
             # doing testing things if test mode enabled
             if test:
                 try:
@@ -130,18 +129,29 @@ class Recommender:
         tracks_to_recommend = self.db.get_target_tracks()
         top_tracks = []
 
+        top_included = self.db.get_top_included()
+
         for track in tracks_to_recommend:
             if track not in already_included:
                 tags = self.db.get_track_tags(track)
                 matched = filter(lambda x: x in active_tags_set, tags)
                 try:
-                    value = len(matched)/float(len(active_tags_set))
+                    value_a = len(matched)/float(len(active_tags_set))
+                    value_b = len(matched)/float(len(tags))
                 except ZeroDivisionError:
-                    value = 0
-                top_tracks.append([track, value])
+                    value_a = 0
+                    value_b = 0
+                top_value = self.get_from_top(track, top_included)
+                top_tracks.append([track, value_a, value_b, top_value])
 
-        recommendations = sorted(top_tracks, key=lambda x: x[1], reverse=True)[0:5]
-        return recommendations
+        recommendations = sorted(top_tracks, key=itemgetter(1, 2, 3), reverse=True)[0:5]
+        return [track[0] for track in recommendations]
+
+    def get_from_top(self, track, top_included):
+        for item in top_included:
+            if item[0] == track:
+                return item[1]
+        return 0
 
     def make_top_n_recommendations(self, user, shrink):
 

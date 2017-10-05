@@ -3,3 +3,5 @@
 *.pyc
 *.sh
 .idea/
+data/
+doc/
