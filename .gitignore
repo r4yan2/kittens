@@ -1,7 +1,7 @@
 *.pdf
 *.csv
 *.pyc
-*.sh
+*.swp
 .idea/
 data/
 doc/
