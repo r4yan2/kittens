@@ -22,7 +22,7 @@ class Recommender:
             ok += test
         return (ok * 100.0)/len(recommendations)
 
-    def run(self, choice, db, q_in, q_out, test):
+    def run(self, choice, db, q_in, q_out, test, number):
 
         # Retrieve the db from the list of arguments
         self.db = db
@@ -141,17 +141,15 @@ class Recommender:
                 except ZeroDivisionError:
                     value_a = 0
                     value_b = 0
-                top_value = self.get_from_top(track, top_included)
+                top_value = self.value_from_top_included(track)
                 top_tracks.append([track, value_a, value_b, top_value])
 
-        recommendations = sorted(top_tracks, key=itemgetter(1, 2, 3), reverse=True)[0:5]
-        return [track[0] for track in recommendations]
+        recommendations = sorted(top_tracks, key=itemgetter(1, 2, 3), reverse=True)
+        return [track[0] for track in recommendations[0:5]]
 
-    def get_from_top(self, track, top_included):
-        for item in top_included:
-            if item[0] == track:
-                return item[1]
-        return 0
+    def value_from_top_included(self, track):
+        track_playlists_map = self.db.get_track_playlists_map()
+        return len(track_playlists_map[track])
 
     def make_top_n_recommendations(self, user, shrink):
 
