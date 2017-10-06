@@ -3,6 +3,7 @@ from collections import defaultdict, Counter
 import helper
 import random
 from operator import itemgetter
+import gc
 
 class Database:
     def __init__(self, test=False):
@@ -41,7 +42,7 @@ class Database:
         computing the test set if Testing mode is enabled:
 
         * REMOVE a number of lines from the train set and put them in the test set
-        * every line is randomly choosen to avoid overfitting of the test set
+        * every line is randomly chosen to avoid overfitting of the test set
         :return:
         """
         train = self.get_train_list()
@@ -50,8 +51,9 @@ class Database:
         for i in xrange(0, lenght):
             line = random.randint(0, len(train) - 1)
             train_part.append(train.pop(line))
-        self.train_test = set(train_part)
+        self.train_test = train_part
         self.target_tracks = map(lambda x: x[1], train_part)
+        gc.collect()
 
     def compute_train_list(self):
         """
@@ -341,7 +343,7 @@ class Database:
         :param track:
         :return:
         """
-
+        '''
         tracks = self.get_tracks()
         line = self.get_from_list(track, tracks)
         return line[5]
@@ -351,7 +353,7 @@ class Database:
             return track_tags_map[track]
         except LookupError:
             return []
-        '''
+
 
     def get_from_list(self, track, tracks):
         lenght = len(tracks)
@@ -393,7 +395,7 @@ class Database:
                 id = track[0]
                 tags = track[5]
                 self.track_tags_map[id] = tags
-        return self.track_tags_map
+            return self.track_tags_map
 
     def get_playlist_tracks(self, playlist):
         """

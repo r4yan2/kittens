@@ -22,7 +22,7 @@ class Recommender:
             ok += test
         return (ok * 100.0)/len(recommendations)
 
-    def run(self, choice, db, q_in, q_out, test):
+    def run(self, choice, db, q_in, q_out, test, number):
 
         # Retrieve the db from the list of arguments
         self.db = db
@@ -152,17 +152,15 @@ class Recommender:
                 except ZeroDivisionError: # if active_tags or tags are empty set default parameters
                     value_a = 0
                     value_b = 0
-                top_value = self.get_from_top(track, top_included) # get the value from the top-included
+                top_value = self.value_from_top_included(track) # get the value from the top-included
                 top_tracks.append([track, value_a, value_b, top_value]) # joining all parameters together
 
-        recommendations = sorted(top_tracks, key=itemgetter(1, 2, 3), reverse=True)[0:5] # sort by parameters and take only five
-        return [track[0] for track in recommendations] # use a list comprehension to return track id which is in position 0 of the subelement
+        recommendations = sorted(top_tracks, key=itemgetter(1, 2, 3), reverse=True) # sorting results
+        return [track[0] for track in recommendations[0:5]] # use a list comprehension to return track id
 
-    def get_from_top(self, track, top_included):
-        for item in top_included:
-            if item[0] == track:
-                return item[1]
-        return 0
+    def value_from_top_included(self, track):
+        track_playlists_map = self.db.get_track_playlists_map()
+        return len(track_playlists_map[track])
 
     def make_top_n_recommendations(self, user, shrink):
 

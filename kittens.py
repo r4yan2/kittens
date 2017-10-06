@@ -3,6 +3,7 @@ from database import Database
 from helper import Helper
 from multiprocessing import Process, Queue, cpu_count, Manager
 import sys
+from operator import itemgetter
 
 # take input from command line sys.argv[0] is the program name
 test = True if eval(sys.argv[1]) == 0 else False
@@ -36,7 +37,7 @@ q_out = Queue()
 [q_in.put((-1, -1)) for _ in xrange(core)]
 
 # Starting the process
-proc = [Process(target=recommender_system.run, args=(choice, ns.db, q_in, q_out, test))
+proc = [Process(target=recommender_system.run, args=(choice, ns.db, q_in, q_out, test, i))
         for i in xrange(core)]
 for p in proc:
     p.daemon = True
@@ -51,7 +52,6 @@ for i in xrange(len(target_playlists)):
         sys.stdout.flush()
         completion = percentage
     r = q_out.get()
-    print r
     results.append(r)
 
 # Terminate worker process
@@ -64,7 +64,7 @@ if test:
     helper = Helper("result", [average])
     helper.close()
 else:
-    result = map(lambda x: [x[1], x[2]], sorted(results, key=lambda x: x[0]))
+    result = [[x[1], x[2]] for x in sorted(results, key=itemgetter(0))]
     for playlist, recommendation in result:
         elem = [playlist, reduce(lambda x, y: str(x) + ' ' + str(y), recommendation)]
         to_write.append(elem)
