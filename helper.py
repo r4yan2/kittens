@@ -4,6 +4,13 @@ import sys
 
 class Helper:
     def __init__(self, filename, header=None):
+        """
+        when the helper is initialized it open the file for the result and write the header,
+        this should be changed is something less hacky
+        
+        :param filename: 
+        :param header: 
+        """
         self.fp = open('data/' + filename + '.csv', 'w', 0)
         if not header == None:
             self.writer = csv.writer(self.fp, delimiter=',', quoting=csv.QUOTE_NONE)
@@ -11,10 +18,21 @@ class Helper:
 
     @staticmethod
     def diff_list(a, b):
+        """
+        make the difference of the two lists
+        :param a:
+        :param b:
+        :return:
+        """
         b = set(b)
         return [aa for aa in a if aa not in b]
 
     def write(self, content):
+        """
+        write the result on the file
+        :param content:
+        :return:
+        """
         try:
             self.writer.writerows(content)
         except AttributeError:

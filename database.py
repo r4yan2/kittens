@@ -138,17 +138,17 @@ class Database:
             artist_id = int(track[1])
             duration = int(track[2])
             try:
-                playcount = float(track[3])
+                playcount = float(track[3]) # yes, PLAYCOUNT is memorized as a floating point
             except ValueError:
                 playcount = 0.0
             album = eval(track[4])
             try:
-                album = int(album[0])
+                album = int(album[0]) # yes again, album is memorized as a list, even if no track have more than 1 album
             except TypeError:
                 album = 0
             except IndexError:
                 album = 0
-            tags = eval(track[5])
+            tags = eval(track[5]) # evaluation of the tags list
             result.append([track_id, artist_id, duration, playcount, album, tags])
         return result
 

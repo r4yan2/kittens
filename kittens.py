@@ -4,6 +4,7 @@ from helper import Helper
 from multiprocessing import Process, Queue, cpu_count, Manager
 import sys
 
+# take input from command line sys.argv[0] is the program name
 test = True if eval(sys.argv[1]) == 0 else False
 choice = eval(sys.argv[2])
 

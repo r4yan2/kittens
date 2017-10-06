@@ -120,32 +120,43 @@ class Recommender:
         return recommendations
 
     def make_top_tag_recommendations(self, active_playlist):
-        already_included = self.db.get_playlist_tracks(active_playlist)
-        active_tracks = self.db.get_playlist_tracks(active_playlist)
-        active_tags = map(lambda x: self.db.get_track_tags(x), active_tracks)
+        """
+        This method takes into account tags. For the active playlist all tags of the tracks are computed,
+        then for every recommendable track the comparison of the tags is used taking into account:
+
+        * the matched tags with respect to the total tags number of the playlists
+        * secondly the matched tags over the total tags of the track
+        * lastly the position of the track in top included
+
+        :param active_playlist:
+        :return:
+        """
+        already_included = self.db.get_playlist_tracks(active_playlist) # get already included tracks
+        active_tracks = self.db.get_playlist_tracks(active_playlist) # ...
+        active_tags = map(lambda x: self.db.get_track_tags(x), active_tracks) # get the tags from the active tracks
         active_flat_tags = [item for sublist in active_tags for item in sublist]
         active_tags_set = set(active_flat_tags)
 
-        tracks_to_recommend = self.db.get_target_tracks()
+        tracks_to_recommend = self.db.get_target_tracks() # get the set of tracks to recommend
         top_tracks = []
 
-        top_included = self.db.get_top_included()
+        top_included = self.db.get_top_included() # get the top included pre-computed
 
-        for track in tracks_to_recommend:
+        for track in tracks_to_recommend: # make the actual recommendation
             if track not in already_included:
                 tags = self.db.get_track_tags(track)
-                matched = filter(lambda x: x in active_tags_set, tags)
+                matched = filter(lambda x: x in active_tags_set, tags) # calculate the tags which match
                 try:
-                    value_a = len(matched)/float(len(active_tags_set))
-                    value_b = len(matched)/float(len(tags))
-                except ZeroDivisionError:
+                    value_a = len(matched)/float(len(active_tags_set)) # calculate first parameter
+                    value_b = len(matched)/float(len(tags)) # calculate second parameter
+                except ZeroDivisionError: # if active_tags or tags are empty set default parameters
                     value_a = 0
                     value_b = 0
-                top_value = self.get_from_top(track, top_included)
-                top_tracks.append([track, value_a, value_b, top_value])
+                top_value = self.get_from_top(track, top_included) # get the value from the top-included
+                top_tracks.append([track, value_a, value_b, top_value]) # joining all parameters together
 
-        recommendations = sorted(top_tracks, key=itemgetter(1, 2, 3), reverse=True)[0:5]
-        return [track[0] for track in recommendations]
+        recommendations = sorted(top_tracks, key=itemgetter(1, 2, 3), reverse=True)[0:5] # sort by parameters and take only five
+        return [track[0] for track in recommendations] # use a list comprehension to return track id which is in position 0 of the subelement
 
     def get_from_top(self, track, top_included):
         for item in top_included:
