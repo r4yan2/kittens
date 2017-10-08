@@ -3,7 +3,6 @@ from collections import defaultdict, Counter
 import helper
 import random
 from operator import itemgetter
-import gc
 
 class Database:
     def __init__(self, test=False):
@@ -47,13 +46,17 @@ class Database:
         """
         train = self.get_train_list()
         lenght = len(self.get_target_playlists()) * 5
-        train_part = []
+        self.train_test = []
+        already_selected = set()
         for i in xrange(0, lenght):
-            line = random.randint(0, len(train) - 1)
-            train_part.append(train.pop(line))
-        self.train_test = train_part
-        self.target_tracks = map(lambda x: x[1], train_part)
-        gc.collect()
+            while True:
+                line = random.randint(0, len(train) - 1)
+                if not line in already_selected:
+                    break
+            already_selected.add(line)
+            self.train_test.append(train[line])
+        self.train_list = helper.diff_test_set(train, self.train_test)
+        self.target_tracks = map(lambda x: x[1], self.train_test)
 
     def compute_train_list(self):
         """
@@ -356,6 +359,12 @@ class Database:
 
 
     def get_from_list(self, track, tracks):
+        """
+        binary search hand implemented
+        :param track:
+        :param tracks:
+        :return:
+        """
         lenght = len(tracks)
         half = lenght/2
         quarter = half/2

@@ -1,7 +1,6 @@
 import csv
 import sys
 
-
 class Helper:
     def __init__(self, filename, header=None):
         """
@@ -15,17 +14,6 @@ class Helper:
         if not header == None:
             self.writer = csv.writer(self.fp, delimiter=',', quoting=csv.QUOTE_NONE)
             self.writer.writerow(header)
-
-    @staticmethod
-    def diff_list(a, b):
-        """
-        make the difference of the two lists
-        :param a:
-        :param b:
-        :return:
-        """
-        b = set(b)
-        return [aa for aa in a if aa not in b]
 
     def write(self, content):
         """
@@ -46,6 +34,26 @@ class Helper:
     def tick(completion):
         sys.stdout.write("\r%f%%" % completion)
         sys.stdout.flush()
+
+def diff_list(a, b):
+    """
+    make the difference of the two lists
+    :param a:
+    :param b:
+    :return:
+    """
+    b = set(b)
+    return [aa for aa in a if aa not in b]
+
+def diff_test_set(a, b):
+    """
+    pordanna
+    :param a:
+    :param b:
+    :return:
+    """
+    b = set([str(x[0])+str(x[1]) for x in b])
+    return [x for x in a if str(x[0])+str(x[1]) not in b]
 
 def read(what):
     """
