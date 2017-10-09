@@ -27,39 +27,41 @@ running="
 
 end="
          Completed!
-         Result Writed to file correctly
+         Result writed to file correctly
          Bye
 "
 
 end_test="
          Test Mode Completed!
-         Average Accuracy $value
+         Average Accuracy
 "
 
 whiptail --msgbox "$disclaimer" 20 70
-whiptail --yesno "Enable Test Mode?" 10 50
-test=$?
-choice=$(whiptail --menu "Select Recommendations Method" 20 70 5 \
-0 "Random" \
-1 "Top Listened" \
-2 "Top Included" \
-3 "Top Tags" 3>&2 2>&1 1>&3)
-case $choice in
-    0)
-        /usr/bin/python kittens.py "$test" 0 | whiptail --gauge "$running" 15 60 0
+mode=$(whiptail --menu "Select Operational Mode" 20 70 5 \
+0 "Test Mode" \
+1 "Recommendation Mode" \
+2 "Script Mode" 3>&2 2>&1 1>&3)
+case $mode in
+    2)
+        script=$(whiptail --menu "Which script do you want to run?" 20 70 5 \
+        0 "Compute test set (x3)" 3>&2 2>&1 1>&3)
+        /usr/bin/pypy script.py
     ;;
     *)
-        /usr/bin/pypy kittens.py "$test" "$choice" | whiptail --gauge "$running" 15 60 0
+        recommendations=$(whiptail --menu "Select Recommendations Method" 20 70 5 \
+        0 "Random" \
+        1 "Top Listened" \
+        2 "Top Included" \
+        3 "Top Tags" 3>&2 2>&1 1>&3)
+        /usr/bin/pypy kittens.py "$mode" "$recommendations" | whiptail --gauge "$running" 15 60 0
     ;;
 esac
-case $test in
-    1)
-        whiptail --msgbox "$end" 20 50
-    ;;
+case $mode in
     0)
-        value=`cat data/result.csv`
-        whiptail --msgbox "$end_test" 20 50
+        cat data/test.csv | whiptail --gauge "$end_test" 15 50 0
+    ;;
+    *)
+        whiptail --msgbox "$end" 20 50
     ;;
 esac
 exit 0
-

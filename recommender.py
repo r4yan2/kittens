@@ -158,14 +158,17 @@ class Recommender:
                 except ZeroDivisionError:
                     value_b = 0
 
-                # calculate a float which indicate if the track match the avg playlist track length
-                value_c = - math.fabs((float(track_duration)/playlist_avg_duration) - 1)
+                try:
+                    # calculate a float which indicate if the track match the avg playlist track length
+                    value_c = - math.fabs((float(track_duration)/playlist_avg_duration) - 1)
+                except ZeroDivisionError:
+                    value_c = -10000000000
 
                 top_value = len(track_playlists_map[track]) # get the value from the top-included
 
-                top_tracks.append([track, value_a * value_c, value_a, value_b, top_value]) # joining all parameters together
+                top_tracks.append([track, value_a, value_b, value_c, top_value]) # joining all parameters together
 
-        recommendations = sorted(top_tracks, key=itemgetter(1, 2, 3, 4), reverse=True) # sorting results
+        recommendations = sorted(top_tracks, key=itemgetter(1, 2, 4), reverse=True) # sorting results
         print "The winner is:", recommendations[0]
         return [track[0] for track in recommendations[0:5]] # use a list comprehension to return track id
 

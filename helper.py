@@ -1,39 +1,22 @@
 import csv
-import sys
 
-class Helper:
-    def __init__(self, filename, header=None):
-        """
-        when the helper is initialized it open the file for the result and write the header,
-        this should be changed is something less hacky
-        
-        :param filename: 
-        :param header: 
-        """
-        self.fp = open('data/' + filename + '.csv', 'w', 0)
-        if not header == None:
-            self.writer = csv.writer(self.fp, delimiter=',', quoting=csv.QUOTE_NONE)
-            self.writer.writerow(header)
 
-    def write(self, content):
-        """
-        write the result on the file
-        :param content:
-        :return:
-        """
-        try:
-            self.writer.writerows(content)
-        except AttributeError:
-            self.writer = csv.writer(self.fp, delimiter=',', quoting=csv.QUOTE_NONE)
-            self.writer.writerows(content)
-
-    def close(self):
-        self.fp.close()
-
-    @staticmethod
-    def tick(completion):
-        sys.stdout.write("\r%f%%" % completion)
-        sys.stdout.flush()
+def write(filename, content):
+    """
+    write the result on the file
+    :param content:
+    :return:
+    """
+    fp = open('data/' + filename + '.csv', 'w', 0)
+    writer = csv.writer(fp, delimiter=',', quoting=csv.QUOTE_NONE)
+    if filename == "result":
+        header = ["playlist_id", "track_ids"]
+        writer.writerow(header)
+    if len(content) > 1:
+        writer.writerows(content)
+    else:
+        writer.writerow(content)
+    fp.close()
 
 def diff_list(a, b):
     """

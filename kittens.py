@@ -1,6 +1,6 @@
 from recommender import Recommender
 from database import Database
-from helper import Helper
+import helper
 from multiprocessing import Process, Queue, cpu_count, Manager
 import sys
 from operator import itemgetter
@@ -65,8 +65,7 @@ for i in xrange(len(target_playlists)):
 if test:
     results = filter(lambda x: x>=0, results)
     average = float(sum(results))/len(results)
-    helper = Helper("result", [average])
-    helper.close()
+    helper.write("test", [average])
 else:
     result = [[x[1], x[2]] for x in sorted(results, key=itemgetter(0))]
     for playlist, recommendation in result:
@@ -74,6 +73,4 @@ else:
         to_write.append(elem)
 
     # Initialize the helper instance to write the csv
-    helper = Helper("result", ["playlist_id", "track_ids"])
-    helper.write(to_write)
-    helper.close()
+    helper.write("result", to_write)

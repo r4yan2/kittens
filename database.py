@@ -2,7 +2,6 @@ import math
 from collections import defaultdict, Counter
 import helper
 import random
-from operator import itemgetter
 
 class Database:
     def __init__(self, test=False):
