@@ -41,17 +41,18 @@ class Database:
         computing the test set if Testing mode is enabled:
 
         * REMOVE a number of lines from the train set and put them in the test set
-        * every line is randomly chosen to avoid overfitting of the test set
+        * every line is randomly chosen to avoid over fitting of the test set
         :return:
         """
         train = self.get_train_list()
-        lenght = len(self.get_target_playlists()) * 5
+        length = len(self.get_target_playlists()) * 5
         self.train_test = []
+        playlists_with_n_tracks = set([playlist for playlist in self.get_playlists() if len(self.get_playlist_tracks(playlist)) >= 8])
         already_selected = set()
-        for i in xrange(0, lenght):
+        for i in xrange(0, length):
             while True:
                 line = random.randint(0, len(train) - 1)
-                if not line in already_selected:
+                if line not in already_selected and train[line][0] in playlists_with_n_tracks:
                     break
             already_selected.add(line)
             self.train_test.append(train[line])
@@ -119,29 +120,30 @@ class Database:
             self.user_similarities_list = map(lambda x: map(float, x), user_similarities_list)
             return self.user_similarities_list
 
-    def get_tracks(self):
+    def get_tracks_map(self):
         """
         getter for tracks list
         :return:
         """
         try:
-            return self.tracks
+            return self.tracks_map
         except AttributeError:
-            self.tracks = self.compute_tracks()
-            self.tracks = sorted(self.tracks, key=itemgetter(0))
-            return self.tracks
+            self.tracks_map = self.compute_tracks_map()
+            return self.tracks_map
 
-    def compute_tracks(self):
+    def compute_tracks_map(self):
         """
         parse tracks_final.csv dividing all field into the corresponding part of the list
         :return:
         """
         tracks = list(helper.read("tracks_final"))
-        result = []
+        result = {}
         for track in tracks[1:]:
             track_id = int(track[0])
             artist_id = int(track[1])
             duration = int(track[2])
+            if duration == None:
+                continue
             try:
                 playcount = float(track[3]) # yes, PLAYCOUNT is memorized as a floating point
             except ValueError:
@@ -154,8 +156,36 @@ class Database:
             except IndexError:
                 album = 0
             tags = eval(track[5]) # evaluation of the tags list
-            result.append([track_id, artist_id, duration, playcount, album, tags])
+            result[track_id]= [artist_id, duration, playcount, album, tags]
         return result
+
+    def get_track_duration(self, track):
+        """
+        return the length of a given track
+        :param track:
+        :return:
+        """
+        tracks_map = self.get_tracks_map()
+        return tracks_map[track][1]
+
+    def get_playlist_avg_duration(self, playlist):
+        """
+        return the avg length of the tracks in the given playlist
+        :param playlist:
+        :return:
+        """
+        tracks = self.get_playlist_tracks(playlist)
+        length = []
+        for track in tracks:
+            track_length = self.get_track_duration(track)
+            if track_length <= 0:
+                continue
+            length.append(track_length)
+        try:
+            return float(sum(length))/len(length)
+        except ZeroDivisionError:
+            return 0.0
+
 
     def get_items_in_train(self):
         try:
@@ -346,14 +376,9 @@ class Database:
         :param track:
         :return:
         """
-        '''
-        tracks = self.get_tracks()
-        line = self.get_from_list(track, tracks)
-        return line[5]
-        '''
-        track_tags_map = self.get_track_tags_map()
+        track_map = self.get_tracks_map()
         try:
-            return track_tags_map[track]
+            return track_map[track][4]
         except LookupError:
             return []
 

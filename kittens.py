@@ -25,7 +25,11 @@ manager = Manager()
 ns = manager.Namespace()
 ns.db = db
 
-core = cpu_count()
+# Sadly in TestMode there is a memory issue which limit the parallel computation
+if test:
+    core = 2
+else:
+    core = cpu_count()
 
 target_playlists = db.get_target_playlists()
 

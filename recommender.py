@@ -132,35 +132,42 @@ class Recommender:
         :return:
         """
         already_included = self.db.get_playlist_tracks(active_playlist) # get already included tracks
-        active_tracks = self.db.get_playlist_tracks(active_playlist) # ...
-        active_tags = map(lambda x: self.db.get_track_tags(x), active_tracks) # get the tags from the active tracks
+        active_tags = map(lambda x: self.db.get_track_tags(x), already_included) # get the tags from the active tracks
         active_flat_tags = [item for sublist in active_tags for item in sublist]
         active_tags_set = set(active_flat_tags)
 
         tracks_to_recommend = self.db.get_target_tracks() # get the set of tracks to recommend
         top_tracks = []
+        track_playlists_map = self.db.get_track_playlists_map()
 
-        top_included = self.db.get_top_included() # get the top included pre-computed
+        playlist_avg_duration = self.db.get_playlist_avg_duration(active_playlist) # get the playlist avg track length
 
         for track in tracks_to_recommend: # make the actual recommendation
             if track not in already_included:
+                track_duration = self.db.get_track_duration(track) # get the track length
                 tags = self.db.get_track_tags(track)
                 matched = filter(lambda x: x in active_tags_set, tags) # calculate the tags which match
                 try:
-                    value_a = len(matched)/float(len(active_tags_set)) # calculate first parameter
-                    value_b = len(matched)/float(len(tags)) # calculate second parameter
-                except ZeroDivisionError: # if active_tags or tags are empty set default parameters
+                    # calculate first parameter: matched over playlists tags set
+                    value_a = len(matched)/float(len(active_tags_set))
+                except ZeroDivisionError:
                     value_a = 0
+                try:
+                    # calculate second parameter: matched over track tags
+                    value_b = len(matched)/float(len(tags))
+                except ZeroDivisionError:
                     value_b = 0
-                top_value = self.value_from_top_included(track) # get the value from the top-included
-                top_tracks.append([track, value_a, value_b, top_value]) # joining all parameters together
 
-        recommendations = sorted(top_tracks, key=itemgetter(1, 2, 3), reverse=True) # sorting results
+                # calculate a float which indicate if the track match the avg playlist track length
+                value_c = - math.fabs((float(track_duration)/playlist_avg_duration) - 1)
+
+                top_value = len(track_playlists_map[track]) # get the value from the top-included
+
+                top_tracks.append([track, value_a * value_c, value_a, value_b, top_value]) # joining all parameters together
+
+        recommendations = sorted(top_tracks, key=itemgetter(1, 2, 3, 4), reverse=True) # sorting results
+        print "The winner is:", recommendations[0]
         return [track[0] for track in recommendations[0:5]] # use a list comprehension to return track id
-
-    def value_from_top_included(self, track):
-        track_playlists_map = self.db.get_track_playlists_map()
-        return len(track_playlists_map[track])
 
     def make_top_n_recommendations(self, user, shrink):
 

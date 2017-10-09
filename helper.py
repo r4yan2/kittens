@@ -47,7 +47,7 @@ def diff_list(a, b):
 
 def diff_test_set(a, b):
     """
-    pordanna
+    make the difference between list of lists
     :param a:
     :param b:
     :return:
