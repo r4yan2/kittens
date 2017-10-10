@@ -4,15 +4,18 @@ import helper
 import random
 
 class Database:
-    def __init__(self, test=False):
+    def __init__(self, test=None):
         """
         initializing the database:
 
         * if we are in test execution train set is splitted and test_set is generated
         :param test:
         """
-        if test:
-            self.compute_test_set()
+        if not test == None:
+            self.load_test_set(test)
+            self.load_train_list(test)
+        else:
+            self.load_train_list()
 
     def get_test_set(self):
         """
@@ -21,10 +24,14 @@ class Database:
         :return:
         """
         try:
-            return self.train_test
+            return self.test_set
         except AttributeError:
-            self.compute_test_set()
-            return self.train_test
+            self.test_set = self.compute_test_set()
+            return self.test_set
+
+    def load_test_set(self, test):
+        test_set = list(helper.read("test_set" + str(test)))
+        self.test_set = map(lambda x: [int(x[0]), int(x[1])], test_set)
 
     def get_playlists(self):
         """
@@ -46,7 +53,7 @@ class Database:
         train = self.get_train_list()
         length = len(self.get_target_playlists()) * 5
         self.train_test = []
-        playlists_with_n_tracks = set([playlist for playlist in self.get_playlists() if len(self.get_playlist_tracks(playlist)) >= 8])
+        playlists_with_n_tracks = set([playlist for playlist in self.get_playlists() if len(self.get_playlist_tracks(playlist)) >= 10])
         already_selected = set()
         for i in xrange(0, length):
             while True:
@@ -58,14 +65,6 @@ class Database:
         self.train_list = helper.diff_test_set(train, self.train_test)
         self.target_tracks = map(lambda x: x[1], self.train_test)
 
-    def compute_train_list(self):
-        """
-        return the list from the train csv with the header removed
-        :return:
-        """
-        train_list = list(helper.read("train_final"))
-        self.train_list = map(lambda x: [int(x[0]), int(x[1])], train_list[1:])
-
     def get_train_list(self):
         """
         getter for the train_list
@@ -75,8 +74,16 @@ class Database:
         try:
             return self.train_list
         except AttributeError:
-            self.compute_train_list()
+            self.load_train_list()
             return self.train_list
+
+    def load_train_list(self, test=None):
+        if test == None:
+            train_list = list(helper.read("train_final"))
+            self.train_list = map(lambda x: [int(x[0]), int(x[1])], train_list[1:])
+        else:
+            train_list = list(helper.read("train_set"+str(test)))
+            self.train_list = map(lambda x: [int(x[0]), int(x[1])], train_list)
 
     def get_target_playlists(self):
         """

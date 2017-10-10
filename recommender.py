@@ -169,7 +169,7 @@ class Recommender:
                 top_tracks.append([track, value_a, value_b, value_c, top_value]) # joining all parameters together
 
         recommendations = sorted(top_tracks, key=itemgetter(1, 2, 4), reverse=True) # sorting results
-        print "The winner is:", recommendations[0]
+        # debug print "The winner is:", recommendations[0]
         return [track[0] for track in recommendations[0:5]] # use a list comprehension to return track id
 
     def make_top_n_recommendations(self, user, shrink):
