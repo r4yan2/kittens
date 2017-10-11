@@ -44,6 +44,8 @@ class Recommender:
                 recommendations = self.make_top_included_recommendations(target)
             elif choice == 3:
                 recommendations = self.make_top_tag_recommendations(target)
+            elif choice == 4:
+                recommendations = self.make_tf_idf_recommendations(target)
             # doing testing things if test mode enabled
             if test:
                 try:
@@ -171,6 +173,36 @@ class Recommender:
         recommendations = sorted(top_tracks, key=itemgetter(1, 2, 4), reverse=True) # sorting results
         # debug print "The winner is:", recommendations[0]
         return [track[0] for track in recommendations[0:5]] # use a list comprehension to return track id
+
+    def make_tf_idf_recommendations(self, playlist):
+        possible_recommendations = []
+
+        playlist_tracks = self.db.get_playlist_tracks(playlist)
+        playlist_tracks_set = set(playlist_tracks)
+
+        playlist_features = []
+        [playlist_features.extend(self.db.get_track_tags(track)) for track in playlist_tracks]
+        playlist_features_set = set(playlist_features)
+
+        for track in self.db.get_target_tracks():
+            if track not in playlist_tracks_set:
+                predictions = []
+                tags = self.db.get_track_tags(track)
+                for tag in tags:
+                    if tag in playlist_features_set:
+                        occurrence = playlist_features.count(tag)
+                        tracks_count = float(len(playlist_tracks))
+                        tag_partial_frequency = occurrence
+                        idf = math.log((tracks_count / tag_partial_frequency), 10)
+                        tf_idf = occurrence * idf
+                        predictions.append(tf_idf)
+                try:
+                    mean_prediction = sum(predictions)/float(len(predictions))
+                except ZeroDivisionError:
+                    mean_prediction = 0
+                possible_recommendations.append([track, mean_prediction])
+        recommendations = sorted(possible_recommendations, key=itemgetter(1), reverse=True)[0:5]
+        return [recommendation for recommendation, value in recommendations]
 
     def make_top_n_recommendations(self, user, shrink):
 
@@ -399,17 +431,6 @@ class Recommender:
                 similarities.append([item_iterator,sum([a * b for a, b in zip(binary_features, tf_idf)]) / num_features_item_iterator])
             #recommendations.append(sorted(similarities, key=lambda x: x[1], reverse=False))
         return map(lambda x: x[0], sorted(similarities,key=lambda x: x[1],reverse=True)[:5])
-
-    def get_tf_idf_based_recommendations(self, user):
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", category = RuntimeWarning)
-            possible_recommendations = []
-            for item in self.db.get_item_set():
-                features = self.db.get_features_list(item)
-                prediction = numpy.mean(map(lambda x: self.db.get_features_partial_frequency(user, x), features))
-                possible_recommendations.append([item, prediction])
-            recommendations = sorted(possible_recommendations, key = lambda x: x[1], reverse = True)[:5]
-        return map(lambda x: x[0],recommendations)
 
     def get_user_based_recommendations(self, user):
         """

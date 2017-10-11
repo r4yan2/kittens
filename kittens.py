@@ -36,7 +36,7 @@ for istance in xrange(istances):
     if test:
         core = 2
     else:
-        core = cpu_count()
+        core = 2
 
     target_playlists = db.get_target_playlists()
 
@@ -56,7 +56,6 @@ for istance in xrange(istances):
 
     # Retrieve results from the out queue and display percentage
     completion = 0
-    print "instance", istance
     for i in xrange(len(target_playlists)):
         percentage = (i*100)/len(target_playlists)
         if percentage > completion:
@@ -73,7 +72,6 @@ for istance in xrange(istances):
     if test:
         results = filter(lambda x: x>=0, results)
         average = float(sum(results))/len(results)
-        print average
         helper.write("test_result"+str(istance), [average])
     else:
         result = [[x[1], x[2]] for x in sorted(results, key=itemgetter(0))]

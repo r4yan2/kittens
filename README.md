@@ -1,6 +1,6 @@
 # kittens
 
-The Engine is by default parallel but it's optimized to consume less RAM with respect to a normal (stupid) parallel.
+The Engine is by default parallel but it's optimized to consume less RAM with respect to a normal parallel.
 
 ## Random
 

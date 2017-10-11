@@ -52,7 +52,8 @@ case $mode in
         0 "Random" \
         1 "Top Listened" \
         2 "Top Included" \
-        3 "Top Tags" 3>&2 2>&1 1>&3)
+        3 "Top Tags" \
+        4 "TF-IDF based" 3>&2 2>&1 1>&3)
         /usr/bin/pypy kittens.py "$mode" "$recommendations" | whiptail --gauge "$running" 15 60 0
     ;;
 esac

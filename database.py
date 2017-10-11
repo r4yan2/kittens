@@ -39,7 +39,7 @@ class Database:
         :return:
         """
         playlists = self.get_train_list()
-        playlists = map(lambda x: x[0], playlists)
+        playlists = set([playlist for playlist, track in playlists])
         return set(playlists)
 
     def compute_test_set(self):
@@ -294,23 +294,6 @@ class Database:
 
         return idf
 
-    def get_features_partial_frequency(self, user, feature):
-        # return the frequency of a given feature among a particular user
-        user_items_list = self.get_user_evaluations(user)
-        user_features_list = map(lambda x: self.get_features_list(x), user_items_list)
-        flattened = [item for sublist in user_features_list for item in sublist]
-        if feature in flattened:
-            occurrence = flattened.count(feature)
-            len_items = float(len(user_items_list))
-            feature_partial_frequency = occurrence
-            idf = math.log(((len_items / feature_partial_frequency) * self.get_user_feature_evaluation(user, feature)), 10)
-            tf_idf = occurrence * idf
-            feature_prediction = tf_idf
-        else:
-            feature_prediction = 0
-
-        return feature_prediction
-
     def get_num_users(self):
         """
 
@@ -437,15 +420,15 @@ class Database:
                 self.track_tags_map[id] = tags
             return self.track_tags_map
 
-    def get_playlist_tracks(self, playlist):
+    def get_playlist_tracks(self, target_playlist):
         """
         return all the tracks into the specified playlist
         :param playlist:
         :return:
         """
 
-        playlists = self.get_train_list()
-        tracks = map(lambda x: x[1], filter(lambda x: x[0] == playlist, playlists))
+        train_list = self.get_train_list()
+        tracks = [track for playlist, track in train_list if playlist == target_playlist]
         return tracks
 
     def get_user_evaluations_list(self):
