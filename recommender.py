@@ -148,8 +148,8 @@ class Recommender:
         playlist_avg_duration = self.db.get_playlist_avg_duration(active_playlist) # get the playlist avg track length
 
         for track in tracks_to_recommend: # make the actual recommendation
-            if track not in already_included:
-                track_duration = self.db.get_track_duration(track) # get the track length
+            track_duration = self.db.get_track_duration(track) # get the track length
+            if track not in already_included and track_duration > 90000:
                 tags = self.db.get_track_tags(track)
                 matched = filter(lambda x: x in active_tags_set, tags) # calculate the tags which match
                 try:
