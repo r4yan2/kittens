@@ -157,8 +157,11 @@ class Recommender:
                     # calculate first parameter: matched over playlist tags set
                     norm_playlist = math.sqrt(len(active_tags_set))
                     norm_track = math.sqrt(len(tags))
+
                     value_a = len(matched)/float(norm_playlist*norm_track + math.fabs(math.log(len(matched)/len(active_tags_set))))
                 except ZeroDivisionError:
+                    value_a = 0
+                except ValueError:
                     value_a = 0
                 try:
                     # calculate second parameter: matched over track tags
