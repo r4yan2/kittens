@@ -219,10 +219,10 @@ class Database:
         except AttributeError:
             playlists = list(helper.read("playlists_final"))
             self.owner_playlist = defaultdict(lambda: [], {})
-            for owner in playlists:
+            for owner in playlists[1:]:
                 owned_by = int(owner[5])
                 playlist_id = int(owner[1])
-                self.owner_playlist[owned_by].append([playlist_id])
+                self.owner_playlist[owned_by].extend([playlist_id])
 
             return self.owner_playlist
 
