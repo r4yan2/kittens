@@ -172,7 +172,7 @@ class Database:
             track_id = int(track[0])
             artist_id = int(track[1])
             duration = int(track[2])
-            if duration < 90000:
+            if duration == None or duration < 90000:
                 continue
             try:
                 playcount = float(track[3]) # yes, PLAYCOUNT is memorized as a floating point

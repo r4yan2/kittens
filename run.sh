@@ -40,7 +40,7 @@ if [[ "$?" == "1" ]]; then
   fi
 fi
 
-mem=$(free | awk 'FNR == 2 {print int($7/(1024*1024*2))}')
+mem=$(free | awk 'FNR == 2 {print int($7/(1024*1024*1.5))}')
 
 if [[ "$mem" == "0" ]]; then
   whiptail --msgbox "Sorry, the system does not have enough memory available (2Gb minimum is required)" 10 50
