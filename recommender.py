@@ -197,7 +197,7 @@ class Recommender:
                 tags = self.db.get_track_tags(track)
                 for tag in tags:
                     if tag in playlist_features_set:
-                        occurrence = playlist_features.count(tag)/
+                        occurrence = playlist_features.count(tag)
                         tracks_count = float(len(playlist_tracks))
                         tag_partial_frequency = occurrence
                         idf = math.log((tracks_count / tag_partial_frequency), 10)
