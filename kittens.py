@@ -4,6 +4,10 @@ import helper
 from multiprocessing import Process, Queue, cpu_count, Manager
 import sys
 from operator import itemgetter
+import logging
+
+# A logfile to take info during the execution
+logging.basicConfig(filename='logfile.log', level=logging.DEBUG, filemode='w')
 
 # take input from command line sys.argv[0] is the program name
 if eval(sys.argv[1]) == 0:
@@ -34,9 +38,9 @@ for istance in xrange(istances):
 
     # Sadly in TestMode there is a memory issue which limit the parallel computation
     if test:
-        core = 2
+        core = 3
     else:
-        core = 2
+        core = 3
 
     target_playlists = db.get_target_playlists()
 

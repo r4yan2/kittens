@@ -85,6 +85,30 @@ class Database:
             train_list = list(helper.read("train_set"+str(test)))
             self.train_list = map(lambda x: [int(x[0]), int(x[1])], train_list)
 
+    def get_playlist_final(self):
+        """
+        the initialization of the playlist final csv
+        :return:
+        """
+        try:
+            return self.playlist_final
+
+        except AttributeError:
+
+            playlist_list = list(helper.read("playlists_final"))
+            result = {}
+            for playlist in playlist_list[1:]:
+                created_at = int(playlist[0])
+                playlist_id = int(playlist[1])
+                title = eval(playlist[2])
+                numtracks = int(playlist[3])
+                duration = int(playlist[4])
+                owner = int(playlist[5])
+
+                result[playlist_id]= [created_at, title, numtracks, duration, owner]
+            self.playlist_final = result
+            return self.playlist_final
+
     def get_target_playlists(self):
         """
         getter for the target playlists for which recommend tracks in target_tracks
@@ -148,7 +172,7 @@ class Database:
             track_id = int(track[0])
             artist_id = int(track[1])
             duration = int(track[2])
-            if duration == None:
+            if duration == None and duration < 90000:
                 continue
             try:
                 playcount = float(track[3]) # yes, PLAYCOUNT is memorized as a floating point
@@ -164,6 +188,43 @@ class Database:
             tags = eval(track[5]) # evaluation of the tags list
             result[track_id]= [artist_id, duration, playcount, album, tags]
         return result
+
+    def get_playlist_user_tracks(self, playlist):
+        """
+        return the tracks listened by a user
+        :param playlist:
+        :return:
+        """
+        playlist_final = self.get_playlist_final()
+        owned_by = playlist_final[playlist][4]
+
+        owner_playlist = self.get_owner_playlists()
+        playlist_list = owner_playlist[owned_by]
+
+        tracks_listened = []
+        for playlist in playlist_list:
+            tracks = self.get_playlist_tracks(playlist)
+            tracks_listened.extend(tracks)
+
+        return set(tracks_listened)
+
+    def get_owner_playlists(self):
+        """
+
+        :return:
+        """
+        try:
+            return self.owner_playlist
+
+        except AttributeError:
+            playlists = list(helper.read("playlists_final"))
+            self.owner_playlist = defaultdict(lambda: [], {})
+            for owner in playlists:
+                owned_by = owner[5]
+                playlist_id = owner[1]
+                self.owner_playlist[owned_by].append([playlist_id])
+
+            return self.owner_playlist
 
     def get_track_duration(self, track):
         """

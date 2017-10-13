@@ -8,6 +8,7 @@ import time
 import warnings
 import random
 from operator import itemgetter
+import logging
 
 class Recommender:
     def __init__(self, db=None):
@@ -133,8 +134,10 @@ class Recommender:
         :param active_playlist:
         :return:
         """
-        already_included = self.db.get_playlist_tracks(active_playlist) # get already included tracks
-        active_tags = map(lambda x: self.db.get_track_tags(x), already_included) # get the tags from the active tracks
+        already_included = self.db.get_playlist_user_tracks(active_playlist)
+
+        active_tracks = self.db.get_playlist_tracks(active_playlist) # get already included tracks
+        active_tags = map(lambda x: self.db.get_track_tags(x), active_tracks) # get the tags from the active tracks
         active_flat_tags = [item for sublist in active_tags for item in sublist]
         active_tags_set = set(active_flat_tags)
 
@@ -150,8 +153,10 @@ class Recommender:
                 tags = self.db.get_track_tags(track)
                 matched = filter(lambda x: x in active_tags_set, tags) # calculate the tags which match
                 try:
-                    # calculate first parameter: matched over playlists tags set
-                    value_a = len(matched)/float(len(active_tags_set))
+                    # calculate first parameter: matched over playlist tags set
+                    norm_playlist = math.sqrt(len(active_tags_set))
+                    norm_track = math.sqrt(len(tags))
+                    value_a = len(matched)/float(norm_playlist*norm_track)
                 except ZeroDivisionError:
                     value_a = 0
                 try:
@@ -171,7 +176,8 @@ class Recommender:
                 top_tracks.append([track, value_a, value_b, value_c, top_value]) # joining all parameters together
 
         recommendations = sorted(top_tracks, key=itemgetter(1, 2, 4), reverse=True) # sorting results
-        # debug print "The winner is:", recommendations[0]
+
+        #logging.debug('The winner is:%s', recommendations[0])
         return [track[0] for track in recommendations[0:5]] # use a list comprehension to return track id
 
     def make_tf_idf_recommendations(self, playlist):
