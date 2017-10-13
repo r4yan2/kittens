@@ -134,9 +134,10 @@ class Recommender:
         :param active_playlist:
         :return:
         """
-        already_included = self.db.get_playlist_user_tracks(active_playlist)
+        #already_included = self.db.get_playlist_user_tracks(active_playlist)
 
         active_tracks = self.db.get_playlist_tracks(active_playlist) # get already included tracks
+        already_included = active_tracks
         active_tags = map(lambda x: self.db.get_track_tags(x), active_tracks) # get the tags from the active tracks
         active_flat_tags = [item for sublist in active_tags for item in sublist]
         active_tags_set = set(active_flat_tags)
@@ -149,14 +150,14 @@ class Recommender:
 
         for track in tracks_to_recommend: # make the actual recommendation
             track_duration = self.db.get_track_duration(track) # get the track length
-            if track not in already_included and track_duration > 90000:
+            if track not in already_included and track_duration > 60000:
                 tags = self.db.get_track_tags(track)
                 matched = filter(lambda x: x in active_tags_set, tags) # calculate the tags which match
                 try:
                     # calculate first parameter: matched over playlist tags set
                     norm_playlist = math.sqrt(len(active_tags_set))
                     norm_track = math.sqrt(len(tags))
-                    value_a = len(matched)/float(norm_playlist*norm_track)
+                    value_a = len(matched)/float(norm_playlist*norm_track + math.fabs(math.log(len(matched)/len(active_tags_set))))
                 except ZeroDivisionError:
                     value_a = 0
                 try:
@@ -191,12 +192,12 @@ class Recommender:
         playlist_features_set = set(playlist_features)
 
         for track in self.db.get_target_tracks():
-            if track not in playlist_tracks_set:
+            if track not in playlist_tracks_set and self.db.get_track_duration(track)>60000:
                 predictions = []
                 tags = self.db.get_track_tags(track)
                 for tag in tags:
                     if tag in playlist_features_set:
-                        occurrence = playlist_features.count(tag)
+                        occurrence = playlist_features.count(tag)/
                         tracks_count = float(len(playlist_tracks))
                         tag_partial_frequency = occurrence
                         idf = math.log((tracks_count / tag_partial_frequency), 10)
