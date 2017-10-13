@@ -14,6 +14,7 @@ else:
     istances = 1
 
 choice = eval(sys.argv[2])
+core = eval(sys.argv[3])
 
 # Initializing the recommender istance
 recommender_system = Recommender()
@@ -31,12 +32,6 @@ for istance in xrange(istances):
     manager = Manager()
     ns = manager.Namespace()
     ns.db = db
-
-    # Sadly in TestMode there is a memory issue which limit the parallel computation
-    if test:
-        core = 2
-    else:
-        core = 2
 
     target_playlists = db.get_target_playlists()
 
@@ -59,7 +54,10 @@ for istance in xrange(istances):
     for i in xrange(len(target_playlists)):
         percentage = (i*100)/len(target_playlists)
         if percentage > completion:
-            sys.stdout.write("%i\n" % percentage)
+            if test:
+                sys.stdout.write("XXX\n%i\n%s\nXXX\n" % (percentage,"istance "+str(istance)))
+            else:
+                sys.stdout.write("%i\n" % percentage)
             sys.stdout.flush()
             completion = percentage
         r = q_out.get()
