@@ -351,7 +351,7 @@ class Recommender:
                     except ValueError:
                 	    print "top_n(<3)"
                         recommendations = get_top_n_personalized(user, recommendations)
-                
+
                 else:
                     try:
                 	    print "never seen"
@@ -359,7 +359,7 @@ class Recommender:
                     except Exception as e:
                 	    print "top_N>3"
                         recommendations = get_top_n_personalized(user, recommendations)
-    
+
     	    if (len(recommendations) < 5):
     	        recommendations = get_binary_based_recommendations(user)
                 """
