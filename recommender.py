@@ -208,6 +208,20 @@ class Recommender:
             tf_idf_playlist.append(tf_idf)
 
         logging.debug("tf_idf %s " % tf_idf_playlist)
+        tracks_tags = []
+        tf_idf_tracks_tags = []
+        for track in playlist_tracks:
+
+            tags = self.db.get_track_tags(track)
+            tracks_tags.append(tags)
+            tf_idf_s = []
+            for tag in tags:
+                tf = 1 / float(len(tags))
+                idf = self.db.get_tag_idf(tag)
+                tf_idf = tf * idf
+                tf_idf_s.append(tf_idf)
+            tf_idf_tracks_tags.append(tf_idf_s)
+
 
         for track in self.db.get_target_tracks():
             if track not in playlist_tracks_set and self.db.get_track_duration(track)>60000:
@@ -219,15 +233,24 @@ class Recommender:
                     tf_idf = tf * idf
                     tf_idf_track.append(tf_idf)
 
-                num_cosine_sim = [tf_idf_track[tags.index(tag)] * tf_idf_playlist[playlist_features_set.index(tag)] for tag in tags if tag in playlist_features_set]
+                mean_cosine_sim = []
 
-                den_cosine_sim = math.sqrt(sum([i**2 for i in tf_idf_playlist])) * math.sqrt(sum([i**2 for i in tf_idf_track]))
-                try:
-                    cosine_sim = sum(num_cosine_sim)/float(den_cosine_sim)
-                except ZeroDivisionError:
-                    cosine_sim = 0
+                for track_tags in tracks_tags:
+                    num_cosine_sim = []
+                    for tag in tags:
+                        if tag in track_tags:
+                            num_cosine_sim.append(tf_idf_track[tags.index(tag)] * tf_idf_tracks_tags[tracks_tags.index(track_tags)][track_tags.index(tag)])
+                        else:
+                            num_cosine_sim.append(0)
+                    den_cosine_sim = math.sqrt(sum([i**2 for i in tf_idf_tracks_tags[tracks_tags.index(track_tags)]])) * math.sqrt(sum([i**2 for i in tf_idf_track]))
 
-                possible_recommendations.append([track, cosine_sim])
+                    try:
+                        cosine_sim = sum(num_cosine_sim)/float(den_cosine_sim)
+                    except ZeroDivisionError:
+                        cosine_sim = 0
+                    mean_cosine_sim.append(cosine_sim)
+                value = sum(mean_cosine_sim)/float(len(mean_cosine_sim))
+                possible_recommendations.append([track, value])
 
         recommendations = sorted(possible_recommendations, key=itemgetter(1), reverse=True)[0:5]
         return [recommendation for recommendation, value in recommendations]
