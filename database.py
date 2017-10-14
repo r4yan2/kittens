@@ -38,9 +38,12 @@ class Database:
         return the playlists set
         :return:
         """
-        playlists = self.get_train_list()
-        playlists = set([playlist for playlist, track in playlists])
-        return set(playlists)
+        try:
+            return self.playlists_set
+        except AttributeError:
+            playlists = self.get_train_list()
+            self.playlists_set = set([playlist for playlist, track in playlists])
+            return self.playlists_set
 
     def compute_test_set(self):
         """
@@ -84,6 +87,39 @@ class Database:
         else:
             train_list = list(helper.read("train_set"+str(test)))
             self.train_list = map(lambda x: [int(x[0]), int(x[1])], train_list)
+
+    def get_tag_playlists_map(self):
+        """
+
+        :return:
+        """
+        try:
+            return self.tag_playlists_map
+        except AttributeError:
+            self.tag_playlists_map = defaultdict(lambda: [], {})
+            for playlist in self.get_playlists():
+                tracks = self.get_playlist_tracks(playlist)  # get already included tracks
+                tags = []
+                [tags.extend(self.get_track_tags(track)) for track in tracks] # get the tags from the active tracks
+                tags_set = set(tags)
+                for tag in tags_set:
+                    self.tag_playlists_map[tag].append(playlist)
+            return self.tag_playlists_map
+
+    def get_tag_idf(self, tag):
+        """
+
+        :return:
+        """
+        tag_playlist_map = self.get_tag_playlists_map()
+        playlist_tags_included = tag_playlist_map[tag]
+        num_idf = len(playlist_tags_included)
+        den_idf = len(self.get_playlists())
+        try:
+            idf = math.log(num_idf/float(den_idf), 10)
+        except ValueError:
+            idf = 0
+        return idf
 
     def get_playlist_final(self):
         """
@@ -487,10 +523,13 @@ class Database:
         :param playlist:
         :return:
         """
-
-        train_list = self.get_train_list()
-        tracks = [track for playlist, track in train_list if playlist == target_playlist]
-        return tracks
+        try:
+            return self.playlist_tracks_map[target_playlist]
+        except AttributeError:
+            self.playlist_tracks_map = defaultdict(lambda: [], {})
+            train_list = self.get_train_list()
+            [self.playlist_tracks_map[playlist].append(track) for playlist, track in train_list]
+            return self.playlist_tracks_map[target_playlist]
 
     def get_user_evaluations_list(self):
         try:

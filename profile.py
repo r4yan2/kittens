@@ -1,5 +1,7 @@
 from database import Database
 from recommender import Recommender
-db=Database(False)
-rm=Recommender(db)
-rm.make_top_tag_recommendations(8829360)
+import cProfile
+db=Database()
+rm=Recommender()
+rm.db=db
+cProfile.run('rm.make_tf_idf_recommendations(8829360)')

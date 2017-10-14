@@ -2,10 +2,8 @@
 import csv
 from collections import defaultdict
 import math
-# import numpy
 import sys
 import time
-import warnings
 import random
 from operator import itemgetter
 import logging
@@ -190,27 +188,44 @@ class Recommender:
         playlist_tracks = self.db.get_playlist_tracks(playlist)
         playlist_tracks_set = set(playlist_tracks)
 
+        logging.debug("playlist: %s" % playlist)
+        logging.debug("playlist_tracks: %s" % playlist_tracks)
+
         playlist_features = []
         [playlist_features.extend(self.db.get_track_tags(track)) for track in playlist_tracks]
-        playlist_features_set = set(playlist_features)
+        playlist_features_set = list(set(playlist_features))
+        tf_idf_playlist = []
+
+        logging.debug("playlist_features: %s" % playlist_features)
+
+        for tag in playlist_features_set:
+            tf = playlist_features.count(tag) / float(len(playlist_features))
+            idf = self.db.get_tag_idf(tag)
+            tf_idf = tf * idf
+            tf_idf_playlist.append(tf_idf)
+
+        logging.debug("tf_idf %s " % tf_idf_playlist)
 
         for track in self.db.get_target_tracks():
             if track not in playlist_tracks_set and self.db.get_track_duration(track)>60000:
-                predictions = []
+                tf_idf_track = []
                 tags = self.db.get_track_tags(track)
                 for tag in tags:
-                    if tag in playlist_features_set:
-                        occurrence = playlist_features.count(tag)
-                        tracks_count = float(len(playlist_tracks))
-                        tag_partial_frequency = occurrence
-                        idf = math.log((tracks_count / tag_partial_frequency), 10)
-                        tf_idf = occurrence * idf
-                        predictions.append(tf_idf)
+                    tf = 1/float(len(tags))
+                    idf = self.db.get_tag_idf(tag)
+                    tf_idf = tf * idf
+                    tf_idf_track.append(tf_idf)
+
+                num_cosine_sim = [tf_idf_track[tags.index(tag)] * tf_idf_playlist[playlist_features_set.index(tag)] for tag in tags if tag in playlist_features_set]
+
+                den_cosine_sim = math.sqrt(sum([i**2 for i in tf_idf_playlist])) * math.sqrt(sum([i**2 for i in tf_idf_track]))
                 try:
-                    mean_prediction = sum(predictions)/float(len(predictions))
+                    cosine_sim = sum(num_cosine_sim)/float(den_cosine_sim)
                 except ZeroDivisionError:
-                    mean_prediction = 0
-                possible_recommendations.append([track, mean_prediction])
+                    cosine_sim = 0
+
+            possible_recommendations.append([track, cosine_sim])
+
         recommendations = sorted(possible_recommendations, key=itemgetter(1), reverse=True)[0:5]
         return [recommendation for recommendation, value in recommendations]
 
