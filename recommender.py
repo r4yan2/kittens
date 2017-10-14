@@ -23,6 +23,9 @@ class Recommender:
 
     def run(self, choice, db, q_in, q_out, test, number):
 
+        # A logfile to take info during the execution
+        logging.basicConfig(filename='worker'+str(number)+'.log', level=logging.DEBUG, filemode='w')
+
         # Retrieve the db from the list of arguments
         self.db = db
 
@@ -224,7 +227,7 @@ class Recommender:
                 except ZeroDivisionError:
                     cosine_sim = 0
 
-            possible_recommendations.append([track, cosine_sim])
+                possible_recommendations.append([track, cosine_sim])
 
         recommendations = sorted(possible_recommendations, key=itemgetter(1), reverse=True)[0:5]
         return [recommendation for recommendation, value in recommendations]

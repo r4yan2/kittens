@@ -5,9 +5,10 @@ from multiprocessing import Process, Queue, cpu_count, Manager
 import sys
 from operator import itemgetter
 import logging
+import gc
 
 # A logfile to take info during the execution
-logging.basicConfig(filename='logfile.log', level=logging.DEBUG, filemode='w')
+logging.basicConfig(filename='kittens.log', level=logging.DEBUG, filemode='w')
 
 # take input from command line sys.argv[0] is the program name
 if eval(sys.argv[1]) == 0:
@@ -24,6 +25,7 @@ core = eval(sys.argv[3])
 recommender_system = Recommender()
 
 for istance in xrange(istances):
+    gc.collect()
     db = Database(istance) # the database depends on which mode is on (Normal/Test)
 
     # This list will store the result just before writing to file
@@ -83,3 +85,5 @@ for istance in xrange(istances):
 
         # Initialize the helper instance to write the csv
         helper.write("result", to_write)
+    del(db)
+    del(ns)
