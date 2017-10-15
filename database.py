@@ -2,16 +2,18 @@ import math
 from collections import defaultdict, Counter
 import helper
 import random
+import logging
 
 class Database:
-    def __init__(self, test=None):
+    def __init__(self, test):
         """
         initializing the database:
 
         * if we are in test execution train set is splitted and test_set is generated
         :param test:
         """
-        if not test == None:
+        logging.debug("Database istance %i" % test)
+        if test > 0:
             self.load_test_set(test)
             self.load_train_list(test)
         else:
@@ -23,15 +25,26 @@ class Database:
         if the set is not defined compute it with the appropriate method
         :return:
         """
+        return self.test_set
+
+    def get_special_test_set(self):
+
         try:
-            return self.test_set
+            return self.special_test_set
         except AttributeError:
-            self.test_set = self.compute_test_set()
-            return self.test_set
+
+            self.special_test_set = set([str(playlist) + str(track) for playlist, track in self.get_test_set()])
+            return self.special_test_set
+
 
     def load_test_set(self, test):
+        logging.debug("Loading test_set%i.csv" % test)
         test_set = list(helper.read("test_set" + str(test)))
-        self.test_set = map(lambda x: [int(x[0]), int(x[1])], test_set)
+
+        self.test_set = [[int(playlist), int(track)] for playlist, track in test_set]
+        self.target_playlists = set([playlist for playlist, track in self.test_set])
+        self.target_tracks = set([track for playlist, track in self.test_set])
+
 
     def get_playlists(self):
         """
@@ -54,8 +67,8 @@ class Database:
         :return:
         """
         train = self.get_train_list()
-        length = len(self.get_target_playlists()) * 5
-        self.train_test = []
+        length = 200000
+        self.test_set = []
         playlists_with_n_tracks = set([playlist for playlist in self.get_playlists() if len(self.get_playlist_tracks(playlist)) >= 10])
         already_selected = set()
         for i in xrange(0, length):
@@ -64,9 +77,9 @@ class Database:
                 if line not in already_selected and train[line][0] in playlists_with_n_tracks:
                     break
             already_selected.add(line)
-            self.train_test.append(train[line])
-        self.train_list = helper.diff_test_set(train, self.train_test)
-        self.target_tracks = map(lambda x: x[1], self.train_test)
+            self.test_set.append(train[line])
+        self.train_list = helper.diff_test_set(train, self.test_set)
+
 
     def get_train_list(self):
         """
@@ -74,17 +87,17 @@ class Database:
 
         :return:
         """
-        try:
-            return self.train_list
-        except AttributeError:
-            self.load_train_list()
-            return self.train_list
+
+        return self.train_list
+
 
     def load_train_list(self, test=None):
         if test == None:
+            logging.debug("Loading train_final.csv")
             train_list = list(helper.read("train_final"))
             self.train_list = map(lambda x: [int(x[0]), int(x[1])], train_list[1:])
         else:
+            logging.debug("Loading train_test_%i" % test)
             train_list = list(helper.read("train_set"+str(test)))
             self.train_list = map(lambda x: [int(x[0]), int(x[1])], train_list)
 
@@ -162,6 +175,7 @@ class Database:
         return the list from the csv of the target_playlist, with the first row removed
         :return:
         """
+        logging.debug("Loading target playlists")
         target_playlists = list(helper.read("target_playlists"))
         self.target_playlists = map(lambda x: int(x[0]), target_playlists[1:])
 

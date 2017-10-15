@@ -40,7 +40,7 @@ if [[ "$?" == "1" ]]; then
   fi
 fi
 
-mem=$(free | awk 'FNR == 2 {print int($7/(1024*1024*1.5))}')
+mem=$(free | awk 'FNR == 2 {print int($7/(1024*1024*2))}')
 
 if [[ "$mem" == "0" ]]; then
   whiptail --msgbox "Sorry, the system does not have enough memory available (2Gb minimum is required)" 10 50
@@ -52,24 +52,35 @@ cpu=$(nproc --all)
 core=$(($mem<$cpu?$mem:$cpu))
 
 whiptail --msgbox "$disclaimer" 20 70
+
 mode=$(whiptail --menu "Select Operational Mode" 20 70 5 \
 0 "Test Mode" \
 1 "Recommendation Mode" \
 2 "Script Mode" 3>&2 2>&1 1>&3)
+
+recommendations=$(whiptail --menu "Select Recommendations Method" 20 70 10 \
+0 "Random" \
+1 "Top Listened" \
+2 "Top Included" \
+3 "Top Tags" \
+4 "TF-IDF based" \
+5 "Top-Tag combined TfIdf" \
+6 "TfIdf combined Top-Tag" 3>&2 2>&1 1>&3)
+
+
 case $mode in
     2)
         script=$(whiptail --menu "Which script do you want to run?" 20 70 5 \
         0 "Compute test set (x3)" 3>&2 2>&1 1>&3)
         /usr/bin/pypy script.py
     ;;
-    *)
-        recommendations=$(whiptail --menu "Select Recommendations Method" 20 70 5 \
-        0 "Random" \
-        1 "Top Listened" \
-        2 "Top Included" \
-        3 "Top Tags" \
-        4 "TF-IDF based" 3>&2 2>&1 1>&3)
+    1)
         /usr/bin/pypy kittens.py "$mode" "$recommendations" "$core" | whiptail --gauge "$running" 15 60 0
+    ;;
+    0)
+        for istance in {1..3}
+        do /usr/bin/pypy kittens.py "$mode" "$recommendations" "$core" "$istance" | whiptail --gauge "istance"$istance 15 60 0
+        done
     ;;
 esac
 case $mode in

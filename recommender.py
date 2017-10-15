@@ -14,10 +14,11 @@ class Recommender:
             self.db = db # only useful for debug
 
     def check_recommendations(self, playlist, recommendations):
-        test_set = self.db.get_test_set()
+        test_set = self.db.get_special_test_set()
         ok = 0
+        logging.debug("checking recommendations for %i" % playlist)
         for track in recommendations:
-            test = 1 if [playlist, track] in test_set else 0
+            test = 1 if str(playlist) + str(track) in test_set else 0
             ok += test
         return (ok * 100.0)/len(recommendations)
 
@@ -48,6 +49,10 @@ class Recommender:
                 recommendations = self.make_top_tag_recommendations(target)
             elif choice == 4:
                 recommendations = self.make_tf_idf_recommendations(target)
+            elif choice == 5:
+                recommendations = self.combined_top_tag_tfidf_recommendations(target)
+            elif choice == 6:
+                recommendations = self.combined_tfidf_top_tag_recommendations(target)
             # doing testing things if test mode enabled
             if test:
                 try:
@@ -123,7 +128,7 @@ class Recommender:
 
         return recommendations
 
-    def make_top_tag_recommendations(self, active_playlist):
+    def make_top_tag_recommendations(self, active_playlist, target_tracks, knn):
         """
         This method takes into account tags. For the active playlist all tags of the tracks are computed,
         then for every recommendable track the comparison of the tags is used taking into account:
@@ -143,13 +148,12 @@ class Recommender:
         active_flat_tags = [item for sublist in active_tags for item in sublist]
         active_tags_set = set(active_flat_tags)
 
-        tracks_to_recommend = self.db.get_target_tracks() # get the set of tracks to recommend
         top_tracks = []
         track_playlists_map = self.db.get_track_playlists_map()
 
         playlist_avg_duration = self.db.get_playlist_avg_duration(active_playlist) # get the playlist avg track length
 
-        for track in tracks_to_recommend: # make the actual recommendation
+        for track in target_tracks: # make the actual recommendation
             track_duration = self.db.get_track_duration(track) # get the track length
             if track not in already_included and track_duration > 60000:
                 tags = self.db.get_track_tags(track)
@@ -183,9 +187,11 @@ class Recommender:
         recommendations = sorted(top_tracks, key=itemgetter(1, 2, 4), reverse=True) # sorting results
 
         #logging.debug('The winner is:%s', recommendations[0])
-        return [track[0] for track in recommendations[0:5]] # use a list comprehension to return track id
+        filtered_tracks =  [track[0] for track in recommendations[0:knn]] # use a list comprehension to return track id
+        return filtered_tracks
 
-    def make_tf_idf_recommendations(self, playlist):
+
+    def make_tf_idf_recommendations(self, playlist, target_tracks, knn):
         possible_recommendations = []
 
         playlist_tracks = self.db.get_playlist_tracks(playlist)
@@ -209,7 +215,7 @@ class Recommender:
 
         logging.debug("tf_idf %s " % tf_idf_playlist)
 
-        for track in self.db.get_target_tracks():
+        for track in target_tracks:
             if track not in playlist_tracks_set and self.db.get_track_duration(track) > 60000:
                 tf_idf_track = []
                 tags = self.db.get_track_tags(track)
@@ -231,8 +237,31 @@ class Recommender:
 
                 possible_recommendations.append([track, cosine_sim])
 
-        recommendations = sorted(possible_recommendations, key=itemgetter(1), reverse=True)[0:5]
+        recommendations = sorted(possible_recommendations, key=itemgetter(1), reverse=True)[0:knn]
         return [recommendation for recommendation, value in recommendations]
+
+    def combined_top_tag_tfidf_recommendations(self, playlist):
+        """
+        this function combines the top tag and the tf idf recommendations
+        :return:
+        """
+        knn = 110
+        tracks = self.db.get_target_tracks()
+        filtered_tracks = self.make_top_tag_recommendations(playlist, tracks, knn)
+
+        return self.make_tf_idf_recommendations(playlist, filtered_tracks, 5)
+
+    def combined_tfidf_top_tag_recommendations(self, playlist):
+        """
+        this function combines the top tag and the tf idf recommendations
+        :return:
+        """
+        knn = 100
+        tracks = self.db.get_target_tracks()
+        filtered_tracks = self.make_tf_idf_recommendations(playlist, tracks, knn)
+
+        return self.make_top_tag_recommendations(playlist, filtered_tracks, 5)
+
 
     def make_bad_tf_idf_recommendations(self, playlist):
         possible_recommendations = []
