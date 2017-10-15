@@ -46,9 +46,9 @@ class Recommender:
             elif choice == 2:
                 recommendations = self.make_top_included_recommendations(target)
             elif choice == 3:
-                recommendations = self.make_top_tag_recommendations(target)
+                recommendations = self.make_top_tag_recommendations(target, self.db.get_target_tracks(), 5)
             elif choice == 4:
-                recommendations = self.make_tf_idf_recommendations(target)
+                recommendations = self.make_tf_idf_recommendations(target, self.db.get_target_tracks(), 5)
             elif choice == 5:
                 recommendations = self.combined_top_tag_tfidf_recommendations(target)
             elif choice == 6:
@@ -245,7 +245,7 @@ class Recommender:
         this function combines the top tag and the tf idf recommendations
         :return:
         """
-        knn = 110
+        knn = 75
         tracks = self.db.get_target_tracks()
         filtered_tracks = self.make_top_tag_recommendations(playlist, tracks, knn)
 
