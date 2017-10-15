@@ -7,6 +7,7 @@ from operator import itemgetter
 import logging
 import time
 
+sys.setcheckinterval(1000000000000)
 # A logfile to take info during the execution
 logging.basicConfig(filename='kittens.log', level=logging.DEBUG, filemode='w')
 

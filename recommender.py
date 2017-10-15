@@ -144,14 +144,12 @@ class Recommender:
 
         active_tracks = self.db.get_playlist_tracks(active_playlist) # get already included tracks
         already_included = active_tracks
-        active_tags = map(lambda x: self.db.get_track_tags(x), active_tracks) # get the tags from the active tracks
-        active_flat_tags = [item for sublist in active_tags for item in sublist]
-        active_tags_set = set(active_flat_tags)
+        active_tags = []
+        [active_tags.extend(self.db.get_track_tags(track)) for track in active_tracks] # get the tags from the active tracks
+        active_tags_set = set(active_tags)
 
         top_tracks = []
         track_playlists_map = self.db.get_track_playlists_map()
-
-        playlist_avg_duration = self.db.get_playlist_avg_duration(active_playlist) # get the playlist avg track length
 
         for track in target_tracks: # make the actual recommendation
             track_duration = self.db.get_track_duration(track) # get the track length
@@ -163,7 +161,7 @@ class Recommender:
                     norm_playlist = math.sqrt(len(active_tags_set))
                     norm_track = math.sqrt(len(tags))
 
-                    value_a = len(matched)/float(norm_playlist*norm_track + math.fabs(math.log(len(matched)/len(active_tags_set))))
+                    value_a = len(matched)/float(norm_playlist*norm_track)
                 except ZeroDivisionError:
                     value_a = 0
                 except ValueError:
@@ -174,21 +172,13 @@ class Recommender:
                 except ZeroDivisionError:
                     value_b = 0
 
-                try:
-                    # calculate a float which indicate if the track match the avg playlist track length
-                    value_c = - math.fabs((float(track_duration)/playlist_avg_duration) - 1)
-                except ZeroDivisionError:
-                    value_c = -10000000000
-
                 top_value = len(track_playlists_map[track]) # get the value from the top-included
 
-                top_tracks.append([track, value_a, value_b, value_c, top_value]) # joining all parameters together
+                top_tracks.append([track, value_a, value_b, top_value]) # joining all parameters together
 
-        recommendations = sorted(top_tracks, key=itemgetter(1, 2, 4), reverse=True) # sorting results
-
-        #logging.debug('The winner is:%s', recommendations[0])
-        filtered_tracks =  [track[0] for track in recommendations[0:knn]] # use a list comprehension to return track id
-        return filtered_tracks
+        top_tracks.sort(key=itemgetter(1, 2, 3), reverse=True)
+        recommendations = [recommendation[0] for recommendation in top_tracks[0:knn]]
+        return recommendations
 
 
     def make_tf_idf_recommendations(self, playlist, target_tracks, knn):
@@ -197,15 +187,15 @@ class Recommender:
         playlist_tracks = self.db.get_playlist_tracks(playlist)
         playlist_tracks_set = set(playlist_tracks)
 
-        logging.debug("playlist: %s" % playlist)
-        logging.debug("playlist_tracks: %s" % playlist_tracks)
+        #logging.debug("playlist: %s" % playlist)
+        #logging.debug("playlist_tracks: %s" % playlist_tracks)
 
         playlist_features = []
         [playlist_features.extend(self.db.get_track_tags(track)) for track in playlist_tracks]
         playlist_features_set = list(set(playlist_features))
         tf_idf_playlist = []
 
-        logging.debug("playlist_features: %s" % playlist_features)
+        #logging.debug("playlist_features: %s" % playlist_features)
 
         for tag in playlist_features_set:
             tf = playlist_features.count(tag) / float(len(playlist_features))
@@ -213,7 +203,7 @@ class Recommender:
             tf_idf = tf * idf
             tf_idf_playlist.append(tf_idf)
 
-        logging.debug("tf_idf %s " % tf_idf_playlist)
+        #logging.debug("tf_idf %s " % tf_idf_playlist)
 
         for track in target_tracks:
             if track not in playlist_tracks_set and self.db.get_track_duration(track) > 60000:
@@ -237,8 +227,9 @@ class Recommender:
 
                 possible_recommendations.append([track, cosine_sim])
 
-        recommendations = sorted(possible_recommendations, key=itemgetter(1), reverse=True)[0:knn]
-        return [recommendation for recommendation, value in recommendations]
+        possible_recommendations.sort(key=itemgetter(1), reverse=True)
+        recommendations = [recommendation for recommendation, value in possible_recommendations[0:knn]]
+        return recommendations
 
     def combined_top_tag_tfidf_recommendations(self, playlist):
         """
