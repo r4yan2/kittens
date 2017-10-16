@@ -64,6 +64,10 @@ class Recommender:
                 recommendations = self.combined_tfidf_tags_tfidf_titles_recommendations(target)
             elif choice == 9:
                 recommendations = self.combined_top_tag_tfidf_titles_recommendations(target)
+            elif choice == 10:
+                recommendations = self.combined_tfidf_tfidf_titles_recommendations(target)
+            elif choice == 11:
+                recommendations = self.make_bad_tf_idf_recommendations(target)
             # doing testing things if test mode enabled
             if test:
                 test_result = self.check_recommendations(target, recommendations)
@@ -328,6 +332,16 @@ class Recommender:
         tracks = self.db.get_target_tracks()
         filtered_tracks = self.make_top_tag_recommendations(playlist, tracks, knn)
         return self.make_tf_idf_titles_recommendations(playlist, filtered_tracks, knn)
+
+    def combined_tfidf_tfidf_titles_recommendations(self, playlist):
+        """
+        this function combines the top tag and the tf idf recommendations
+        :return:
+        """
+        knn = 50
+        tracks = self.db.get_target_tracks()
+        filtered_tracks = self.make_tf_idf_recommendations(playlist, tracks, knn)
+        return self.make_tf_idf_titles_recommendations(playlist, filtered_tracks, 5)
 
 
     def make_bad_tf_idf_recommendations(self, playlist):
