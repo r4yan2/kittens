@@ -45,3 +45,19 @@ def read(what):
     :return:
     """
     return csv.reader(open('data/'+what+'.csv', 'rb'), delimiter='\t')
+
+def cumulative_sum(lis):
+
+    total = 0
+    for x in lis:
+        total += x
+        yield total
+
+def multiply_lists(lst1, lst2):
+
+    return [a * b for a, b in zip(lst1, lst2)]
+
+def divide_lists(lst1, lst2):
+
+    return [a / b for a, b in zip(lst1, lst2)]
+

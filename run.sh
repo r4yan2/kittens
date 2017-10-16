@@ -63,9 +63,13 @@ recommendations=$(whiptail --menu "Select Recommendations Method" 20 70 10 \
 1 "Top Listened" \
 2 "Top Included" \
 3 "Top Tags" \
-4 "TF-IDF based" \
+4 "TF-IDF based on tags" \
 5 "Top-Tag combined TfIdf" \
-6 "TfIdf combined Top-Tag" 3>&2 2>&1 1>&3)
+6 "TfIdf combined Top-Tag" \
+7 "TfIdf based on titles" \
+8 "Tfidf tags combined tfIdf titles" \
+9 "Top-Tag combined TfIdf titles" \
+3>&2 2>&1 1>&3)
 
 
 case $mode in

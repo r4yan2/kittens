@@ -101,6 +101,16 @@ class Database:
 
         return self.train_list
 
+    def get_playlist_relevant_tracks(self, active_playlist):
+        """
+
+        :return:
+        """
+        test_set = self.get_test_set()
+        return [track for playlist, track in test_set if active_playlist == playlist]
+
+
+
 
     def load_train_list(self, test=None):
         if test == None:
@@ -127,6 +137,22 @@ class Database:
                 for tag in tags_set:
                     self.tag_playlists_map[tag].append(playlist)
             return self.tag_playlists_map
+
+    def get_title_playlists_map(self):
+        """
+
+        :return:
+        """
+
+        try:
+            return self.title_playlists_map
+        except AttributeError:
+            self.title_playlists_map = defaultdict(lambda: [], {})
+            for playlist in self.get_playlists():
+                titles = self.get_titles_playlist(playlist)  # get already included titles
+                for title in titles:
+                    self.title_playlists_map[title].append(playlist)
+            return self.title_playlists_map
 
     def get_tag_idf(self, tag):
         """
@@ -578,6 +604,47 @@ class Database:
         except AttributeError:
             track_playlists_map = self.get_track_playlists_map()
             return track_playlists_map[track]
+
+
+    def get_titles_track(self, track):
+        """
+
+
+        :return:
+        """
+        titles_track = []
+        playlists = self.get_track_playlists(track)
+        [titles_track.extend(self.get_titles_playlist(playlist)) for playlist in playlists]
+
+        return titles_track
+
+
+
+    def get_titles_playlist(self, playlist):
+        """
+
+        :return:
+        """
+        #TODO SISTEMARE TUTTO
+        playlist_final = self.get_playlist_final()
+        titles = playlist_final[playlist][1]
+        return titles
+
+    def get_title_idf(self, title):
+        """
+        gets the idf of a specific title
+        :return:
+        """
+        title_playlist_map = self.get_title_playlists_map()
+        playlist_titles_included = title_playlist_map[title]
+        num_idf = len(playlist_titles_included)
+        den_idf = len(self.get_playlists())
+        try:
+            idf = math.log(num_idf / float(den_idf), 10)
+        except ValueError:
+            idf = 0
+        return idf
+
 
     def get_track_playlists_map(self):
         """

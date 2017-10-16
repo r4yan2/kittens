@@ -59,3 +59,8 @@ Is possible to run some script to pre-compute some data maps, store it into a cs
 |tf-idf ->(75)-> top-tag|NA|2.082|
 |tf-idf ->(100)-> top-tag|NA|1.972|
 |tf-idf ->(125)-> top-tag|NA|
+top-tag ->(75) -> tf_idf_titles|NA|10.06
+top-tag ->(150) -> tf_idf_titles|NA|15.206
+top-tag ->(350) -> tf_idf_titles|NA|24.104
+top-tag ->(200) -> tf_idf_titles|NA|18.044
+top-tag ->(250) -> tf_idf_titles|NA|20.24

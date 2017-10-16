@@ -7,6 +7,7 @@ import time
 import random
 from operator import itemgetter
 import logging
+import helper
 
 class Recommender:
     def __init__(self, db=None):
@@ -14,12 +15,20 @@ class Recommender:
             self.db = db # only useful for debug
 
     def check_recommendations(self, playlist, recommendations):
-        test_set = self.db.get_special_test_set()
+        test_set = self.db.get_playlist_relevant_tracks(playlist)
         if len(recommendations) < 5:
             raise ValueError('Recommendations list have less that 5 recommendations')
-        ok = sum([1 for track in recommendations if str(playlist) + str(track) in test_set])
+        is_relevant = [item in test_set for item in recommendations]
 
-        return (ok * 100.0)/5
+        p_to_k_num = helper.multiply_lists(is_relevant, helper.cumulative_sum([float(i) for i in is_relevant]))
+        p_to_k_den = range(1,len(is_relevant)+1)
+        p_to_k = helper.divide_lists(p_to_k_num, p_to_k_den)
+        try:
+            map_score = sum(p_to_k) / min(len(test_set), len(is_relevant))
+        except ZeroDivisionError:
+            map_score = 0
+        return map_score
+
 
     def run(self, choice, db, q_in, q_out, test, number):
 
@@ -49,12 +58,15 @@ class Recommender:
                 recommendations = self.combined_top_tag_tfidf_recommendations(target)
             elif choice == 6:
                 recommendations = self.combined_tfidf_top_tag_recommendations(target)
+            elif choice == 7:
+                recommendations = self.make_tf_idf_titles_recommendations(target, self.db.get_target_tracks(), 5)
+            elif choice == 8:
+                recommendations = self.combined_tfidf_tags_tfidf_titles_recommendations(target)
+            elif choice == 9:
+                recommendations = self.combined_top_tag_tfidf_titles_recommendations(target)
             # doing testing things if test mode enabled
             if test:
-                try:
-                    test_result = self.check_recommendations(target, recommendations)
-                except LookupError:
-                    test_result = -1
+                test_result = self.check_recommendations(target, recommendations)
                 q_out.put(test_result)
 
             else:
@@ -221,6 +233,60 @@ class Recommender:
         recommendations = [recommendation for recommendation, value in possible_recommendations[0:knn]]
         return recommendations
 
+    def make_tf_idf_titles_recommendations(self, playlist, target_tracks, knn):
+
+        possible_recommendations = []
+
+        playlist_tracks = self.db.get_playlist_tracks(playlist)
+        playlist_tracks_set = set(playlist_tracks)
+
+        playlist_titles = self.db.get_titles_playlist(playlist)
+        tf_idf_titles_playlist = []
+
+        tf_idf_titles_playlist = [self.db.get_title_idf(title)/float(len(playlist_titles)) for title in playlist_titles]
+
+        '''
+        the above list comprehension is equal to the following code
+        for title in playlist_titles:
+            tf = 1 / float(len(playlist_titles))
+            idf = self.db.get_title_idf(title)
+            tf_idf = tf * idf
+            tf_idf_titles_playlist.append(tf_idf)
+        '''
+
+        for track in target_tracks:
+            if track not in playlist_tracks_set and self.db.get_track_duration(track) > 60000:
+
+                titles = self.db.get_titles_track(track)
+
+                tf_idf_title = [self.db.get_title_idf(title)/len(titles) for title in titles]
+                '''
+                the above list comprehension is equivalent to the following code but (hopefully) a bit faster
+                tf_idf_title = []
+                for title in titles:
+                    tf = 1.0 / len(titles)
+                    idf = self.db.get_title_idf(title)
+                    tf_idf = tf * idf
+                    tf_idf_title.append(tf_idf)
+                '''
+
+                num_cosine_sim = [tf_idf_title[titles.index(title)] * tf_idf_titles_playlist[playlist_titles.index(title)] for
+                                  title in titles if title in playlist_titles]
+
+                den_cosine_sim = math.sqrt(sum([i ** 2 for i in tf_idf_titles_playlist])) * math.sqrt(
+                    sum([i ** 2 for i in tf_idf_title]))
+                try:
+                    cosine_sim = sum(num_cosine_sim) / den_cosine_sim
+                except ZeroDivisionError:
+                    cosine_sim = 0
+
+                possible_recommendations.append([track, cosine_sim])
+
+        possible_recommendations.sort(key=itemgetter(1), reverse=True)
+        recommendations = [recommendation for recommendation, value in possible_recommendations[0:knn]]
+        return recommendations
+
+
     def combined_top_tag_tfidf_recommendations(self, playlist):
         """
         this function combines the top tag and the tf idf recommendations
@@ -229,8 +295,18 @@ class Recommender:
         knn = 125
         tracks = self.db.get_target_tracks()
         filtered_tracks = self.make_top_tag_recommendations(playlist, tracks, knn)
-
         return self.make_tf_idf_recommendations(playlist, filtered_tracks, 5)
+
+    def combined_tfidf_tags_tfidf_titles_recommendations(self, playlist):
+        """
+        this function combines the top tag and the tf idf recommendations
+        :return:
+        """
+        knn = 50
+        tracks = self.db.get_target_tracks()
+        filtered_tracks = self.make_tf_idf_recommendations(playlist, tracks, knn)
+
+        return self.make_tf_idf_titles_recommendations(playlist, filtered_tracks, 5)
 
     def combined_tfidf_top_tag_recommendations(self, playlist):
         """
@@ -242,6 +318,16 @@ class Recommender:
         filtered_tracks = self.make_tf_idf_recommendations(playlist, tracks, knn)
 
         return self.make_top_tag_recommendations(playlist, filtered_tracks, 5)
+
+    def combined_top_tag_tfidf_titles_recommendations(self, playlist):
+        """
+        this function combines the top tag and the tf idf recommendations
+        :return:
+        """
+        knn = 350
+        tracks = self.db.get_target_tracks()
+        filtered_tracks = self.make_top_tag_recommendations(playlist, tracks, knn)
+        return self.make_tf_idf_titles_recommendations(playlist, filtered_tracks, knn)
 
 
     def make_bad_tf_idf_recommendations(self, playlist):
