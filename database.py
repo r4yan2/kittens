@@ -12,7 +12,6 @@ class Database:
         * if we are in test execution train set is splitted and test_set is generated
         :param test:
         """
-        logging.debug("Database istance %i" % test)
         if test > 0:
             self.load_test_set(test)
             self.load_train_list(test)
@@ -38,7 +37,6 @@ class Database:
 
 
     def load_test_set(self, test):
-        logging.debug("Loading test_set%i.csv" % test)
         test_set = list(helper.read("test_set" + str(test)))
 
         self.test_set = [[int(playlist), int(track)] for playlist, track in test_set]
@@ -67,19 +65,32 @@ class Database:
         :return:
         """
         train = self.get_train_list()
-        length = 200000
+        playlists_length = 10000
+        tracks_length = 32195 
         self.test_set = []
         playlists_with_n_tracks = set([playlist for playlist in self.get_playlists() if len(self.get_playlist_tracks(playlist)) >= 10])
         already_selected = set()
-        for i in xrange(0, length):
-            while True:
-                line = random.randint(0, len(train) - 1)
-                if line not in already_selected and train[line][0] in playlists_with_n_tracks:
-                    break
-            already_selected.add(line)
-            self.test_set.append(train[line])
-        self.train_list = helper.diff_test_set(train, self.test_set)
+        already_selected_playlists = set()
+        already_selected_tracks = set()
+        while True:
+            line = random.randint(0, len(train) - 1)
+            playlist = train[line][0]
+            track = train[line][1]
+            if line not in already_selected:
+                if len(already_selected_playlists) < playlists_length and len(already_selected_tracks) < tracks_length:
+                    self.test_set.append(train[line])
+                    already_selected_playlists.add(playlist)
+                    already_selected_tracks.add(track)
+                elif len(already_selected_playlists) >= playlists_length and len(already_selected_tracks) < tracks_length and playlist in already_selected_playlists:
+                    self.test_set.append(train[line])
+                    already_selected_tracks.add(track)
+                elif len(already_selected_playlists) < playlists_length and len(already_selected_tracks) >= tracks_length and track in already_selected_track:
+                    self.test_set.append(train[line])
+                    already_selected_playlists.add(playlist)
 
+            if len(already_selected_playlists) >= playlists_length and len(already_selected_tracks) >= tracks_length:
+                break
+        self.train_list = helper.diff_test_set(train, self.test_set)
 
     def get_train_list(self):
         """
@@ -93,11 +104,9 @@ class Database:
 
     def load_train_list(self, test=None):
         if test == None:
-            logging.debug("Loading train_final.csv")
             train_list = list(helper.read("train_final"))
             self.train_list = map(lambda x: [int(x[0]), int(x[1])], train_list[1:])
         else:
-            logging.debug("Loading train_test_%i" % test)
             train_list = list(helper.read("train_set"+str(test)))
             self.train_list = map(lambda x: [int(x[0]), int(x[1])], train_list)
 
@@ -175,7 +184,6 @@ class Database:
         return the list from the csv of the target_playlist, with the first row removed
         :return:
         """
-        logging.debug("Loading target playlists")
         target_playlists = list(helper.read("target_playlists"))
         self.target_playlists = map(lambda x: int(x[0]), target_playlists[1:])
 

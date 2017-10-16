@@ -15,17 +15,13 @@ class Recommender:
 
     def check_recommendations(self, playlist, recommendations):
         test_set = self.db.get_special_test_set()
-        ok = 0
-        logging.debug("checking recommendations for %i" % playlist)
-        for track in recommendations:
-            test = 1 if str(playlist) + str(track) in test_set else 0
-            ok += test
-        return (ok * 100.0)/len(recommendations)
+        if len(recommendations) < 5:
+            raise ValueError('Recommendations list have less that 5 recommendations')
+        ok = sum([1 for track in recommendations if str(playlist) + str(track) in test_set])
+
+        return (ok * 100.0)/5
 
     def run(self, choice, db, q_in, q_out, test, number):
-
-        # A logfile to take info during the execution
-        logging.basicConfig(filename='worker'+str(number)+'.log', level=logging.DEBUG, filemode='w')
 
         # Retrieve the db from the list of arguments
         self.db = db
@@ -182,20 +178,16 @@ class Recommender:
 
 
     def make_tf_idf_recommendations(self, playlist, target_tracks, knn):
+
         possible_recommendations = []
 
         playlist_tracks = self.db.get_playlist_tracks(playlist)
         playlist_tracks_set = set(playlist_tracks)
 
-        #logging.debug("playlist: %s" % playlist)
-        #logging.debug("playlist_tracks: %s" % playlist_tracks)
-
         playlist_features = []
         [playlist_features.extend(self.db.get_track_tags(track)) for track in playlist_tracks]
         playlist_features_set = list(set(playlist_features))
         tf_idf_playlist = []
-
-        #logging.debug("playlist_features: %s" % playlist_features)
 
         for tag in playlist_features_set:
             tf = playlist_features.count(tag) / float(len(playlist_features))
@@ -203,14 +195,12 @@ class Recommender:
             tf_idf = tf * idf
             tf_idf_playlist.append(tf_idf)
 
-        #logging.debug("tf_idf %s " % tf_idf_playlist)
-
         for track in target_tracks:
             if track not in playlist_tracks_set and self.db.get_track_duration(track) > 60000:
                 tf_idf_track = []
                 tags = self.db.get_track_tags(track)
                 for tag in tags:
-                    tf = 1 / float(len(tags))
+                    tf = 1.0 / len(tags)
                     idf = self.db.get_tag_idf(tag)
                     tf_idf = tf * idf
                     tf_idf_track.append(tf_idf)
@@ -221,7 +211,7 @@ class Recommender:
                 den_cosine_sim = math.sqrt(sum([i ** 2 for i in tf_idf_playlist])) * math.sqrt(
                     sum([i ** 2 for i in tf_idf_track]))
                 try:
-                    cosine_sim = sum(num_cosine_sim) / float(den_cosine_sim)
+                    cosine_sim = sum(num_cosine_sim) / den_cosine_sim
                 except ZeroDivisionError:
                     cosine_sim = 0
 
@@ -236,7 +226,7 @@ class Recommender:
         this function combines the top tag and the tf idf recommendations
         :return:
         """
-        knn = 75
+        knn = 125
         tracks = self.db.get_target_tracks()
         filtered_tracks = self.make_top_tag_recommendations(playlist, tracks, knn)
 
@@ -247,7 +237,7 @@ class Recommender:
         this function combines the top tag and the tf idf recommendations
         :return:
         """
-        knn = 100
+        knn = 125
         tracks = self.db.get_target_tracks()
         filtered_tracks = self.make_tf_idf_recommendations(playlist, tracks, knn)
 
@@ -260,15 +250,12 @@ class Recommender:
         playlist_tracks = self.db.get_playlist_tracks(playlist)
         playlist_tracks_set = set(playlist_tracks)
 
-        logging.debug("playlist: %s" % playlist)
-        logging.debug("playlist_tracks: %s" % playlist_tracks)
 
         playlist_features = []
         [playlist_features.extend(self.db.get_track_tags(track)) for track in playlist_tracks]
         playlist_features_set = list(set(playlist_features))
         tf_idf_playlist = []
 
-        logging.debug("playlist_features: %s" % playlist_features)
 
         for tag in playlist_features_set:
             tf = playlist_features.count(tag) / float(len(playlist_features))
@@ -276,7 +263,6 @@ class Recommender:
             tf_idf = tf * idf
             tf_idf_playlist.append(tf_idf)
 
-        logging.debug("tf_idf %s " % tf_idf_playlist)
         tracks_tags = []
         tf_idf_tracks_tags = []
         for track in playlist_tracks:

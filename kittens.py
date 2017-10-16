@@ -5,9 +5,9 @@ from multiprocessing import Process, Queue, Manager
 import sys
 from operator import itemgetter
 import logging
-import time
 
-sys.setcheckinterval(1000000000000)
+#sys.setcheckinterval(sys.maxint)
+
 # A logfile to take info during the execution
 logging.basicConfig(filename='kittens.log', level=logging.DEBUG, filemode='w')
 
@@ -55,7 +55,6 @@ proc = [Process(target=recommender_system.run, args=(choice, ns.db, q_in, q_out,
 for p in proc:
     p.daemon = True
     p.start()
-    time.sleep(10)
 
 # Retrieve results from the out queue and display percentage
 completion = 0

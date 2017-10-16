@@ -44,19 +44,18 @@ Is possible to run some script to pre-compute some data maps, store it into a cs
 
 ## Table of results
 
-|Algorithm|Score|Test|Test(new)|
-|:-------:|:---:|:--:|:-------:|
-|Random|0.0000|NA|NA|
-|top-listened|0.0002|NA|NA|
-|top-included|0.0100|NA|NA|
-|tags based recommendations|NA|0.414|NA|
-|tf-idf recommendations|NA|0.504|NA|
-|tf-idf filtered(100) by top-tag|NA|0.634|NA|
-|tf-idf filtered(50) by top-tag|NA|0.636|NA|
-|tf-idf filtered(25) by top-tag|NA|0.560|NA|
-|tf-idf filtered(75) by top-tag|NA|0.606|NA|
-|tf-idf filtered(60) by top-tag|NA|0.632|NA|
-|tf-idf filtered(150) by top-tag|NA|0.622|NA|
-|tf-idf filtered(110) by top-tag|0.02870|0.640|3.8813|
-|top tag filtered(110) by tf-idf|NA|NA|3.8377|
-
+|Algorithm|Score|Test|
+|:-------:|:---:|:--:|
+|Random|0.0000|NA|
+|top-listened|0.0002|NA|
+|top-included|0.0100|NA|
+|tags based recommendations|NA|1.432|
+|tf-idf recommendations|NA|2.884|
+|top-tag ->(50)-> tf-idf|NA|2.132|
+|top-tag ->(75)-> tf-idf|NA|2.282|
+|top-tag ->(100)-> tf-idf|NA|2.296|
+|top-tag ->(125)-> tf-idf|NA|2.366|
+|tf-idf ->(50)-> top-tag|NA|2.288|
+|tf-idf ->(75)-> top-tag|NA|2.082|
+|tf-idf ->(100)-> top-tag|NA|1.972|
+|tf-idf ->(125)-> top-tag|NA|
