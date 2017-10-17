@@ -223,7 +223,7 @@ class Database:
             return self.target_tracks
         except AttributeError:
             target_tracks = list(helper.read("target_tracks"))
-            self.target_tracks = [int(elem[0]) for elem target_tracks[1:]]
+            self.target_tracks = [int(elem[0]) for elem in target_tracks[1:]]
             return self.target_tracks
 
     def get_tracks_map(self):
@@ -694,6 +694,44 @@ class Database:
             track_playlists = track_playlists_map.items()
             self.top_included = sorted(map(lambda x: [x[0], len(x[1])], track_playlists), key=lambda x: x[1], reverse=True)
             return self.top_included
+
+    def get_track_count_included(self, track):
+        """
+        gets the number of playlists where the given track is included
+        :return:
+        """
+        track_playlists_map = self.get_track_playlists_map()
+        return len(track_playlists_map[track])
+
+
+    def get_track_playcount(self, track):
+        """
+        gets the playcount of the given track
+        :param track:
+        :return:
+        """
+        map_tracks = self.get_tracks_map()
+        return map_tracks[track][2]
+
+    def get_artist(self, track):
+        """
+
+        :return:
+        """
+        map_tracks = self.get_tracks_map()
+        return map_tracks[track][0]
+
+
+    def get_artist_tracks(self, track):
+        """
+        :param artist:
+        :return:
+        """
+        map_tracks = self.get_tracks_map()
+        artist = map_tracks[track][0]
+        return [track for track in map_tracks.keys() if artist == map_tracks[track][0]]
+
+
 
     def get_top_listened(self):
         '''

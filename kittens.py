@@ -14,18 +14,18 @@ logging.basicConfig(filename='kittens.log', level=logging.DEBUG, filemode='w')
 # take input from command line sys.argv[0] is the program name
 if eval(sys.argv[1]) == 0:
     test = True
-    istance = eval(sys.argv[4])
+    instance = eval(sys.argv[4])
 else:
     test = False
-    istance = 0
+    instance = 0
 
 choice = eval(sys.argv[2])
 core = eval(sys.argv[3])
 
-# Initializing the recommender istance
+# Initializing the recommender instance
 recommender_system = Recommender()
 
-db = Database(istance) # the database is istancied accordingly to the number passed, 0 no test else test mode
+db = Database(instance) # the database is istancied accordingly to the number passed, 0 no test else test mode
 
 # This list will store the result just before writing to file
 to_write = []
@@ -72,12 +72,12 @@ for i in xrange(len(target_playlists)):
 
 # Parse result, depending if test mode in on or off
 if test:
-    results_length = len(result)
-    avg_map5 = sum[map5 for map5, precision, recall in results]/float(results_length)
-    avg_precision = sum[precision for map5, precision, recall in results]/float(results_length)
-    avg_recall = sum[recall for map5, precision, recall in results]/float(results_length)
+    results_length = len(results)
+    avg_map5 = sum([map5 for map5, precision, recall in results])/float(results_length)
+    avg_precision = sum([precision for map5, precision, recall in results])/float(results_length)
+    avg_recall = sum([recall for map5, precision, recall in results])/float(results_length)
     to_write = [["MAP@5", avg_map5], ["Precision", avg_precision], ["Recall", avg_recall]]
-    helper.write("test_result"+str(istance), to_write)
+    helper.write("test_result"+str(instance), to_write)
 else:
     result = [[x[1], x[2]] for x in sorted(results, key=itemgetter(0))]
     for playlist, recommendation in result:
