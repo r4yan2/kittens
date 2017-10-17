@@ -87,9 +87,10 @@ case $mode in
         /usr/bin/pypy kittens.py "$mode" "$recommendations" "$core" | whiptail --gauge "$running" 15 60 0
     ;;
     0)
-        for istance in {1..3}
-        do /usr/bin/pypy kittens.py "$mode" "$recommendations" "$core" "$istance" | whiptail --gauge "istance"$istance 15 60 0
-        done
+        #for istance in {1..3}
+        #do /usr/bin/pypy kittens.py "$mode" "$recommendations" "$core" "$istance" | whiptail --gauge "istance"$istance 15 60 0
+        #done
+        /usr/bin/pypy kittens.py "$mode" "$recommendations" "$core" 1 | whiptail --gauge "istance"$istance 15 60 0
     ;;
 esac
 case $mode in
