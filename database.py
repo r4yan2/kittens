@@ -66,7 +66,7 @@ class Database:
         """
         train = self.get_train_list()
         playlists_length = 10000
-        tracks_length = 32195 
+        tracks_length = 32195
         self.test_set = []
         playlists_with_n_tracks = set([playlist for playlist in self.get_playlists() if len(self.get_playlist_tracks(playlist)) >= 10])
         already_selected = set()
@@ -115,10 +115,10 @@ class Database:
     def load_train_list(self, test=None):
         if test == None:
             train_list = list(helper.read("train_final"))
-            self.train_list = map(lambda x: [int(x[0]), int(x[1])], train_list[1:])
+            self.train_list = [[int(element[0]), int(element[1])] for element in train_list[1:]]
         else:
             train_list = list(helper.read("train_set"+str(test)))
-            self.train_list = map(lambda x: [int(x[0]), int(x[1])], train_list)
+            self.train_list = [[int(element[0]), int(element[1])] for element in train_list]
 
     def get_tag_playlists_map(self):
         """
@@ -211,7 +211,7 @@ class Database:
         :return:
         """
         target_playlists = list(helper.read("target_playlists"))
-        self.target_playlists = map(lambda x: int(x[0]), target_playlists[1:])
+        self.target_playlists = [int(elem[0]) for elem in target_playlists[1:]]
 
     def get_target_tracks(self):
         """
@@ -223,16 +223,8 @@ class Database:
             return self.target_tracks
         except AttributeError:
             target_tracks = list(helper.read("target_tracks"))
-            self.target_tracks = map(lambda x: int(x[0]), target_tracks[1:])
+            self.target_tracks = [int(elem[0]) for elem target_tracks[1:]]
             return self.target_tracks
-
-    def get_users_similarities_list(self):
-        try:
-            return self.user_similarities_list
-        except AttributeError:
-            user_similarities_list = list(self.user_similarities_csv)
-            self.user_similarities_list = map(lambda x: map(float, x), user_similarities_list)
-            return self.user_similarities_list
 
     def get_tracks_map(self):
         """

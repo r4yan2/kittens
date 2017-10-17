@@ -16,18 +16,35 @@ class Recommender:
 
     def check_recommendations(self, playlist, recommendations):
         test_set = self.db.get_playlist_relevant_tracks(playlist)
+        test_set_length = len(test_set)
         if len(recommendations) < 5:
             raise ValueError('Recommendations list have less that 5 recommendations')
         is_relevant = [item in test_set for item in recommendations]
+        is_relevant_length = len(is_relevant)
 
+        # MAP@5
         p_to_k_num = helper.multiply_lists(is_relevant, helper.cumulative_sum([float(i) for i in is_relevant]))
-        p_to_k_den = range(1,len(is_relevant)+1)
+        p_to_k_den = range(1,is_relevant_length+1)
         p_to_k = helper.divide_lists(p_to_k_num, p_to_k_den)
         try:
-            map_score = sum(p_to_k) / min(len(test_set), len(is_relevant))
+            map_score = sum(p_to_k) / min(test_set_length, is_relevant_length)
         except ZeroDivisionError:
             map_score = 0
-        return map_score
+
+        # Precision
+        try:
+            precision = sum(is_relevant)/float(is_relevant_length)
+        except ZeroDivisionError:
+            precision = 0
+
+        # Recall
+        try:
+            recall = sum(is_relevant)/float(test_set_length)
+        except ZeroDivisionError:
+            recall = 0
+
+        # return the triple
+        return [map_score, precision, recall]
 
 
     def run(self, choice, db, q_in, q_out, test, number):
@@ -356,47 +373,60 @@ class Recommender:
         playlist_features_set = list(set(playlist_features))
         tf_idf_playlist = []
 
-
+        tf_idf_playlist = [self.db.get_tag_idf(tag)*playlist_features.count(tag)/float(len(playlist_features)) for tag in playlist_features_set]
+        '''
+        the above expression simplify the following
         for tag in playlist_features_set:
             tf = playlist_features.count(tag) / float(len(playlist_features))
             idf = self.db.get_tag_idf(tag)
             tf_idf = tf * idf
             tf_idf_playlist.append(tf_idf)
+        '''
 
         tracks_tags = []
         tf_idf_tracks_tags = []
+
         for track in playlist_tracks:
 
             tags = self.db.get_track_tags(track)
             tracks_tags.append(tags)
+            tf_idf_s = [self.db.get_tag_idf(tag)/float(len(tags)) for tag in tags]
+
+            '''
+            equivalent to the above list comprehension
             tf_idf_s = []
             for tag in tags:
                 tf = 1 / float(len(tags))
                 idf = self.db.get_tag_idf(tag)
                 tf_idf = tf * idf
                 tf_idf_s.append(tf_idf)
+            '''
             tf_idf_tracks_tags.append(tf_idf_s)
 
 
         for track in self.db.get_target_tracks():
             if track not in playlist_tracks_set and self.db.get_track_duration(track)>60000:
-                tf_idf_track = []
                 tags = self.db.get_track_tags(track)
+                tf_idf_track = [self.db.get_tag_idf(tag)/float(len(tags)) for tag in tags]
+                '''
+                tf_idf_track = []
                 for tag in tags:
                     tf = 1/float(len(tags))
                     idf = self.db.get_tag_idf(tag)
                     tf_idf = tf * idf
                     tf_idf_track.append(tf_idf)
+                '''
 
                 mean_cosine_sim = []
-
                 for track_tags in tracks_tags:
+                    num_cosine_sim = [tf_idf_track[tags.index(tag)] * tf_idf_tracks_tags[tracks_tags.index(track_tags)][track_tags.index(tag)] for tag in tags]
+
+                    '''
                     num_cosine_sim = []
                     for tag in tags:
                         if tag in track_tags:
                             num_cosine_sim.append(tf_idf_track[tags.index(tag)] * tf_idf_tracks_tags[tracks_tags.index(track_tags)][track_tags.index(tag)])
-                        else:
-                            num_cosine_sim.append(0)
+                    '''
                     den_cosine_sim = math.sqrt(sum([i**2 for i in tf_idf_tracks_tags[tracks_tags.index(track_tags)]])) * math.sqrt(sum([i**2 for i in tf_idf_track]))
 
                     try:

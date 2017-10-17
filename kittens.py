@@ -72,8 +72,12 @@ for i in xrange(len(target_playlists)):
 
 # Parse result, depending if test mode in on or off
 if test:
-    average = sum(results)/len(results)
-    helper.write("test_result"+str(istance), [average])
+    results_length = len(result)
+    avg_map5 = sum[map5 for map5, precision, recall in results]/float(results_length)
+    avg_precision = sum[precision for map5, precision, recall in results]/float(results_length)
+    avg_recall = sum[recall for map5, precision, recall in results]/float(results_length)
+    to_write = [["MAP@5", avg_map5], ["Precision", avg_precision], ["Recall", avg_recall]]
+    helper.write("test_result"+str(istance), to_write)
 else:
     result = [[x[1], x[2]] for x in sorted(results, key=itemgetter(0))]
     for playlist, recommendation in result:
