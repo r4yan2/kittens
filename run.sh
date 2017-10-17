@@ -9,10 +9,14 @@ disclaimer="
     Top Listened Recommendations
     Top Included Recommendations
     Top Tags Recommendations
-
+    TF-IDF Recommendations
+    Various combined methods
     Test Mode
+    Script Mode
 
-    Please wait until the Engine is ready, then select your choice
+    Further informations available on the README
+
+    Please select your choice wisely...
 "
 
 running="
@@ -32,7 +36,7 @@ end_test="
 
 command -v pypy >/dev/null
 if [[ "$?" == "1" ]]; then
-  whiptail --yesno "pypy is needed, proceed with installation?" 10 40
+  whiptail --yesno "pypy is required, proceed with installation?" 10 40
   if [[ "$?" == "0" ]]; then
     sudo apt install pypy
   else
@@ -43,7 +47,7 @@ fi
 mem=$(free | awk 'FNR == 2 {print int($7/(1024*1024*1.5))}')
 
 if [[ "$mem" == "0" ]]; then
-  whiptail --msgbox "Sorry, the system does not have enough memory available (2Gb minimum is required)" 10 50
+  whiptail --msgbox "Sorry, the system does not have enough memory available (1.5Gb minimum is required)" 10 50
   exit 0
 fi
 
@@ -90,8 +94,8 @@ case $mode in
 esac
 case $mode in
     0)
-        test_results=$(cat data/test_result* | awk '{if(min==""){min=max=$1}; if($1>max) {max=$1}; if($1<min) {min=$1}; total+=$1; count+=1} END {print "avg",total/count,"max",max,"min",min}')
-        whiptail --msgbox "Test Mode Completed! ""$test_results" 10 60
+        #test_results=$(cat data/test_result* | awk '{if(min==""){min=max=$1}; if($1>max) {max=$1}; if($1<min) {min=$1}; total+=$1; count+=1} END {print "avg",total/count,"max",max,"min",min}')
+        whiptail --msgbox "Test Mode Completed!\n"`cat data/test_result1.csv` 10 60
     ;;
     *)
         whiptail --msgbox "$end" 20 50
