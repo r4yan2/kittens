@@ -204,7 +204,7 @@ class Recommender:
         [playlist_features.extend(self.db.get_track_tags(track)) for track in playlist_tracks]
         playlist_features_set = list(set(playlist_features))
         tf_idf_playlist = []
-
+        already_included = self.db.get_playlist_user_tracks(playlist)
         for tag in playlist_features_set:
             tf = playlist_features.count(tag) / float(len(playlist_features))
             idf = self.db.get_tag_idf(tag)
@@ -212,7 +212,7 @@ class Recommender:
             tf_idf_playlist.append(tf_idf)
 
         for track in target_tracks:
-            if track not in playlist_tracks_set and self.db.get_track_duration(track) > 60000:
+            if track not in already_included and self.db.get_track_duration(track) > 60000:
                 tf_idf_track = []
                 tags = self.db.get_track_tags(track)
                 for tag in tags:
