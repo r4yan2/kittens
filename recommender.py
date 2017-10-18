@@ -233,6 +233,8 @@ class Recommender:
         playlist_tracks = self.db.get_playlist_tracks(playlist)
         playlist_tracks_set = set(playlist_tracks)
 
+        average_playlist_duration = sum([self.db.get_track_duration(track) for track in playlist_tracks])/len(playlist_tracks)
+
         playlist_features = []
         [playlist_features.extend(self.db.get_track_tags(track)) for track in playlist_tracks]
         playlist_features_set = list(set(playlist_features))
@@ -248,7 +250,7 @@ class Recommender:
 
         for track in target_tracks:
             tags = self.db.get_track_tags(track)
-            if track not in playlist_tracks_set and self.db.get_track_duration(track) > 60000:
+            if track not in playlist_tracks_set and self.db.get_track_duration(track) > 60000 and math.fabs(self.db.get_track_duration(track) - average_playlist_duration) <0.4*average_playlist_duration:
                 tf_idf_track = []
                 for tag in tags:
                     tf = 1.0 / len(tags)
@@ -284,9 +286,11 @@ class Recommender:
         if playlist_tracks == []:
             raise LookupError("The playlist_tracks is empty")
         artists_percentages = []
+        average_playlist_duration = sum([self.db.get_track_duration(track) for track in playlist_tracks])/len(playlist_tracks)
 
         for track in playlist_tracks:
             artist_tracks = self.db.get_artist_tracks(track)
+            average_artist_duration = sum([self.db.get_track_duration(track) for track in artist_tracks]) / len(artist_tracks)
             is_in_artist_tracks = [track in artist_tracks for track in playlist_tracks]
             float_is_in_artist_tracks = [float(i) for i in is_in_artist_tracks]
             artist_percentage = sum(float_is_in_artist_tracks)/len(playlist_tracks)
@@ -324,7 +328,7 @@ class Recommender:
 
         for track in tracks_not_in_playlist:
             tags = self.db.get_track_tags(track)
-            if track not in playlist_tracks_set and self.db.get_track_duration(track) > 60000:
+            if track not in playlist_tracks_set and self.db.get_track_duration(track) > 60000 and math.fabs(self.db.get_track_duration(track) - average_playlist_duration) <0.4*average_playlist_duration:
                 tf_idf_track = []
                 for tag in tags:
                     tf = 1.0 / len(tags)
