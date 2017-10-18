@@ -58,18 +58,23 @@ for p in proc:
 
 # Retrieve results from the out queue and display percentage
 completion = 0
-for i in xrange(len(target_playlists)):
-    percentage = (i*100)/len(target_playlists)
+target_playlists_length = len(target_playlists)
+for i in xrange(target_playlists_length):
+    r = q_out.get()
+    percentage = (i*100)/(target_playlists_length-1)
     if percentage > completion:
         sys.stdout.write("%i\n" % percentage)
         sys.stdout.flush()
         completion = percentage
-    r = q_out.get()
+    if test:
+        logging.debug("worker number %i reporting in" % r[1])
+        r = r[0]
     results.append(r)
+    logging.debug("results length so far: %i" % len(results))
 
 # Terminate worker process
 [p.join() for p in proc]
-
+logging.debug("All process terminated succesfully")
 # Parse result, depending if test mode in on or off
 if test:
     results_length = len(results)
@@ -77,7 +82,7 @@ if test:
     avg_precision = sum([precision for map5, precision, recall in results])/float(results_length)
     avg_recall = sum([recall for map5, precision, recall in results])/float(results_length)
     to_write = [["MAP@5", avg_map5], ["Precision", avg_precision], ["Recall", avg_recall]]
-    helper.write("test_result"+str(instance), to_write)
+    helper.write("test_result"+str(instance), to_write, '\t')
 else:
     result = [[x[1], x[2]] for x in sorted(results, key=itemgetter(0))]
     for playlist, recommendation in result:
@@ -86,3 +91,4 @@ else:
 
     # Initialize the helper instance to write the csv
     helper.write("result", to_write)
+logging.debug("result written!")
