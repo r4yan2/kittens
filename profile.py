@@ -1,7 +1,7 @@
 from database import Database
 from recommender import Recommender
 import cProfile
-db=Database(1)
+db=Database(0)
 rm=Recommender(db)
 
 cProfile.run('recomm = rm.make_tf_idf_recommendations(3042855, db.get_target_tracks(), 5)')

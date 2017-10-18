@@ -74,12 +74,13 @@ recommendations=$(whiptail --menu "Select Recommendations Method" 20 70 10 \
 8 "Tfidf tags combined tfIdf titles" \
 9 "Top-Tag combined TfIdf titles" \
 10 "Tfidf combined with tfidf titles" \
-11 "Bad tfidf recs" 3>&2 2>&1 1>&3)
+11 "Bad tfidf recs" \
+12 "Artist Recommendations + tfidf padding" 3>&2 2>&1 1>&3)
 
 
 case $mode in
     2)
-        script=$(whiptail --menu "Which script do you want to run?" 20 70 5 \
+        script=$(whiptail --menu "Which script do you want to run?" 20 80 5 \
         0 "Compute test set (x3)" 3>&2 2>&1 1>&3)
         /usr/bin/pypy script.py
     ;;
@@ -87,16 +88,16 @@ case $mode in
         /usr/bin/pypy kittens.py "$mode" "$recommendations" "$core" | whiptail --gauge "$running" 15 60 0
     ;;
     0)
-        #for istance in {1..3}
-        #do /usr/bin/pypy kittens.py "$mode" "$recommendations" "$core" "$istance" | whiptail --gauge "istance"$istance 15 60 0
+        #for instance in {1..3}
+        #do /usr/bin/pypy kittens.py "$mode" "$recommendations" "$core" "$instance" | whiptail --gauge "instance"$instance 15 60 0
         #done
-        /usr/bin/pypy kittens.py "$mode" "$recommendations" "$core" 1 | whiptail --gauge "istance"$istance 15 60 0
+        /usr/bin/pypy kittens.py "$mode" "$recommendations" "$core" 1 | whiptail --gauge "instance"$instance 15 60 0
     ;;
 esac
 case $mode in
     0)
         #test_results=$(cat data/test_result* | awk '{if(min==""){min=max=$1}; if($1>max) {max=$1}; if($1<min) {min=$1}; total+=$1; count+=1} END {print "avg",total/count,"max",max,"min",min}')
-        whiptail --msgbox "Test Mode Completed!\n"`cat data/test_result1.csv` 10 60
+        whiptail --msgbox "Test Mode Completed!\n$((cat data/test_result1.csv))" 10 60
     ;;
     *)
         whiptail --msgbox "$end" 20 50

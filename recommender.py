@@ -18,7 +18,7 @@ class Recommender:
         test_set = self.db.get_playlist_relevant_tracks(playlist)
         test_set_length = len(test_set)
         if len(recommendations) < 5:
-            raise ValueError('Recommendations list have less that 5 recommendations')
+            raise ValueError('Recommendations list have less than 5 recommendations')
         is_relevant = [item in test_set for item in recommendations]
         is_relevant_length = len(is_relevant)
 
@@ -70,7 +70,10 @@ class Recommender:
             elif choice == 3:
                 recommendations = self.make_top_tag_recommendations(target, self.db.get_target_tracks(), 5)
             elif choice == 4:
-                recommendations = self.make_tf_idf_recommendations(target, self.db.get_target_tracks(), 5)
+                try:
+                    recommendations = self.make_tf_idf_recommendations(target, self.db.get_target_tracks(), 5)
+                except ValueError:
+                    recommendations = self.make_top_included_recommendations(target)
             elif choice == 5:
                 recommendations = self.combined_top_tag_tfidf_recommendations(target)
             elif choice == 6:
@@ -85,6 +88,19 @@ class Recommender:
                 recommendations = self.combined_tfidf_tfidf_titles_recommendations(target)
             elif choice == 11:
                 recommendations = self.make_bad_tf_idf_recommendations(target)
+            elif choice == 12:
+                try:
+                    recommendations = self.make_artists_recommendations(target, 5)
+                except ValueError:
+                    try:
+                        recommendations = self.make_tf_idf_recommendations(target, self.db.get_target_tracks(), 5)
+                    except ValueError:
+                        recommendations = self.make_top_included_recommendations(target)
+                except LookupError:
+                    recommendations = self.make_top_included_recommendations(target)
+                if len(recommendations) < 5:
+                    recommendations.extend(self.make_tf_idf_recommendations(target, self.db.get_target_tracks(), 5 - len(recommendations)))
+
             # doing testing things if test mode enabled
             if test:
                 test_result = self.check_recommendations(target, recommendations)
@@ -182,8 +198,8 @@ class Recommender:
 
         for track in target_tracks: # make the actual recommendation
             track_duration = self.db.get_track_duration(track) # get the track length
+            tags = self.db.get_track_tags(track)
             if track not in already_included and track_duration > 60000:
-                tags = self.db.get_track_tags(track)
                 matched = filter(lambda x: x in active_tags_set, tags) # calculate the tags which match
                 try:
                     # calculate first parameter: matched over playlist tags set
@@ -220,8 +236,10 @@ class Recommender:
         playlist_features = []
         [playlist_features.extend(self.db.get_track_tags(track)) for track in playlist_tracks]
         playlist_features_set = list(set(playlist_features))
+        if len(playlist_features_set) == 0:
+            raise ValueError("playlist have no features!")
         tf_idf_playlist = []
-
+        #already_included = self.db.get_playlist_user_tracks(playlist)
         for tag in playlist_features_set:
             tf = playlist_features.count(tag) / float(len(playlist_features))
             idf = self.db.get_tag_idf(tag)
@@ -229,9 +247,9 @@ class Recommender:
             tf_idf_playlist.append(tf_idf)
 
         for track in target_tracks:
+            tags = self.db.get_track_tags(track)
             if track not in playlist_tracks_set and self.db.get_track_duration(track) > 60000:
                 tf_idf_track = []
-                tags = self.db.get_track_tags(track)
                 for tag in tags:
                     tf = 1.0 / len(tags)
                     idf = self.db.get_tag_idf(tag)
@@ -243,8 +261,88 @@ class Recommender:
 
                 den_cosine_sim = math.sqrt(sum([i ** 2 for i in tf_idf_playlist])) * math.sqrt(
                     sum([i ** 2 for i in tf_idf_track]))
+                #if len(playlist_features_set) == 1:
+                    #shrink = 1
+               # else:
+                    #shrink = 1.0/math.log(len(tags), len(playlist_features_set))
                 try:
-                    cosine_sim = sum(num_cosine_sim) / den_cosine_sim
+                    cosine_sim = sum(num_cosine_sim) / (den_cosine_sim)
+                except ZeroDivisionError:
+                    cosine_sim = 0
+
+                possible_recommendations.append([track, cosine_sim])
+
+        possible_recommendations.sort(key=itemgetter(1), reverse=True)
+        recommendations = [recommendation for recommendation, value in possible_recommendations[0:knn]]
+        return recommendations
+
+    def make_artists_recommendations(self, playlist, knn):
+
+        possible_recommendations = []
+
+        playlist_tracks = self.db.get_playlist_tracks(playlist)
+        if playlist_tracks == []:
+            raise LookupError("The playlist_tracks is empty")
+        artists_percentages = []
+
+        for track in playlist_tracks:
+            artist_tracks = self.db.get_artist_tracks(track)
+            is_in_artist_tracks = [track in artist_tracks for track in playlist_tracks]
+            float_is_in_artist_tracks = [float(i) for i in is_in_artist_tracks]
+            artist_percentage = sum(float_is_in_artist_tracks)/len(playlist_tracks)
+            artist_id = self.db.get_artist(track)
+            artists_percentages.append([artist_id, artist_percentage, artist_tracks])
+
+
+        artists_percentages.sort(key = itemgetter(1),reverse = True)
+        most_in_artist = artists_percentages[0][1]
+
+        if most_in_artist > 0.5:
+            artist_tracks = artists_percentages[0][2]
+        else:
+            raise ValueError("The playlist have no a most_in_artist")
+
+
+        tracks_not_in_playlist = helper.diff_list(artist_tracks, playlist_tracks)
+        if tracks_not_in_playlist == []:
+            raise ValueError("The playlist contains all the songs of the artist")
+
+        playlist_tracks_set = set(playlist_tracks)
+
+        playlist_features = []
+        [playlist_features.extend(self.db.get_track_tags(track)) for track in playlist_tracks]
+        playlist_features_set = list(set(playlist_features))
+        if len(playlist_features_set) == 0:
+            raise ValueError("playlist have no features!")
+        tf_idf_playlist = []
+        #already_included = self.db.get_playlist_user_tracks(playlist)
+        for tag in playlist_features_set:
+            tf = playlist_features.count(tag) / float(len(playlist_features))
+            idf = self.db.get_tag_idf(tag)
+            tf_idf = tf * idf
+            tf_idf_playlist.append(tf_idf)
+
+        for track in tracks_not_in_playlist:
+            tags = self.db.get_track_tags(track)
+            if track not in playlist_tracks_set and self.db.get_track_duration(track) > 60000:
+                tf_idf_track = []
+                for tag in tags:
+                    tf = 1.0 / len(tags)
+                    idf = self.db.get_tag_idf(tag)
+                    tf_idf = tf * idf
+                    tf_idf_track.append(tf_idf)
+
+                num_cosine_sim = [tf_idf_track[tags.index(tag)] * tf_idf_playlist[playlist_features_set.index(tag)] for
+                                  tag in tags if tag in playlist_features_set]
+
+                den_cosine_sim = math.sqrt(sum([i ** 2 for i in tf_idf_playlist])) * math.sqrt(
+                    sum([i ** 2 for i in tf_idf_track]))
+                #if len(playlist_features_set) == 1:
+                    #shrink = 1
+               # else:
+                    #shrink = 1.0/math.log(len(tags), len(playlist_features_set))
+                try:
+                    cosine_sim = sum(num_cosine_sim) / (den_cosine_sim)
                 except ZeroDivisionError:
                     cosine_sim = 0
 
