@@ -61,6 +61,7 @@ class Recommender:
             # if is the end stop working
             if target == -1:
                 break
+            logging.debug("worker %i took playlist %i" % (number, target))
             if choice == 0:
                 recommendations = self.make_random_recommendations(target)
             elif choice == 1:
@@ -517,7 +518,7 @@ class Recommender:
 
                 mean_cosine_sim = []
                 for track_tags in tracks_tags:
-                    num_cosine_sim = [tf_idf_track[tags.index(tag)] * tf_idf_tracks_tags[tracks_tags.index(track_tags)][track_tags.index(tag)] for tag in tags]
+                    num_cosine_sim = [tf_idf_track[tags.index(tag)] * tf_idf_tracks_tags[tracks_tags.index(track_tags)][track_tags.index(tag)] for tag in tags if tag in track_tags]
 
                     '''
                     num_cosine_sim = []
@@ -532,7 +533,10 @@ class Recommender:
                     except ZeroDivisionError:
                         cosine_sim = 0
                     mean_cosine_sim.append(cosine_sim)
-                value = sum(mean_cosine_sim)/float(len(mean_cosine_sim))
+                try:
+                    value = sum(mean_cosine_sim)/float(len(mean_cosine_sim))
+                except ZeroDivisionError:
+                    value = 0
                 possible_recommendations.append([track, value])
 
         recommendations = sorted(possible_recommendations, key=itemgetter(1), reverse=True)[0:5]
