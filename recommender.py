@@ -297,7 +297,7 @@ class Recommender:
         artists_percentages.sort(key = itemgetter(1),reverse = True)
         most_in_artist = artists_percentages[0][1]
 
-        if most_in_artist > 0.5:
+        if most_in_artist > 0.7:
             artist_tracks = artists_percentages[0][2]
         else:
             raise ValueError("The playlist have no a most_in_artist")
