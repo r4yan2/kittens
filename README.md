@@ -22,7 +22,7 @@ The final recommendations are calculated sorting the tracks by the first index a
 Implemented the tf-idf recommendation method.
 Is performed by taking the tracks of the playlist as a whole, considering all tags and comparing them with the tracks to recommend
 
-### slow version
+### TF-IDF (bad slow one)
 
 This consider every track of the playlist and make an average at the end. Is slower and score less that the first so for the moment is discarded
 
@@ -44,23 +44,24 @@ Is possible to run some script to pre-compute some data maps, store it into a cs
 
 ## Table of results
 
-|Algorithm|Score|Test|
-|:-------:|:---:|:--:|
-|Random|0.0000|NA|
-|top-listened|0.0002|NA|
-|top-included|0.0100|NA|
-|tags based recommendations|NA|1.432|
-|tf-idf recommendations|NA|2.884|
-|top-tag ->(50)-> tf-idf|NA|2.132|
-|top-tag ->(75)-> tf-idf|NA|2.282|
-|top-tag ->(100)-> tf-idf|NA|2.296|
-|top-tag ->(125)-> tf-idf|NA|2.366|
-|tf-idf ->(50)-> top-tag|NA|2.288|
-|tf-idf ->(75)-> top-tag|NA|2.082|
-|tf-idf ->(100)-> top-tag|NA|1.972|
-|tf-idf ->(125)-> top-tag|NA|
-top-tag ->(75) -> tf_idf_titles|NA|10.06
-top-tag ->(150) -> tf_idf_titles|NA|15.206
-top-tag ->(350) -> tf_idf_titles|NA|24.104
-top-tag ->(200) -> tf_idf_titles|NA|18.044
-top-tag ->(250) -> tf_idf_titles|NA|20.24
+|Algorithm|Score|MAP@5|Precision|Recall|
+|:-------:|:---:|:---:|:----:|:-------:|
+|Random|0.0000|NA|NA|NA|
+|top-listened|0.0002|NA|NA|NA|
+|top-included|0.0100|NA|NA|NA|
+|tags based recommendations|NA|NA|NA|NA|
+|tf-idf recommendations|NA|NA|NA|NA|
+|tf-idf (bad one)|NA|0.02546|0.02517|0.03644|
+|top-tag ->(50)-> tf-idf|NA|NA|NA|NA|
+|top-tag ->(75)-> tf-idf|NA|NA|NA|NA|
+|top-tag ->(100)-> tf-idf|NA|NA|NA|NA|
+|top-tag ->(125)-> tf-idf|NA|NA|NA|NA|
+|tf-idf ->(50)-> top-tag|NA|NA|NA|NA|
+|tf-idf ->(75)-> top-tag|NA|NA|NA|NA|
+|tf-idf ->(100)-> top-tag|NA||NA|NA|NA|
+|tf-idf ->(125)-> top-tag|NA|NA|NA|NA|
+top-tag ->(75) -> tf_idf_titles|NA|NA|NA|NA|
+top-tag ->(150) -> tf_idf_titles|NA|NA|NA|NA|
+top-tag ->(350) -> tf_idf_titles|NA|NA|NA|NA|
+top-tag ->(200) -> tf_idf_titles|NA|NA|NA|NA|
+top-tag ->(250) -> tf_idf_titles|NA|NA|NA|NA|

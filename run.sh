@@ -97,7 +97,7 @@ esac
 case $mode in
     0)
         #test_results=$(cat data/test_result* | awk '{if(min==""){min=max=$1}; if($1>max) {max=$1}; if($1<min) {min=$1}; total+=$1; count+=1} END {print "avg",total/count,"max",max,"min",min}')
-        whiptail --msgbox "Test Mode Completed!\n$((cat data/test_result1.csv))" 10 60
+        whiptail --textbox data/test_result1.csv 12 60
     ;;
     *)
         whiptail --msgbox "$end" 20 50

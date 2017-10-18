@@ -1,14 +1,14 @@
 import csv
 
 
-def write(filename, content):
+def write(filename, content, delimiter_char=','):
     """
     write the result on the file
     :param content:
     :return:
     """
     fp = open('data/' + filename + '.csv', 'w', 0)
-    writer = csv.writer(fp, delimiter=',', quoting=csv.QUOTE_NONE)
+    writer = csv.writer(fp, delimiter=delimiter_char, quoting=csv.QUOTE_NONE)
     if filename == "result":
         header = ["playlist_id", "track_ids"]
         writer.writerow(header)
@@ -60,4 +60,3 @@ def multiply_lists(lst1, lst2):
 def divide_lists(lst1, lst2):
 
     return [a / b for a, b in zip(lst1, lst2)]
-

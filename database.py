@@ -65,8 +65,8 @@ class Database:
         :return:
         """
         train = self.get_train_list()
-        playlists_length = 10000
-        tracks_length = 32195
+        playlists_length = 5000
+        tracks_length = 16097
         self.test_set = []
         playlists_with_n_tracks = set([playlist for playlist in self.get_playlists() if len(self.get_playlist_tracks(playlist)) >= 10])
         already_selected = set()
