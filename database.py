@@ -223,7 +223,7 @@ class Database:
             return self.target_tracks
         except AttributeError:
             target_tracks = list(helper.read("target_tracks"))
-            self.target_tracks = [int(elem[0]) for elem target_tracks[1:]]
+            self.target_tracks = [int(elem[0]) for elem in target_tracks[1:]]
             return self.target_tracks
 
     def get_tracks_map(self):

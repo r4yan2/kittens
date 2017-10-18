@@ -88,7 +88,7 @@ class Recommender:
             # doing testing things if test mode enabled
             if test:
                 test_result = self.check_recommendations(target, recommendations)
-                q_out.put(test_result)
+                q_out.put([test_result, number])
 
             else:
                 # else put the result into the out queue
