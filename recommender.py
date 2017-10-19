@@ -257,7 +257,8 @@ class Recommender:
 
         for track in target_tracks:
             tags = self.db.get_track_tags(track)
-            if track not in playlist_tracks_set and self.db.get_track_duration(track) > 60000 and math.fabs(self.db.get_track_duration(track) - average_playlist_duration) <= 1 * average_playlist_duration:
+            track_duration = self.db.get_track_duration(track)
+            if track not in playlist_tracks_set and (track_duration > 30000 or track_duration < 0):
                 tf_idf_track = []
                 for tag in tags:
                     tf = 1.0 / len(tags)
@@ -270,10 +271,6 @@ class Recommender:
 
                 den_cosine_sim = math.sqrt(sum([i ** 2 for i in tf_idf_playlist])) * math.sqrt(
                     sum([i ** 2 for i in tf_idf_track]))
-                #if len(playlist_features_set) == 1:
-                    #shrink = 1
-               # else:
-                    #shrink = 1.0/math.log(len(tags), len(playlist_features_set))
                 try:
                     cosine_sim = sum(num_cosine_sim) / (den_cosine_sim)
                 except ZeroDivisionError:
@@ -332,7 +329,7 @@ class Recommender:
         for track in tracks_not_in_playlist:
             tags = self.db.get_track_tags(track)
             track_duration = self.db.get_track_duration(track)
-            if track not in playlist_tracks_set and track_duration > 60000 and math.fabs(track_duration - average_playlist_duration) < 0.5 * average_playlist_duration:
+            if track not in playlist_tracks_set and track_duration > 60000 and math.fabs(track_duration - average_playlist_duration) <= 1 * average_playlist_duration:
                 tf_idf_track = []
                 for tag in tags:
                     tf = 1.0 / len(tags)
