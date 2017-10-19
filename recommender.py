@@ -261,12 +261,12 @@ class Recommender:
             if track not in playlist_tracks_set and (track_duration > 30000 or track_duration < 0):
                 tf_idf_track = []
                 for tag in tags:
-                    tf = 1.0 / len(tags)
+                    tf = 1.0 /len(tags)
                     idf = self.db.get_tag_idf(tag)
                     tf_idf = tf * idf
                     tf_idf_track.append(tf_idf)
 
-                num_cosine_sim = [tf_idf_track[tags.index(tag)] * tf_idf_playlist[playlist_features_set.index(tag)] * (len(tags)-tags.index(tag)) for
+                num_cosine_sim = [tf_idf_track[tags.index(tag)] * tf_idf_playlist[playlist_features_set.index(tag)] for
                                   tag in tags if tag in playlist_features_set]
 
                 den_cosine_sim = math.sqrt(sum([i ** 2 for i in tf_idf_playlist])) * math.sqrt(

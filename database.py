@@ -256,7 +256,7 @@ class Database:
                 playcount = 0.0
             album = eval(track[4])
             try:
-                album = int(album[0]) * 10000000000 # yes again, album is memorized as a list, even if no track have more than 1 album
+                album = int(album[0]) * 1000000000 # yes again, album is memorized as a list, even if no track have more than 1 album
             except TypeError:
                 album = 0
             except IndexError:
@@ -632,8 +632,8 @@ class Database:
         """
         title_playlist_map = self.get_title_playlists_map()
         playlist_titles_included = title_playlist_map[title]
-        num_idf = len(playlist_titles_included)
-        den_idf = len(self.get_playlists())
+        den_idf = len(playlist_titles_included)
+        num_idf = len(self.get_playlists())
         try:
             idf = math.log(num_idf / float(den_idf), 10)
         except ValueError:
