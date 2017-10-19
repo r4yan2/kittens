@@ -256,13 +256,15 @@ class Database:
                 playcount = 0.0
             album = eval(track[4])
             try:
-                album = int(album[0]) # yes again, album is memorized as a list, even if no track have more than 1 album
+                album = int(album[0]) * 10000000000 # yes again, album is memorized as a list, even if no track have more than 1 album
             except TypeError:
                 album = 0
             except IndexError:
                 album = 0
             tags = eval(track[5]) # evaluation of the tags list
             tags.append(artist_id)
+            if album > 0:
+                tags.append(album)
             result[track_id]= [artist_id, duration, playcount, album, tags]
         return result
 
