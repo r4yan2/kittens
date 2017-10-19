@@ -61,42 +61,36 @@ mode=$(whiptail --menu "Select Operational Mode" 20 70 5 \
 0 "Test Mode" \
 1 "Recommendation Mode" \
 2 "Script Mode" 3>&2 2>&1 1>&3)
-
-recommendations=$(whiptail --menu "Select Recommendations Method" 20 70 10 \
-0 "Random" \
-1 "Top Listened" \
-2 "Top Included" \
-3 "Top Tags" \
-4 "TF-IDF based on tags" \
-5 "Top-Tag combined TfIdf" \
-6 "TfIdf combined Top-Tag" \
-7 "TfIdf based on titles" \
-8 "Tfidf tags combined tfIdf titles" \
-9 "Top-Tag combined TfIdf titles" \
-10 "Tfidf combined with tfidf titles" \
-11 "Bad tfidf recs" \
-12 "Artist Recommendations + tfidf padding" 3>&2 2>&1 1>&3)
-
+if [[ -z "$mode" ]]; then exit 0; fi
 
 case $mode in
     2)
         script=$(whiptail --menu "Which script do you want to run?" 20 80 5 \
         0 "Compute test set (x3)" 3>&2 2>&1 1>&3)
+        if [[ -z "$script" ]]; then exit 0; fi
         /usr/bin/pypy script.py
     ;;
-    1)
+    *)
+        recommendations=$(whiptail --menu "Select Recommendations Method" 20 70 10 \
+        0 "Random" \
+        1 "Top Listened" \
+        2 "Top Included" \
+        3 "Top Tags" \
+        4 "TF-IDF based on tags" \
+        5 "Top-Tag combined TfIdf" \
+        6 "TfIdf combined Top-Tag" \
+        7 "TfIdf based on titles" \
+        8 "Tfidf tags combined tfIdf titles" \
+        9 "Top-Tag combined TfIdf titles" \
+        10 "Tfidf combined with tfidf titles" \
+        11 "Bad tfidf recs" \
+        12 "Artist Recommendations + tfidf padding" 3>&2 2>&1 1>&3)
+        if [[ -z "$recommendations" ]]; then exit 0; fi
         /usr/bin/pypy kittens.py "$mode" "$recommendations" "$core" | whiptail --gauge "$running" 15 60 0
-    ;;
-    0)
-        #for instance in {1..3}
-        #do /usr/bin/pypy kittens.py "$mode" "$recommendations" "$core" "$instance" | whiptail --gauge "instance"$instance 15 60 0
-        #done
-        /usr/bin/pypy kittens.py "$mode" "$recommendations" "$core" 1 | whiptail --gauge "instance"$instance 15 60 0
     ;;
 esac
 case $mode in
     0)
-        #test_results=$(cat data/test_result* | awk '{if(min==""){min=max=$1}; if($1>max) {max=$1}; if($1<min) {min=$1}; total+=$1; count+=1} END {print "avg",total/count,"max",max,"min",min}')
         whiptail --textbox data/test_result1.csv 12 60
     ;;
     *)

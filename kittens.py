@@ -14,7 +14,7 @@ logging.basicConfig(filename='kittens.log', level=logging.DEBUG, filemode='w')
 # take input from command line sys.argv[0] is the program name
 if eval(sys.argv[1]) == 0:
     test = True
-    instance = eval(sys.argv[4])
+    instance = 1
 else:
     test = False
     instance = 0
