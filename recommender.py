@@ -103,7 +103,7 @@ class Recommender:
                     except ValueError: # this may happend when the playlist have 1-2 tracks with no features (fuck it)
                         recommendations = self.make_top_included_recommendations(target)
                 if len(recommendations) < 5: # if there are not enough artist tracks to recommend or if the tracks have a strage avg duration
-                    recommendations.extend(self.make_tf_idf_recommendations(target, self.db.get_target_tracks(), recommendations)
+                    recommendations.extend(self.make_tf_idf_recommendations(target, self.db.get_target_tracks(), recommendations))
                 if len(recommendations) < 5:
                     recommendations.extend(self.make_top_tag_recommendations(target, self.db.get_target_tracks(), recommendations))
 
@@ -276,7 +276,6 @@ class Recommender:
                     cosine_sim = sum(num_cosine_sim) / (den_cosine_sim)
                 except ZeroDivisionError:
                     cosine_sim = 0
-
                 possible_recommendations.append([track, cosine_sim])
 
         possible_recommendations.sort(key=itemgetter(1), reverse=True)
@@ -348,7 +347,7 @@ class Recommender:
                     cosine_sim = sum(num_cosine_sim) / (den_cosine_sim)
                 except ZeroDivisionError:
                     cosine_sim = 0
-
+                if cosine_sim > 0.75
                 possible_recommendations.append([track, cosine_sim])
 
         possible_recommendations.sort(key=itemgetter(1), reverse=True)
