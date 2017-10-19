@@ -91,13 +91,15 @@ class Recommender:
             elif choice == 12:
                 try:
                     recommendations = self.make_artists_recommendations(target, 5)
+                except LookupError:
+                    # TODO implement user-targeted recommendations
+                    recommendations = self.make_top_included_recommendations(target)
                 except ValueError:
                     try:
                         recommendations = self.make_tf_idf_recommendations(target, self.db.get_target_tracks(), 5)
                     except ValueError:
                         recommendations = self.make_top_included_recommendations(target)
-                except LookupError:
-                    recommendations = self.make_top_included_recommendations(target)
+
                 if len(recommendations) < 5:
                     recommendations.extend(self.make_tf_idf_recommendations(target, self.db.get_target_tracks(), 5 - len(recommendations)))
 
@@ -287,12 +289,10 @@ class Recommender:
 
         for track in playlist_tracks:
             artist_tracks = self.db.get_artist_tracks(track)
-            is_in_artist_tracks = [track in artist_tracks for track in playlist_tracks]
-            float_is_in_artist_tracks = [float(i) for i in is_in_artist_tracks]
+            float_is_in_artist_tracks = [float(i) for i in (track in artist_tracks for track in playlist_tracks)]
             artist_percentage = sum(float_is_in_artist_tracks)/len(playlist_tracks)
             artist_id = self.db.get_artist(track)
             artists_percentages.append([artist_id, artist_percentage, artist_tracks])
-
 
         artists_percentages.sort(key = itemgetter(1),reverse = True)
         most_in_artist = artists_percentages[0][1]
@@ -300,7 +300,7 @@ class Recommender:
         if most_in_artist > 0.5:
             artist_tracks = artists_percentages[0][2]
         else:
-            raise ValueError("The playlist have no a most_in_artist")
+            raise ValueError("The playlist have no dominant artist")
 
 
         tracks_not_in_playlist = helper.diff_list(artist_tracks, playlist_tracks)
