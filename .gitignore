@@ -2,6 +2,7 @@
 *.csv
 *.pyc
 *.swp
+*.log
 .idea/
 data/
 doc/
