@@ -61,6 +61,7 @@ class Recommender:
             # if is the end stop working
             if target == -1:
                 break
+            logging.debug("worker %i took playlist %i" % (number, target))
             if choice == 0:
                 recommendations = self.make_random_recommendations(target)
             elif choice == 1:
@@ -74,6 +75,8 @@ class Recommender:
                     recommendations = self.make_tf_idf_recommendations(target, self.db.get_target_tracks(), 5)
                 except ValueError:
                     recommendations = self.make_top_included_recommendations(target)
+                if len(recommendations) < 5:
+                    recommendations.extend(self.make_top_tag_recommendations(target, self.db.get_target_tracks(), 5-len(recommendations)))
             elif choice == 5:
                 recommendations = self.combined_top_tag_tfidf_recommendations(target)
             elif choice == 6:
@@ -91,15 +94,18 @@ class Recommender:
             elif choice == 12:
                 try:
                     recommendations = self.make_artists_recommendations(target, 5)
-                except ValueError:
+                except LookupError:
+                    # TODO implement user-targeted recommendations
+                    recommendations = self.make_top_included_recommendations(target)
+                except ValueError: # no dominant artist
                     try:
                         recommendations = self.make_tf_idf_recommendations(target, self.db.get_target_tracks(), 5)
-                    except ValueError:
+                    except ValueError: # this may happend when the playlist have 1-2 tracks with no features (fuck it)
                         recommendations = self.make_top_included_recommendations(target)
-                except LookupError:
-                    recommendations = self.make_top_included_recommendations(target)
-                if len(recommendations) < 5:
+                if len(recommendations) < 5: # if there are not enough artist tracks to recommend or if the tracks have a strage avg duration
                     recommendations.extend(self.make_tf_idf_recommendations(target, self.db.get_target_tracks(), 5 - len(recommendations)))
+                if len(recommendations) < 5:
+                    recommendations.extend(self.make_top_tag_recommendations(target, self.db.get_target_tracks(), 5-len(recommendations)))
 
             # doing testing things if test mode enabled
             if test:
@@ -232,7 +238,8 @@ class Recommender:
 
         playlist_tracks = self.db.get_playlist_tracks(playlist)
         playlist_tracks_set = set(playlist_tracks)
-
+        if playlist_tracks == []:
+            raise ValueError("playlist is empty")
         average_playlist_duration = sum([self.db.get_track_duration(track) for track in playlist_tracks])/len(playlist_tracks)
 
         playlist_features = []
@@ -250,7 +257,8 @@ class Recommender:
 
         for track in target_tracks:
             tags = self.db.get_track_tags(track)
-            if track not in playlist_tracks_set and self.db.get_track_duration(track) > 60000 and math.fabs(self.db.get_track_duration(track) - average_playlist_duration) <0.9*average_playlist_duration:
+
+            if track not in playlist_tracks_set and self.db.get_track_duration(track) > 60000 and math.fabs(self.db.get_track_duration(track) - average_playlist_duration) < 0.5 * average_playlist_duration:
                 tf_idf_track = []
                 for tag in tags:
                     tf = 1.0 / len(tags)
@@ -284,19 +292,16 @@ class Recommender:
 
         playlist_tracks = self.db.get_playlist_tracks(playlist)
         if playlist_tracks == []:
-            raise LookupError("The playlist_tracks is empty")
+            raise LookupError("The playlist is empty")
         artists_percentages = []
         average_playlist_duration = sum([self.db.get_track_duration(track) for track in playlist_tracks])/len(playlist_tracks)
 
         for track in playlist_tracks:
             artist_tracks = self.db.get_artist_tracks(track)
-            average_artist_duration = sum([self.db.get_track_duration(track) for track in artist_tracks]) / len(artist_tracks)
-            is_in_artist_tracks = [track in artist_tracks for track in playlist_tracks]
-            float_is_in_artist_tracks = [float(i) for i in is_in_artist_tracks]
+            float_is_in_artist_tracks = (float(i) for i in (track in artist_tracks for track in playlist_tracks))
             artist_percentage = sum(float_is_in_artist_tracks)/len(playlist_tracks)
             artist_id = self.db.get_artist(track)
             artists_percentages.append([artist_id, artist_percentage, artist_tracks])
-
 
         artists_percentages.sort(key = itemgetter(1),reverse = True)
         most_in_artist = artists_percentages[0][1]
@@ -304,8 +309,7 @@ class Recommender:
         if most_in_artist > 0.7:
             artist_tracks = artists_percentages[0][2]
         else:
-            raise ValueError("The playlist have no a most_in_artist")
-
+            raise ValueError("The playlist have no dominant artist")
 
         tracks_not_in_playlist = helper.diff_list(artist_tracks, playlist_tracks)
         if tracks_not_in_playlist == []:
@@ -328,7 +332,8 @@ class Recommender:
 
         for track in tracks_not_in_playlist:
             tags = self.db.get_track_tags(track)
-            if track not in playlist_tracks_set and self.db.get_track_duration(track) > 60000 and math.fabs(self.db.get_track_duration(track) - average_playlist_duration) <0.9*average_playlist_duration:
+            track_duration = self.db.get_track_duration(track)
+            if track not in playlist_tracks_set and track_duration > 60000 and math.fabs(track_duration - average_playlist_duration) < 0.5 * average_playlist_duration:
                 tf_idf_track = []
                 for tag in tags:
                     tf = 1.0 / len(tags)
@@ -521,7 +526,7 @@ class Recommender:
 
                 mean_cosine_sim = []
                 for track_tags in tracks_tags:
-                    num_cosine_sim = [tf_idf_track[tags.index(tag)] * tf_idf_tracks_tags[tracks_tags.index(track_tags)][track_tags.index(tag)] for tag in tags]
+                    num_cosine_sim = [tf_idf_track[tags.index(tag)] * tf_idf_tracks_tags[tracks_tags.index(track_tags)][track_tags.index(tag)] for tag in tags if tag in track_tags]
 
                     '''
                     num_cosine_sim = []
@@ -536,7 +541,10 @@ class Recommender:
                     except ZeroDivisionError:
                         cosine_sim = 0
                     mean_cosine_sim.append(cosine_sim)
-                value = sum(mean_cosine_sim)/float(len(mean_cosine_sim))
+                try:
+                    value = sum(mean_cosine_sim)/float(len(mean_cosine_sim))
+                except ZeroDivisionError:
+                    value = 0
                 possible_recommendations.append([track, value])
 
         recommendations = sorted(possible_recommendations, key=itemgetter(1), reverse=True)[0:5]

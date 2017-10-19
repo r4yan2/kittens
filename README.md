@@ -48,9 +48,9 @@ Is possible to run some script to pre-compute some data maps, store it into a cs
 |:-------:|:---:|:---:|:----:|:-------:|
 |Random|0.0000|NA|NA|NA|
 |top-listened|0.0002|NA|NA|NA|
-|top-included|0.0100|NA|NA|NA|
-|tags based recommendations|NA|NA|NA|NA|
-|tf-idf recommendations|NA|NA|NA|NA|
+|top-included|0.0100|0.000954|0.00152|0.0016|
+|tags based recommendations|0.01569|0.01352|0.02512|
+|tf-idf recommendations|NA|0.03894|0.03515|0.05536|
 |tf-idf (bad one)|NA|0.02546|0.02517|0.03644|
 |top-tag ->(50)-> tf-idf|NA|NA|NA|NA|
 |top-tag ->(75)-> tf-idf|NA|NA|NA|NA|
@@ -60,8 +60,9 @@ Is possible to run some script to pre-compute some data maps, store it into a cs
 |tf-idf ->(75)-> top-tag|NA|NA|NA|NA|
 |tf-idf ->(100)-> top-tag|NA||NA|NA|NA|
 |tf-idf ->(125)-> top-tag|NA|NA|NA|NA|
-top-tag ->(75) -> tf_idf_titles|NA|NA|NA|NA|
-top-tag ->(150) -> tf_idf_titles|NA|NA|NA|NA|
-top-tag ->(350) -> tf_idf_titles|NA|NA|NA|NA|
-top-tag ->(200) -> tf_idf_titles|NA|NA|NA|NA|
-top-tag ->(250) -> tf_idf_titles|NA|NA|NA|NA|
+|top-tag ->(75) -> tf_idf_titles|NA|NA|NA|NA|
+|top-tag ->(150) -> tf_idf_titles|NA|NA|NA|NA|
+|top-tag ->(350) -> tf_idf_titles|NA|NA|NA|NA|
+|top-tag ->(200) -> tf_idf_titles|NA|NA|NA|NA|
+|top-tag ->(250) -> tf_idf_titles|NA|NA|NA|NA|
+|tf-idf artist w/ fallback tf-idf tags w/ fallback tf-idf listened|0.032135|0.03014|0.04708|

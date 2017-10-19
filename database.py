@@ -246,7 +246,7 @@ class Database:
         result = {}
         for track in tracks[1:]:
             track_id = int(track[0])
-            artist_id = int(track[1])
+            artist_id = int(track[1]) * 10000
             duration = int(track[2])
             if duration == None:
                 continue
@@ -262,6 +262,7 @@ class Database:
             except IndexError:
                 album = 0
             tags = eval(track[5]) # evaluation of the tags list
+            tags.append(artist_id)
             result[track_id]= [artist_id, duration, playcount, album, tags]
         return result
 
