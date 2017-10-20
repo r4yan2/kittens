@@ -161,8 +161,8 @@ class Database:
         """
         tag_playlist_map = self.get_tag_playlists_map()
         playlist_tags_included = tag_playlist_map[tag]
-        num_idf = len(playlist_tags_included)
-        den_idf = len(self.get_playlists())
+        den_idf = len(playlist_tags_included)
+        num_idf = len(self.get_playlists())
         try:
             idf = math.log(num_idf/float(den_idf), 10)
         except ValueError:
