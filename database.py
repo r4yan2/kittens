@@ -265,6 +265,8 @@ class Database:
             tags.append(artist_id)
             if album > 0:
                 tags.append(album)
+            if duration > 0:
+                tags.append(duration * (-1))
             result[track_id]= [artist_id, duration, playcount, album, tags]
         return result
 

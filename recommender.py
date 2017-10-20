@@ -347,8 +347,8 @@ class Recommender:
                     cosine_sim = sum(num_cosine_sim) / (den_cosine_sim)
                 except ZeroDivisionError:
                     cosine_sim = 0
-                if cosine_sim > 0.75
-                possible_recommendations.append([track, cosine_sim])
+                if cosine_sim > 0.75:
+                    possible_recommendations.append([track, cosine_sim])
 
         possible_recommendations.sort(key=itemgetter(1), reverse=True)
         recommendations = [recommendation for recommendation, value in possible_recommendations[0:knn]]
