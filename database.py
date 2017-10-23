@@ -140,19 +140,31 @@ class Database:
             return self.tag_playlists_map
 
 
-    def get_global_effect(self, track):
+    def get_normalized_rating(self, track):
         """
 
         :return:
         """
         playlists = self.get_track_playlists(track)
 
-        global_effect = float(len(playlists))/len(self.get_playlists())
+        normalized_rating = len(playlists) - self.get_average_global_track_inclusion()
 
-        return global_effect
+        return normalized_rating
 
+    def get_average_global_track_inclusion(self):
+        """
 
+        :return:
+        """
+        try:
+            return self.avg_global_track
+        except AttributeError:
 
+            track_playlists_map = self.get_track_playlists_map()
+            list_playlists = track_playlists_map.values()
+            list_lenght = [len(playlists) for playlists in list_playlists]
+            self.avg_global_track = sum(list_lenght)/float(len(list_lenght))
+            return self.avg_global_track
 
     def get_title_playlists_map(self):
         """
