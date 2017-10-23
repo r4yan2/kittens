@@ -60,7 +60,9 @@ whiptail --msgbox "$disclaimer" 20 70
 mode=$(whiptail --menu "Select Operational Mode" 20 70 5 \
 0 "Test Mode" \
 1 "Recommendation Mode" \
-2 "Script Mode" 3>&2 2>&1 1>&3)
+2 "Script Mode" \
+3 "Debug Mode" \
+3>&2 2>&1 1>&3)
 if [[ -z "$mode" ]]; then exit 0; fi
 
 case $mode in
@@ -82,16 +84,25 @@ case $mode in
         7 "TfIdf based on titles" \
         8 "Tfidf tags combined tfIdf titles" \
         9 "Top-Tag combined TfIdf titles" \
-        10 "Tfidf combined with tfidf titles" \
+        10 "Tfidf Titles filter applied on normal tfidf" \
         11 "Bad tfidf recs" \
-        12 "Artist Recommendations + tfidf padding" 3>&2 2>&1 1>&3)
+        12 "Artist Recommendations + tfidf padding" \
+        3>&2 2>&1 1>&3)
+
         if [[ -z "$recommendations" ]]; then exit 0; fi
-        /usr/bin/pypy kittens.py "$mode" "$recommendations" "$core" | whiptail --gauge "$running" 15 60 0
+
+        if [[ "$mode" == "3" ]]
+        then /usr/bin/pypy kittens.py 0 "$recommendations" 1 1
+        else /usr/bin/pypy kittens.py "$mode" "$recommendations" "$core" 1 | whiptail --gauge "$running" 15 60 0
+        fi
     ;;
 esac
 case $mode in
     0)
         whiptail --textbox data/test_result1.csv 12 60
+    ;;
+    3)
+        exit 0
     ;;
     *)
         whiptail --msgbox "$end" 20 50

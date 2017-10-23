@@ -14,7 +14,7 @@ logging.basicConfig(filename='kittens.log', level=logging.DEBUG, filemode='w')
 # take input from command line sys.argv[0] is the program name
 if eval(sys.argv[1]) == 0:
     test = True
-    instance = 1
+    instance = sys.argv[4]
 else:
     test = False
     instance = 0
@@ -67,7 +67,7 @@ for i in xrange(target_playlists_length):
         sys.stdout.flush()
         completion = percentage
     if test:
-        logging.debug("worker number %i reporting in" % r[1])
+        logging.debug("worker number %i reporting result %s" % (r[1],r[0]))
         r = r[0]
     results.append(r)
     logging.debug("results length so far: %i" % len(results))
@@ -82,13 +82,12 @@ if test:
     avg_precision = sum([precision for map5, precision, recall in results])/float(results_length)
     avg_recall = sum([recall for map5, precision, recall in results])/float(results_length)
     to_write = [["MAP@5", avg_map5], ["Precision", avg_precision], ["Recall", avg_recall]]
+    logging.debug(to_write)
     helper.write("test_result"+str(instance), to_write, '\t')
 else:
     result = [[x[1], x[2]] for x in sorted(results, key=itemgetter(0))]
     for playlist, recommendation in result:
         elem = [playlist, reduce(lambda x, y: str(x) + ' ' + str(y), recommendation)]
         to_write.append(elem)
-
-    # Initialize the helper instance to write the csv
+    logging.debug(to_write)
     helper.write("result", to_write)
-logging.debug("result written!")

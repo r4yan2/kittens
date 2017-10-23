@@ -131,12 +131,28 @@ class Database:
             self.tag_playlists_map = defaultdict(lambda: [], {})
             for playlist in self.get_playlists():
                 tracks = self.get_playlist_tracks(playlist)  # get already included tracks
-                tags = []
-                [tags.extend(self.get_track_tags(track)) for track in tracks] # get the tags from the active tracks
+                tags = [tag for track in tracks for tag in self.get_track_tags(track)] #+ \
+                #      [item * (-(10 ** 10)) for item in self.get_titles_playlist(playlist)]
+                #tags = [tag for track in tracks for tag in self.get_track_tags(track) + [item * (-(10**10)) for item in self.get_titles_track(track)]]
                 tags_set = set(tags)
                 for tag in tags_set:
                     self.tag_playlists_map[tag].append(playlist)
             return self.tag_playlists_map
+
+
+    def get_global_effect(self, track):
+        """
+
+        :return:
+        """
+        playlists = self.get_track_playlists(track)
+
+        global_effect = float(len(playlists))/len(self.get_playlists())
+
+        return global_effect
+
+
+
 
     def get_title_playlists_map(self):
         """
@@ -154,6 +170,13 @@ class Database:
                     self.title_playlists_map[title].append(playlist)
             return self.title_playlists_map
 
+    def get_max_inclusion_value(self):
+        try:
+            return self.max_inclusion_value
+        except AttributeError:
+            self.max_inclusion_value = max([len(items) for items in self.get_tag_playlists_map().values()])
+            return self.max_inclusion_value
+
     def get_tag_idf(self, tag):
         """
 
@@ -161,11 +184,13 @@ class Database:
         """
         tag_playlist_map = self.get_tag_playlists_map()
         playlist_tags_included = tag_playlist_map[tag]
-        den_idf = len(playlist_tags_included)
-        num_idf = len(self.get_playlists())
+        den_idf = float(len(playlist_tags_included))
+        num_idf = self.get_max_inclusion_value()
         try:
-            idf = math.log(num_idf/float(den_idf), 10)
+            idf = math.log(1.0 + (num_idf/den_idf), 10)
         except ValueError:
+            idf = 0
+        except ZeroDivisionError:
             idf = 0
         return idf
 
@@ -282,10 +307,7 @@ class Database:
         owner_playlist = self.get_owner_playlists()
         playlist_list = owner_playlist[owned_by]
 
-        tracks_listened = []
-        for playlist in playlist_list:
-            tracks = self.get_playlist_tracks(playlist)
-            tracks_listened.extend(tracks)
+        tracks_listened = [track for playlist in playlist_list for track in self.get_playlist_tracks(playlist)]
 
         return set(tracks_listened)
 
@@ -303,7 +325,7 @@ class Database:
             for owner in playlists[1:]:
                 owned_by = int(owner[5])
                 playlist_id = int(owner[1])
-                self.owner_playlist[owned_by].extend([playlist_id])
+                self.owner_playlist[owned_by].append(playlist_id)
 
             return self.owner_playlist
 
@@ -609,13 +631,10 @@ class Database:
 
         :return:
         """
-        titles_track = []
         playlists = self.get_track_playlists(track)
-        [titles_track.extend(self.get_titles_playlist(playlist)) for playlist in playlists]
+        titles_track = [title for playlist in playlists for title in self.get_titles_playlist(playlist)]
 
         return titles_track
-
-
 
     def get_titles_playlist(self, playlist):
         """
@@ -634,11 +653,13 @@ class Database:
         """
         title_playlist_map = self.get_title_playlists_map()
         playlist_titles_included = title_playlist_map[title]
-        den_idf = len(playlist_titles_included)
+        den_idf = float(len(playlist_titles_included))
         num_idf = len(self.get_playlists())
         try:
-            idf = math.log(num_idf / float(den_idf), 10)
+            idf = math.log(1.0 + (num_idf / den_idf), 10)
         except ValueError:
+            idf = 0
+        except ZeroDivisionError:
             idf = 0
         return idf
 
