@@ -254,7 +254,6 @@ class Recommender:
         playlist_tracks = self.db.get_playlist_tracks(playlist)
         playlist_tracks_set = set(playlist_tracks)
         if playlist_tracks == []:
-            print "playlist empty"
             raise ValueError("playlist is empty")
 
 
@@ -263,7 +262,6 @@ class Recommender:
 
         playlist_features_set = list(set(playlist_features))
         if len(playlist_features_set) == 0:
-            print "playlist have no feature"
             raise ValueError("playlist have no features!")
 
         tf_idf_playlist = [(1.0 + math.log(playlist_features.count(tag), 10)) * self.db.get_tag_idf(tag)
@@ -271,7 +269,7 @@ class Recommender:
 
         """
         above list comprehension summarize the following:
-        
+
         tf_idf_playlist = []
         for tag in playlist_features_set:
             tf = 1.0 + math.log(playlist_features.count(tag), 10)
@@ -295,15 +293,22 @@ class Recommender:
                     tf_idf_track.append(tf_idf)
                 """
 
+                tag_mask = [float(tag in playlist_features_set) for tag in tags]
+
                 num_cosine_sim = [tf_idf_track[tags.index(tag)] * tf_idf_playlist[playlist_features_set.index(tag)] for
                                   tag in tags if tag in playlist_features_set]
 
+
                 den_cosine_sim = math.sqrt(sum([i ** 2 for i in tf_idf_playlist])) * math.sqrt(
                     sum([i ** 2 for i in tf_idf_track]))
+
+                shrink = math.log(sum(tag_mask)/len(playlist_tracks_set), 10) * 100
+
                 try:
-                    cosine_sim = sum(num_cosine_sim) / (den_cosine_sim)
+                    cosine_sim = sum(num_cosine_sim) / (den_cosine_sim + shrink)
                 except ZeroDivisionError:
                     cosine_sim = 0
+
                 possible_recommendations.append([track, cosine_sim])
 
         possible_recommendations.sort(key=itemgetter(1), reverse=True)
