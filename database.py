@@ -139,7 +139,6 @@ class Database:
                     self.tag_playlists_map[tag].append(playlist)
             return self.tag_playlists_map
 
-
     def get_normalized_rating(self, track):
         """
 

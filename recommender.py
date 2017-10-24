@@ -92,7 +92,10 @@ class Recommender:
             elif choice == 10:
                 recommendations = self.combined_tfidf_tfidf_titles_recommendations(target)
             elif choice == 11:
-                recommendations = self.make_bad_tf_idf_recommendations(target)
+                try:
+                    recommendations = self.make_bad_tf_idf_recommendations(target)
+                except ValueError:
+                    recommendations = self.make_top_included_recommendations(target)
             elif choice == 12:
                 try:
                     recommendations = self.make_artists_recommendations(target)
@@ -503,12 +506,17 @@ class Recommender:
 
         knn -= len(recommendations)
         possible_recommendations = []
-
+        logging.debug("playlist %s" % playlist)
         playlist_tracks = self.db.get_playlist_tracks(playlist)
         playlist_tracks_set = set(playlist_tracks)
-
+        if playlist_tracks == []:
+            print "playlist empty"
+            raise ValueError("playlist is empty")
+        logging.debug("playlist tracks: %s" % playlist_tracks)
+        logging.debug("len playlist tracks: %i" % len(playlist_tracks))
         normalized_rating = [self.db.get_global_effect(track) for track in playlist_tracks]
-
+        logging.debug("normalized ratings: %s" % normalized_rating)
+        logging.debug("len normalized ratings: %i" % len(normalized_rating))
         tracks_tags = []
         tf_idf_tracks_tags = []
 
@@ -516,34 +524,43 @@ class Recommender:
 
             tags = self.db.get_track_tags(track)
             tracks_tags.append(tags)
-            tf_idf_s = [self.db.get_tag_idf(tag)/float(len(tags)) for tag in tags]
+            tf_idf_s = [self.db.get_tag_idf(tag) for tag in tags]
 
             '''
             equivalent to the above list comprehension
             tf_idf_s = []
             for tag in tags:
-                tf = 1 / float(len(tags))
+                tf = 1.0
                 idf = self.db.get_tag_idf(tag)
                 tf_idf = tf * idf
                 tf_idf_s.append(tf_idf)
             '''
             tf_idf_tracks_tags.append(tf_idf_s)
-
-
+        logging.debug("tracks tags: %s" % tracks_tags)
+        logging.debug("len tracks tags: %i" % len(tracks_tags))
+        logging.debug("tf_idf_tracks_tags %s" % tf_idf_tracks_tags)
+        logging.debug("len tf_idf_tracks_tags %i" % len(tf_idf_tracks_tags))
+        if max([len(track_tags) for track_tags in tracks_tags]) == 0:
+            raise ValueError("tracks have no feature")
+        logging.debug("entering target_tracks loop")
         for track in target_tracks:
+            logging.debug("track %i" % track)
             track_duration = self.db.get_track_duration(track)
             if track not in playlist_tracks_set and (track_duration > 30000 or track_duration < 0) and track not in recommendations:
                 tags = self.db.get_track_tags(track)
-                tf_idf_track = [self.db.get_tag_idf(tag)/float(len(tags)) for tag in tags]
+                if tags == []:
+                    continue
+                tf_idf_track = [self.db.get_tag_idf(tag) for tag in tags]
                 '''
                 tf_idf_track = []
                 for tag in tags:
-                    tf = 1/float(len(tags))
+                    tf = 1.0
                     idf = self.db.get_tag_idf(tag)
                     tf_idf = tf * idf
                     tf_idf_track.append(tf_idf)
                 '''
-
+                logging.debug("tf_idf_track %s" % tf_idf_track)
+                logging.debug("len tf_idf_track %i" % len(tf_idf_track))
                 denominator = []
                 numerator = []
                 for track_tags in tracks_tags:
@@ -563,10 +580,15 @@ class Recommender:
                         cosine_sim = 0
                     numerator.append(normalized_rating[tracks_tags.index(track_tags)] * cosine_sim)
                     denominator.append(cosine_sim)
+                logging.debug("numerator %s" % numerator)
+                logging.debug("len numerator %i" % len(numerator))
+                logging.debug("denominator %s" % denominator)
+                logging.debug("len denominator %i" % len(denominator))
                 try:
                     value = sum(numerator)/sum(denominator)
                 except ZeroDivisionError:
                     value = 0
+                logging.debug("track,value pair: %s" % [track, value])
                 possible_recommendations.append([track, value])
 
         return recommendations + [recommendation for recommendation, value in sorted(possible_recommendations, key=itemgetter(1), reverse=True)[0:knn]]
