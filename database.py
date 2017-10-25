@@ -140,14 +140,27 @@ class Database:
             return self.tag_playlists_map
 
 
-    def get_normalized_rating(self, track):
+    def get_favourite_user_track(self, track):
+        """
+
+        :return:
+        """
+        playlists = self.get_track_playlists(track)
+        playlist_final = self.get_playlist_final()
+
+        users = [playlist_final[playlist][4] for playlist in playlists]
+        return max(users, key=users.count)
+
+
+
+    def get_normalized_rating(self, playlist, track):
         """
 
         :return:
         """
         playlists = self.get_track_playlists(track)
 
-        normalized_rating = len(playlists) - self.get_average_global_track_inclusion()
+        normalized_rating =  self.get_playlist_user_tracks(playlist).count(track) - self.get_average_global_track_inclusion()
 
         return normalized_rating
 
@@ -321,7 +334,16 @@ class Database:
 
         tracks_listened = [track for playlist in playlist_list for track in self.get_playlist_tracks(playlist)]
 
-        return set(tracks_listened)
+        return tracks_listened
+
+    def get_playlist_user(self, playlist):
+        """
+
+        :return:
+        """
+        playlist_final = self.get_playlist_final()
+        return playlist_final[playlist][4]
+
 
     def get_owner_playlists(self):
         """
