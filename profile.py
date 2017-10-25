@@ -4,7 +4,7 @@ import cProfile
 db=Database(1)
 rm=Recommender(db)
 
-cProfile.run('recomm = rm.make_tf_idf_recommendations(3042855, db.get_target_tracks(), [])')
+cProfile.run('recomm = rm.make_hybrid_recommendations(3042855)')
 cProfile.run('rm.check_recommendations(3042855, recomm)')
-cProfile.run('recomm = rm.make_tf_idf_recommendations(5935981, db.get_target_tracks(), [])')
+cProfile.run('recomm = rm.make_hybrid_recommendations(5935981)')
 cProfile.run('rm.check_recommendations(5935981, recomm)')

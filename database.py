@@ -128,12 +128,12 @@ class Database:
         try:
             return self.tag_playlists_map
         except AttributeError:
+            self.favourite_user_track_map = {}
             self.tag_playlists_map = defaultdict(lambda: [], {})
             for playlist in self.get_playlists():
                 tracks = self.get_playlist_tracks(playlist)  # get already included tracks
-                tags = [tag for track in tracks for tag in self.get_track_tags(track)] #+ \
-                #      [item * (-(10 ** 10)) for item in self.get_titles_playlist(playlist)]
-                #tags = [tag for track in tracks for tag in self.get_track_tags(track) + [item * (-(10**10)) for item in self.get_titles_track(track)]]
+                tags = [tag for track in tracks for tag in self.get_track_tags(track)] + [item * -1 * (10 ** 10) for track in tracks for item in self.get_favourite_user_track(track)]
+                #tags = [tag for track in tracks for tag in self.get_track_tags(track)] + [item * -1 * (10**10) for item in self.get_titles_track(track)]
                 tags_set = set(tags)
                 for tag in tags_set:
                     self.tag_playlists_map[tag].append(playlist)
@@ -146,11 +146,17 @@ class Database:
         """
         playlists = self.get_track_playlists(track)
         playlist_final = self.get_playlist_final()
-
-        users = [playlist_final[playlist][4] for playlist in playlists]
-        return max(users, key=users.count)
-
-
+        try:
+            return self.favourite_user_track_map[track]
+        except KeyError:
+            users = [playlist_final[playlist][4] for playlist in playlists]
+            users_set = set(users)
+            if users == []:
+                self.favourite_user_track_map[track] = []
+            else:
+                max_count = max([users.count(user) for user in users_set])
+                self.favourite_user_track_map[track] = [user for user in users_set if users.count(user) == max_count]
+            return self.favourite_user_track_map[track]
 
     def get_normalized_rating(self, playlist, track):
         """
@@ -314,8 +320,8 @@ class Database:
             tags.append(artist_id)
             if album > 0:
                 tags.append(album)
-            if duration > 0:
-                tags.append(duration * (-1))
+            #if duration > 0:
+            #    tags.append(duration * (-1))
             result[track_id]= [artist_id, duration, playcount, album, tags]
         return result
 

@@ -67,7 +67,7 @@ for i in xrange(target_playlists_length):
         sys.stdout.flush()
         completion = percentage
     if test:
-        logging.debug("worker number %i reporting result %s" % (r[1],r[0]))
+        logging.debug("worker number %i reporting result %s for playlist %i" % (r[1],r[0],r[2]))
         r = r[0]
     results.append(r)
     logging.debug("results length so far: %i" % len(results))
