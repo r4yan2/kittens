@@ -65,24 +65,30 @@ class Recommender:
             recommendations = []
             if choice == 0:
                 recommendations = self.make_random_recommendations(target)
+
             elif choice == 1:
                 recommendations = self.make_top_listened_recommendations(target)
+
             elif choice == 2:
                 recommendations = self.make_top_included_recommendations(target)
+
             elif choice == 3:
                 recommendations = self.make_top_tag_recommendations(target)
+
             elif choice == 4:
                 try:
                     recommendations = self.make_tf_idf_recommendations(target)
-                except ValueError:
+                except ValueError: # No tracks or features
                     recommendations = self.make_top_included_recommendations(target)
-                knn = len(recommendations)
-                if knn < 5:
-                    recommendations = self.make_top_tag_recommendations(target, recommendations=recommendations)
+                if len(recommendations) < 5: # padding needed
+                    recommendations = self.make_some_padding(target, recommendations)
+
             elif choice == 5:
                 recommendations = self.combined_top_tag_tfidf_recommendations(target)
+
             elif choice == 6:
                 recommendations = self.combined_tfidf_top_tag_recommendations(target)
+
             elif choice == 7:
                 try:
                     recommendations = self.make_tf_idf_titles_recommendations(target)
@@ -91,21 +97,24 @@ class Recommender:
                         recommendations = self.make_tf_idf_recommendations(target)
                     except ValueError:
                         recommendations = self.make_top_included_recommendations(target)
-                    knn = len(recommendations)
-                    if knn < 5:
-                        recommendations = self.make_top_tag_recommendations(target, recommendations=recommendations)
-    
+                    if len(recommendations) < 5:
+                        recommendations = self.make_some_padding(target, recommendations)
+
             elif choice == 8:
                 recommendations = self.combined_tfidf_tags_tfidf_titles_recommendations(target)
+
             elif choice == 9:
                 recommendations = self.combined_top_tag_tfidf_titles_recommendations(target)
+
             elif choice == 10:
                 recommendations = self.combined_tfidf_tfidf_titles_recommendations(target)
+
             elif choice == 11:
                 try:
                     recommendations = self.make_bad_tf_idf_recommendations(target)
                 except ValueError:
                     recommendations = self.make_top_included_recommendations(target)
+                    
             elif choice == 12:
                 try:
                     recommendations = self.make_artists_recommendations(target)
@@ -118,9 +127,7 @@ class Recommender:
                     except ValueError: # this may happen when the playlist have 1-2 tracks with no features (fuck it)
                         recommendations = self.make_top_included_recommendations(target)
                 if len(recommendations) < 5: # if there are not enough artist tracks to recommend or if the tracks have a strage avg duration
-                    recommendations = self.make_tf_idf_recommendations(target, recommendations=recommendations)
-                if len(recommendations) < 5:
-                    recommendations = self.make_top_tag_recommendations(target, recommendations=recommendations)
+                    recommendations = self.make_some_padding(target, recommendations)
 
             elif choice == 13:
                 recommendations = self.make_hybrid_recommendations(target)
@@ -133,6 +140,27 @@ class Recommender:
             else:
                 # else put the result into the out queue
                 q_out.put([identifier, target, recommendations])
+                
+    def make_some_padding(self, playlist, recommendations, knn=5):
+        """
+        Make some padding when needed 
+        
+        :param playlist: target playlist
+        :param recommendations: actual recommended tracks
+        :return: the full list of tracks recommended to the target playlist
+        """
+        methods = [7, 2] # equal to choice parameter
+        i = 0
+        remaining = knn - len(recommendations)
+        while remaining > 0:
+            if methods[i] == 7:
+                recommendations = self.make_tf_idf_titles_recommendations(playlist, recommendations=recommendations, knn=remaining)
+            elif methods[i] == 2:
+                recommendations = self.make_top_included_recommendations(playlist, recommendations=recommendations, knn=remaining)
+            remaining = knn - len(recommendations)
+            i += 1
+        return recommendations
+            
 
     def make_random_recommendations(self, playlist, target_tracks=[], recommendations=[], knn=5):
         """
@@ -338,29 +366,30 @@ class Recommender:
 
     def make_hybrid_recommendations(self, playlist, recommendations=[], knn=5):
         """
-
-        :param playlist:
-        :param recommendations:
-        :param knn:
-        :return:
+        Hybrid recommendations method which takes into account the number of tracks and titles in a playlist
+        
+        :param playlist: Target playlist
+        :param recommendations: Actual recommendations made to the playlist
+        :param knn: number of recommendations to generate
+        :return: the new recommendations
         """
         playlist_tracks = self.db.get_playlist_tracks(playlist)
         playlist_titles = self.db.get_titles_playlist(playlist)
 
-        if playlist_tracks == [] and playlist_titles == []:
+        if playlist_tracks == [] and playlist_titles == []: # playlist have no tracks or title
             try:
                 recommendations = self.make_user_based_recommendations(playlist)
             except ValueError:
                 recommendations = self.make_top_included_recommendations(playlist)
-        elif playlist_tracks == []:
+        elif playlist_tracks == []: # playlist have no tracks
             recommendations = self.make_tf_idf_titles_recommendations(playlist)
-        else:
+        else: # playlist is complete of title and tracks
             try:
                 recommendations = self.make_tf_idf_recommendations(playlist)
             except ValueError:
                 recommendations = self.make_top_included_recommendations(playlist)
             if len(recommendations) < 5:
-                recommendations = self.make_tf_idf_titles_recommendations(playlist, recommendations=recommendations)
+                recommendations = self.make_some_padding(playlist, recommendations=recommendations)
         return recommendations
 
     def make_user_based_recommendations(self, playlist):
@@ -517,6 +546,16 @@ class Recommender:
         return recs
 
     def make_tf_idf_titles_recommendations(self, playlist, target_tracks=[], recommendations=[], knn=5):
+        """
+        Make some recommendations based only on the title of the target playlists
+        
+        :param playlist: Target playlist
+        :param target_tracks: Possible tracks to recommend, default to global target tracks
+        :param recommendations: Actual recommendations, needed to not replicate recommendations
+        :param knn: Number of recommendations to generate
+        :return: List of recommendations added to the list of actual recommendations
+        :raises ValueError: if the playlist has no titles
+        """
 
         if target_tracks == []:
             target_tracks = self.db.get_target_tracks()
@@ -535,15 +574,6 @@ class Recommender:
 
         tf_idf_titles_playlist = [self.db.get_title_idf(title) for title in playlist_titles]
 
-        '''
-        the above list comprehension is equal to the following code
-        for title in playlist_titles:
-            tf = float(len(playlist_titles))
-            idf = self.db.get_title_idf(title)
-            tf_idf = tf * idf
-            tf_idf_titles_playlist.append(tf_idf)
-        '''
-
         for track in target_tracks:
             track_duration = self.db.get_track_duration(track)
             if track not in playlist_tracks_set and (track_duration > 30000 or track_duration < 0):
@@ -552,15 +582,6 @@ class Recommender:
                 titles_set = list(set(titles))
 
                 tf_idf_title = [(1.0 + math.log(titles.count(title), 10)) * self.db.get_title_idf(title) for title in titles_set]
-                '''
-                the above list comprehension is equivalent to the following code but (hopefully) a bit faster
-                tf_idf_title = []
-                for title in titles:
-                    tf = 1.0 + math.log(titles.count(title)
-                    idf = self.db.get_title_idf(title)
-                    tf_idf = tf * idf
-                    tf_idf_title.append(tf_idf)
-                '''
 
                 num_cosine_sim = [tf_idf_title[titles_set.index(title)] * tf_idf_titles_playlist[playlist_titles.index(title)] for
                                   title in titles_set if title in playlist_titles]
