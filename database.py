@@ -91,6 +91,13 @@ class Database:
             if len(already_selected_playlists) >= playlists_length and len(already_selected_tracks) >= tracks_length:
                 break
         self.train_list = helper.diff_test_set(train, self.test_set)
+        
+    def compute_playlists_similarity(self):
+        """
+        Thid method sould be called be an external script to generate the similarities between playlists 
+        in the dataset and store them somewhere for later retrieval
+        """
+        pass
 
     def get_train_list(self):
         """

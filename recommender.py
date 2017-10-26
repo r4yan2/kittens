@@ -158,16 +158,19 @@ class Recommender:
             elif methods[i] == 2:
                 recommendations = self.make_top_included_recommendations(playlist, recommendations=recommendations, knn=remaining)
             remaining = knn - len(recommendations)
-            i += 1
+            i = (i + 1) % len(methods)
         return recommendations
             
 
     def make_random_recommendations(self, playlist, target_tracks=[], recommendations=[], knn=5):
         """
-        take 5 random tracks and recommend them
+        Take 5 random tracks and recommend them
 
-        :param playlist:
-        :return:
+        :param playlist: Target playlist
+        :param target_tracks: Set of target in which choose the random one
+        :param recommendations: Set of recommendations already included
+        :param knn: Number of items to recommend
+        :return: Recommendations
         """
         if target_tracks == []:
             target_tracks = self.db.get_target_tracks()
@@ -184,10 +187,13 @@ class Recommender:
 
     def make_top_listened_recommendations(self, playlist, target_tracks=[], recommendations=[], knn=5):
         """
-        recommend the top listened tracks
+        Recommend the knn top listened tracks in the dataset
 
-        :param playlist:
-        :return:
+        :param playlist: Target playlist
+        :param target_tracks: Set of target in which choose the random one
+        :param recommendations: Set of recommendations already included
+        :param knn: Number of items to recommend
+        :return: Recommendations
         """
         if target_tracks == []:
             target_tracks = self.db.get_target_tracks()
@@ -207,10 +213,13 @@ class Recommender:
 
     def make_top_included_recommendations(self, playlist, target_tracks=[], recommendations=[], knn=5):
         """
-        recommend the most playlists-included tracks
+        Recommend the most playlists-included tracks
 
-        :param playlist:
-        :return:
+        :param playlist: Target playlist
+        :param target_tracks: Set of target in which choose the random one
+        :param recommendations: Set of recommendations already included
+        :param knn: Number of items to recommend
+        :return: Recommendations
         """
         if target_tracks == []:
             target_tracks = self.db.get_target_tracks()
@@ -233,12 +242,15 @@ class Recommender:
         This method takes into account tags. For the active playlist all tags of the tracks are computed,
         then for every recommendable track the comparison of the tags is used taking into account:
 
-        * the matched tags with respect to the total tags number of the playlists
-        * secondly the matched tags over the total tags of the track
+        * the matched tags with respect to the total tags number of the playlists (precision)
+        * secondly the matched tags over the total tags of the track (recall)
         * lastly the position of the track in top included
 
-        :param active_playlist:
-        :return:
+        :param active_playlist: Target playlist
+        :param target_tracks: Set of target in which choose the random one
+        :param recommendations: Set of recommendations already included
+        :param knn: Number of items to recommend
+        :return: Recommendations
         """
         #already_included = self.db.get_playlist_user_tracks(active_playlist)
 
@@ -263,7 +275,6 @@ class Recommender:
                     # calculate first parameter: matched over playlist tags set
                     norm_playlist = math.sqrt(len(active_tags_set))
                     norm_track = math.sqrt(len(tags))
-
                     value_a = len(matched)/float(norm_playlist*norm_track)
                 except ZeroDivisionError:
                     value_a = 0
@@ -282,8 +293,17 @@ class Recommender:
         top_tracks.sort(key=itemgetter(1, 2, 3), reverse=True)
         return recommendations + [recommendation[0] for recommendation in top_tracks[0:knn]]
 
-
     def make_tf_idf_recommendations(self, playlist, target_tracks=[], recommendations=[], knn=5):
+        """
+        Make Recommendations based on the tf-idf of the track tags
+        
+        :param playlist: Target playlist
+        :param target_tracks: Set of target in which choose the random one
+        :param recommendations: Set of recommendations already included
+        :param knn: Number of items to recommend
+        :return: Recommendations
+        :raise ValueError: In case playlist have no tracks or tracks with no features
+        """
         if target_tracks == []:
             target_tracks = self.db.get_target_tracks()
 
@@ -334,6 +354,15 @@ class Recommender:
 
                 tag_mask = [float(tag in playlist_features_set) for tag in tags]
                 tag_mask_summation = sum(tag_mask)
+                
+                # MAP@5
+                p_to_k_num = helper.multiply_lists(tag_mask, helper.cumulative_sum(tag_mask))
+                p_to_k_den = range(1,len(tag_mask)+1)
+                p_to_k = helper.divide_lists(p_to_k_num, p_to_k_den)
+                try:
+                    map_score = sum(p_to_k) / min(len(playlist_features_set), len(tag_mask))
+                except ZeroDivisionError:
+                    map_score = 0
 
                 precision = tag_mask_summation/len(playlist_features_set)
                 try:
@@ -354,7 +383,7 @@ class Recommender:
                 except ValueError:
                     shrink = -100
                 try:
-                    cosine_sim = sum(num_cosine_sim) / (den_cosine_sim - shrink)
+                    cosine_sim = (sum(num_cosine_sim) * map_score) / (den_cosine_sim - shrink)
                 except ZeroDivisionError:
                     cosine_sim = 0
 
@@ -394,11 +423,12 @@ class Recommender:
 
     def make_user_based_recommendations(self, playlist):
         """
+        Make Recommendations based on the similarity between the user who created the target
+        platlist and the users which included the target track
 
-        :param playlist:
-        :param recommendations:
-        :param knn:
-        :return:
+        :param playlist: Target playlist
+        :return: recommendations
+        :raise ValueError: if user had no other playlists or have playlist with some tracks but tagless
         """
         knn = 5
         possible_recommendations = []
