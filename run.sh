@@ -70,7 +70,7 @@ case $mode in
         script=$(whiptail --menu "Which script do you want to run?" 20 80 5 \
         0 "Compute test set (x3)" 3>&2 2>&1 1>&3)
         if [[ -z "$script" ]]; then exit 0; fi
-        /usr/bin/pypy script.py
+        /usr/bin/pypy scripts/test_set_generator.py
     ;;
     *)
         recommendations=$(whiptail --menu "Select Recommendations Method" 20 70 10 \

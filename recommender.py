@@ -317,7 +317,7 @@ class Recommender:
 
         already_listened = self.db.get_playlist_user_tracks(playlist)
 
-        playlist_features = [tag for track in playlist_tracks for tag in self.db.get_track_tags(track)] + [self.db.get_playlist_user(playlist) * (-1)*(10**10)]
+        playlist_features = [tag for track in playlist_tracks for tag in self.db.get_track_tags(track)]
 
         playlist_features_set = list(set(playlist_features))
         if len(playlist_features) == 0:
@@ -337,7 +337,7 @@ class Recommender:
             tf_idf_playlist.append(tf_idf)
         """
         for track in target_tracks:
-            tags = self.db.get_track_tags(track) + [item *(-1)*(10**10) for item in self.db.get_favourite_user_track(track)]
+            tags = self.db.get_track_tags(track)
             track_duration = self.db.get_track_duration(track)
             if track not in playlist_tracks_set and (track_duration > 30000 or track_duration < 0) and track not in recommendations:
 

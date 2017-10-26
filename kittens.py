@@ -9,7 +9,7 @@ import logging
 #sys.setcheckinterval(sys.maxint)
 
 # A logfile to take info during the execution
-logging.basicConfig(filename='kittens.log', level=logging.DEBUG, filemode='w')
+logging.basicConfig(filename='log/kittens.log', level=logging.DEBUG, filemode='w')
 
 # take input from command line sys.argv[0] is the program name
 if eval(sys.argv[1]) == 0:

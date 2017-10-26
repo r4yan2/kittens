@@ -139,7 +139,7 @@ class Database:
             self.tag_playlists_map = defaultdict(lambda: [], {})
             for playlist in self.get_playlists():
                 tracks = self.get_playlist_tracks(playlist)  # get already included tracks
-                tags = [tag for track in tracks for tag in self.get_track_tags(track)] + [item * -1 * (10 ** 10) for track in tracks for item in self.get_favourite_user_track(track)]
+                tags = [tag for track in tracks for tag in self.get_track_tags(track)]# + [item * -1 * (10 ** 10) for track in tracks for item in self.get_favourite_user_track(track)]
                 #tags = [tag for track in tracks for tag in self.get_track_tags(track)] + [item * -1 * (10**10) for item in self.get_titles_track(track)]
                 tags_set = set(tags)
                 for tag in tags_set:
