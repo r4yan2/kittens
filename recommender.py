@@ -362,13 +362,12 @@ class Recommender:
                 try:
                     map_score = sum(p_to_k) / min(len(playlist_features_set), len(tag_mask))
                 except ZeroDivisionError:
-                    map_score = 0
+                    continue
 
                 precision = tag_mask_summation/len(playlist_features_set)
+                
                 try:
                     shrink = math.log(precision, 10) * 35
-                #logging.debug("shrink term %f" % shrink)
-                #shrink = 0
                 except ValueError:
                     continue
 
@@ -378,12 +377,9 @@ class Recommender:
 
                 den_cosine_sim = math.sqrt(sum([i ** 2 for i in tf_idf_playlist])) * math.sqrt(
                     sum([i ** 2 for i in tf_idf_track]))
+
                 try:
-                    shrink = math.log(sum(tag_mask)/len(playlist_features_set), 10) * 35
-                except ValueError:
-                    shrink = -100
-                try:
-                    cosine_sim = (sum(num_cosine_sim) * map_score) / (den_cosine_sim - shrink)
+                    cosine_sim = sum(num_cosine_sim) / (den_cosine_sim - shrink)
                 except ZeroDivisionError:
                     cosine_sim = 0
 
@@ -630,48 +626,63 @@ class Recommender:
         return recommendations + [recommendation for recommendation, value in possible_recommendations[0:knn]]
 
 
-    def combined_top_tag_tfidf_recommendations(self, playlist):
+    def combined_top_tag_tfidf_recommendations(self, playlist, knn=125):
         """
-        this function combines the top tag and the tf idf recommendations
-        :return:
+        This function filter knn tracks from the global target tracks with the
+         top tag and then apply tf idf recommendations on the filtered list
+        
+        :param playlist: Target playlist
+        :param knn: cardinality of the neighborhood
+        :return: Recommendations
         """
-        knn = 125
         filtered_tracks = self.make_top_tag_recommendations(playlist, knn=knn)
         return self.make_tf_idf_recommendations(playlist, target_tracks=filtered_tracks)
 
-    def combined_tfidf_tags_tfidf_titles_recommendations(self, playlist):
+    def combined_tfidf_tags_tfidf_titles_recommendations(self, playlist, knn = 50):
         """
-        this function combines the top tag and the tf idf recommendations
-        :return:
+        This function filter knn tracks from the global target tracks with the
+         tf idf method and then apply tf idf title based on the filtered list
+        
+        :param playlist: Target playlist
+        :param knn: cardinality of the neighborhood
+        :return: Recommendations
         """
-        knn = 50
         filtered_tracks = self.make_tf_idf_recommendations(playlist, knn=knn)
         return self.make_tf_idf_titles_recommendations(playlist, target_tracks=filtered_tracks)
 
-    def combined_tfidf_top_tag_recommendations(self, playlist):
+    def combined_tfidf_top_tag_recommendations(self, playlist, knn=125):
         """
-        this function combines the top tag and the tf idf recommendations
-        :return:
+        This function filter knn tracks from the global target tracks with the
+         tf idf method and then apply top tag method on the filtered list
+        
+        :param playlist: Target playlist
+        :param knn: cardinality of the neighborhood
+        :return: Recommendations
         """
-        knn = 125
         filtered_tracks = self.make_tf_idf_recommendations(playlist, knn=knn)
         return self.make_top_tag_recommendations(playlist, target_tracks=filtered_tracks)
 
-    def combined_top_tag_tfidf_titles_recommendations(self, playlist):
+    def combined_top_tag_tfidf_titles_recommendations(self, playlist, knn=350):
         """
-        this function combines the top tag and the tf idf recommendations
-        :return:
+        This function filter knn tracks from the global target tracks with the
+         top tag method and then apply tf idf title based on the filtered list
+        
+        :param playlist: Target playlist
+        :param knn: cardinality of the neighborhood
+        :return: Recommendations
         """
-        knn = 350
         filtered_tracks = self.make_top_tag_recommendations(playlist, knn=knn)
         return self.make_tf_idf_titles_recommendations(playlist, target_tracks=filtered_tracks)
 
-    def combined_tfidf_tfidf_titles_recommendations(self, playlist):
+    def combined_tfidf_tfidf_titles_recommendations(self, playlist, knn=100):
         """
-        this function combines the top tag and the tf idf recommendations
-        :return:
+        This function filter knn tracks from the global target tracks with the
+         tf idf method and then apply tf idf title based on the filtered list
+        
+        :param playlist: Target playlist
+        :param knn: cardinality of the neighborhood
+        :return: Recommendations
         """
-        knn = 100
         try:
             filtered = self.make_tf_idf_recommendations(playlist, knn=knn)
         except ValueError: #playlists have no features or empty
@@ -684,6 +695,18 @@ class Recommender:
             return filtered[0:5]
 
     def make_bad_tf_idf_recommendations(self, playlist, target_tracks=[], recommendations=[], knn=5):
+        """
+        Bad because of the slowlyness. It's similar to the normal tf idf but take
+        into account every track on the target playlist as single set of tags 
+        insted of merging all tracks tags into a big list
+        
+        :param playlist: Target playlist
+        :param target_tracks: target tracks
+        :param recommendations: partially filled recommendations list
+        :param knn: recommendations to generate
+        :return: recommendations list
+        :raise ValueError: if playlist empty of tracks or all tracks have no features
+        """
 
         if target_tracks == []:
             target_tracks = self.db.get_target_tracks()
