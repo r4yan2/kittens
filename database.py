@@ -337,9 +337,10 @@ class Database:
         """
         tracks = list(helper.read("tracks_final"))
         result = {}
+        iterator = -10
         for track in tracks[1:]:
             track_id = int(track[0])
-            artist_id = int(track[1]) * 10000
+            artist_id = int(track[1])
             duration = int(track[2])
             if duration == None:
                 continue
@@ -349,18 +350,18 @@ class Database:
                 playcount = 0.0
             album = eval(track[4])
             try:
-                album = int(album[0]) * 1000000000 # yes again, album is memorized as a list, even if no track have more than 1 album
+                album = int(album[0])  # yes again, album is memorized as a list, even if no track have more than 1 album
             except TypeError:
-                album = 0
+                album = iterator
+                iterator -= 1
             except IndexError:
-                album = 0
+                album = iterator
+                iterator -= 1
             tags = eval(track[5]) # evaluation of the tags list
-            tags.append(artist_id)
-            if album > 0:
-                tags.append(album)
-            #if duration > 0:
-            #    tags.append(duration * (-1))
-            result[track_id]= [artist_id, duration, playcount, album, tags]
+            
+            tags_extended = [artist_id * 10000] + [album * 1000000000 if album > 0 else iterator] + tags
+
+            result[track_id]= [artist_id, duration, playcount, album, tags_extended]
         return result
 
     def get_playlist_user_tracks(self, playlist):

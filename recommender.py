@@ -334,7 +334,7 @@ class Recommender:
             tags = self.db.get_track_tags(track)
             track_duration = self.db.get_track_duration(track)
             if track not in playlist_tracks_set and (track_duration > 30000 or track_duration < 0) and track not in recommendations:
-
+                
                 tf_idf_track = [self.db.get_tag_idf(tag) for tag in tags]
 
                 tag_mask = [float(tag in playlist_features_set) for tag in tags]
@@ -751,27 +751,13 @@ class Recommender:
 
         knn -= len(recommendations)
         possible_recommendations = []
-        #logging.debug("playlist %s" % playlist)
         playlist_tracks = self.db.get_playlist_tracks(playlist)
         playlist_tracks_set = set(playlist_tracks)
         if playlist_tracks == []:
             raise ValueError("playlist is empty")
-        logging.debug("playlist tracks: %s" % playlist_tracks)
-        logging.debug("len playlist tracks: %i" % len(playlist_tracks))
 
-        normalized_rating = [self.db.get_normalized_rating(playlist, track) for track in playlist_tracks]
-        logging.debug("normalized ratings: %s" % normalized_rating)
-        logging.debug("len normalized ratings: %i" % len(normalized_rating))
-        tracks_tags = []
-        tf_idf_tracks_tags = []
-
-        for track in playlist_tracks:
-
-            tags = self.db.get_track_tags(track)
-            tracks_tags.append(tags)
-            tf_idf_s = [self.db.get_tag_idf(tag) for tag in tags]
-
-            tf_idf_tracks_tags.append(tf_idf_s)
+        tracks_tags = [self.db.get_track_tags(track) for track in playlist_tracks]
+        tf_idf_tracks_tags = [[self.db.get_tag_idf(tag) for tag in tags] for tags in tracks_tags]
 
         if max([len(track_tags) for track_tags in tracks_tags]) == 0:
             raise ValueError("tracks have no feature")
@@ -787,22 +773,21 @@ class Recommender:
                 denominator = []
                 numerator = []
                 for track_tags in tracks_tags:
-                    num_cosine_sim = [tf_idf_track[tags.index(tag)] * tf_idf_tracks_tags[tracks_tags.index(track_tags)][track_tags.index(tag)] for tag in tags if tag in track_tags]
+                    num_cosine_sim = sum([tf_idf_track[tags.index(tag)] * tf_idf_tracks_tags[tracks_tags.index(track_tags)][track_tags.index(tag)] for tag in tags if tag in track_tags])
 
                     den_cosine_sim = math.sqrt(sum([i**2 for i in tf_idf_tracks_tags[tracks_tags.index(track_tags)]])) * math.sqrt(sum([i**2 for i in tf_idf_track]))
 
                     try:
-                        cosine_sim = sum(num_cosine_sim)/float(den_cosine_sim)
+                        cosine_sim = num_cosine_sim/den_cosine_sim
                     except ZeroDivisionError:
                         cosine_sim = 0
-                    numerator.append(normalized_rating[tracks_tags.index(track_tags)] * cosine_sim)
-                    denominator.append(cosine_sim)
-
-                try:
-                    value = sum(numerator)/sum(denominator)
-                except ZeroDivisionError:
-                    value = 0
-                possible_recommendations.append([track, value])
-
-        return recommendations + [recommendation for recommendation, value in sorted(possible_recommendations, key=itemgetter(1), reverse=True)[0:knn]]
-    
+                    
+                    possible_recommendations.append([track, cosine_sim])
+        possible_recommendations.sort(key=itemgetter(1), reverse=True)
+        iterator = 0
+        while len(recommendations) < knn:
+            item = possible_recommendations[iterator][0]
+            if item not in recommendations:
+                recommendations.append(item)
+            iterator += 1
+        return recommendations

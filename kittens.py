@@ -59,6 +59,8 @@ for p in proc:
 # Retrieve results from the out queue and display percentage
 completion = 0
 target_playlists_length = len(target_playlists)
+run_map5 = 0
+run_map5_n = 0
 for i in xrange(target_playlists_length):
     r = q_out.get()
     percentage = (i*100)/(target_playlists_length-1)
@@ -69,6 +71,11 @@ for i in xrange(target_playlists_length):
     if test:
         logging.debug("worker number %i reporting result %s for playlist %i" % (r[1],r[0],r[2]))
         r = r[0]
+        (map5, precision, recall) = r
+        run_map5 += map5
+        run_map5_n += 1
+        avg = float(run_map5)/run_map5_n
+        logging.debug("running map5 average %f" % avg)
     results.append(r)
     logging.debug("results length so far: %i" % len(results))
 

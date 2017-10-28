@@ -60,3 +60,18 @@ def multiply_lists(lst1, lst2):
 def divide_lists(lst1, lst2):
 
     return [a / b for a, b in zip(lst1, lst2)]
+
+def LevenshteinDistance(s, s_len, t, t_len):
+    cost = 0
+    if t_len == 0:
+        return s_len
+    elif s_len == 0:
+        return t_len
+    if (s[s_len-1] == t[t_len-1]):
+        cost = 0
+    else:
+        cost = 1
+    return min(LevenshteinDistance(s, s_len - 1, t, t_len) + 1,
+                LevenshteinDistance(s, s_len, t, t_len - 1) + 1,
+                LevenshteinDistance(s, s_len - 1, t, t_len - 1) + cost)
+
