@@ -131,6 +131,14 @@ class Recommender:
 
             elif choice == 13:
                 recommendations = self.make_hybrid_recommendations(target)
+                
+            elif choice == 14:
+                try:
+                    recommendations = self.make_neighborhood_similarity(target)
+                except ValueError: # No tracks or features
+                    recommendations = self.make_top_included_recommendations(target)
+                if len(recommendations) < 5: # padding needed
+                    recommendations = self.make_some_padding(target, recommendations)
 
             # doing testing things if test mode enabled
             if test:
@@ -355,7 +363,7 @@ class Recommender:
                 tag_mask = [float(tag in playlist_features_set) for tag in tags]
                 tag_mask_summation = sum(tag_mask)
                 
-                # MAP@5
+                # MAP@5 it may be useful if only we knew how to use it
                 p_to_k_num = helper.multiply_lists(tag_mask, helper.cumulative_sum(tag_mask))
                 p_to_k_den = range(1,len(tag_mask)+1)
                 p_to_k = helper.divide_lists(p_to_k_num, p_to_k_den)
@@ -371,15 +379,15 @@ class Recommender:
                 except ValueError:
                     continue
 
-                num_cosine_sim = [tf_idf_track[tags.index(tag)] * tf_idf_playlist[playlist_features_set.index(tag)] for
-                                  tag in tags if tag in playlist_features_set]
+                num_cosine_sim = sum([tf_idf_track[tags.index(tag)] * tf_idf_playlist[playlist_features_set.index(tag)] for
+                                  tag in tags if tag in playlist_features_set])
 
 
                 den_cosine_sim = math.sqrt(sum([i ** 2 for i in tf_idf_playlist])) * math.sqrt(
                     sum([i ** 2 for i in tf_idf_track]))
 
                 try:
-                    cosine_sim = sum(num_cosine_sim) / (den_cosine_sim - shrink)
+                    cosine_sim = num_cosine_sim / den_cosine_sim
                 except ZeroDivisionError:
                     cosine_sim = 0
 
@@ -416,6 +424,92 @@ class Recommender:
             if len(recommendations) < 5:
                 recommendations = self.make_some_padding(playlist, recommendations=recommendations)
         return recommendations
+    
+    def make_neighborhood_similarity(self, playlist, recommendations=[], knn=5):
+        """
+        Make recommendations based on the knn most similar playlists to the active one
+        
+        :param playlist: Target playlist
+        :return: recommendations
+        :raise ValueError: if the active playlist have no tracks or empty tracks
+        """
+        
+        knn = knn - len(recommendations)
+        
+        possible_recommendations = []
+        playlist_tracks = self.db.get_playlist_tracks(playlist)
+        playlist_tracks_set = set(playlist_tracks)
+        if playlist_tracks == []:
+            raise ValueError("playlist is empty")
+
+        already_listened = self.db.get_playlist_user_tracks(playlist)
+
+        playlist_features = [tag for track in playlist_tracks for tag in self.db.get_track_tags(track)]
+
+        playlist_features_set = list(set(playlist_features))
+        if len(playlist_features) == 0:
+            raise ValueError("playlist have no features!")
+
+        tf_idf_playlist = [(1.0 + math.log(playlist_features.count(tag), 10)) * self.db.get_tag_idf(tag)
+                           for tag in playlist_features_set]
+
+        neighborhood = self.db.compute_playlists_similarity(playlist)
+        neighborhood_tracks = list(set([track for item in neighborhood for track in self.db.get_playlist_tracks(item)]))
+        target_tracks = set(self.db.get_target_tracks())
+        target_tracks = [track for track in neighborhood_tracks if track in target_tracks]
+        
+        for track in target_tracks:
+            tags = self.db.get_track_tags(track)
+            track_duration = self.db.get_track_duration(track)
+            if track not in playlist_tracks_set and (track_duration > 30000 or track_duration < 0) and track not in recommendations:
+
+                tf_idf_track = [self.db.get_tag_idf(tag) for tag in tags]
+
+                """
+                tf_idf_track = []
+                for tag in tags:
+                    tf = 1.0
+                    idf = self.db.get_tag_idf(tag)
+                    tf_idf = tf * idf
+                    tf_idf_track.append(tf_idf)
+                """
+
+                tag_mask = [float(tag in playlist_features_set) for tag in tags]
+                tag_mask_summation = sum(tag_mask)
+                
+                # MAP@5 it may be useful if only we knew how to use it
+                p_to_k_num = helper.multiply_lists(tag_mask, helper.cumulative_sum(tag_mask))
+                p_to_k_den = range(1,len(tag_mask)+1)
+                p_to_k = helper.divide_lists(p_to_k_num, p_to_k_den)
+                try:
+                    map_score = sum(p_to_k) / min(len(playlist_features_set), len(tag_mask))
+                except ZeroDivisionError:
+                    continue
+
+                precision = tag_mask_summation/len(playlist_features_set)
+                
+                try:
+                    shrink = math.log(precision, 10) * 35
+                except ValueError:
+                    continue
+
+                num_cosine_sim = sum([tf_idf_track[tags.index(tag)] * tf_idf_playlist[playlist_features_set.index(tag)] for
+                                  tag in tags if tag in playlist_features_set])
+
+                den_cosine_sim = math.sqrt(sum([i ** 2 for i in tf_idf_playlist])) * math.sqrt(
+                    sum([i ** 2 for i in tf_idf_track]))
+
+                try:
+                    cosine_sim = num_cosine_sim / den_cosine_sim
+                except ZeroDivisionError:
+                    cosine_sim = 0
+
+                possible_recommendations.append([track, cosine_sim])
+
+        possible_recommendations.sort(key=itemgetter(1), reverse=True)
+        recs = recommendations + [recommendation for recommendation, value in possible_recommendations[0:knn]]
+        return recs
+        
 
     def make_user_based_recommendations(self, playlist):
         """
@@ -799,3 +893,5 @@ class Recommender:
                 possible_recommendations.append([track, value])
 
         return recommendations + [recommendation for recommendation, value in sorted(possible_recommendations, key=itemgetter(1), reverse=True)[0:knn]]
+
+    

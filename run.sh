@@ -87,7 +87,8 @@ case $mode in
         10 "Tfidf Titles filter applied on normal tfidf" \
         11 "Bad tfidf recs" \
         12 "Artist Recommendations + tfidf padding" \
-        13 "Hybrid recommendations" 3>&2 2>&1 1>&3)
+        13 "Hybrid recommendations" \
+        14 "Neighborhood similarity recommendations" 3>&2 2>&1 1>&3)
 
         if [[ -z "$recommendations" ]]; then exit 0; fi
 

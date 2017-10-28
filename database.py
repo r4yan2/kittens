@@ -3,6 +3,7 @@ from collections import defaultdict, Counter
 import helper
 import random
 import logging
+from operator import itemgetter
 
 class Database:
     def __init__(self, test):
@@ -92,13 +93,44 @@ class Database:
                 break
         self.train_list = helper.diff_test_set(train, self.test_set)
         
-    def compute_playlists_similarity(self):
+    def compute_playlists_similarity(self, playlist_a, knn=100):
         """
         Thid method sould be called be an external script to generate the similarities between playlists 
         in the dataset and store them somewhere for later retrieval
         """
-        pass
+        playlists = self.get_playlists()
+            
+        playlist_a_tags = list(set([tag for track in self.get_playlist_tracks(playlist_a) for tag in self.get_track_tags(track)]))
+        playlist_a_titles = self.get_titles_playlist(playlist_a)
+        
+        tf_idf_playlist_a = [(1.0 + math.log(playlist_a_tags.count(tag),10)) * self.get_tag_idf(tag) for tag in playlist_a_tags] + [(1.0 + math.log(playlist_a_titles.count(title),10)) * self.get_title_idf(title) for title in playlist_a_titles]
+        
+        neighborhood = []
+            
+        for playlist_b in playlists:
 
+            playlist_b_tags = list(set([tag for track in self.get_playlist_tracks(playlist_b) for tag in self.get_track_tags(track)]))
+            playlist_b_titles= self.get_titles_playlist(playlist_b)
+            
+            if playlist_b_tags == [] or playlist_b_titles == []:
+                continue
+            
+            tf_idf_playlist_b = [(1.0 + math.log(playlist_b_tags.count(tag),10)) * self.get_tag_idf(tag) for tag in playlist_b_tags] + [(1.0 + math.log(playlist_b_titles.count(title),10)) * self.get_title_idf(title) for title in playlist_b_titles]
+            
+            num_cosine_sim = sum([tf_idf_playlist_a[playlist_a_tags.index(tag)] * tf_idf_playlist_b[playlist_b_tags.index(tag)] for tag in playlist_b_tags if tag in playlist_a_tags] + [tf_idf_playlist_a[playlist_a_titles.index(title)] * tf_idf_playlist_b[playlist_b_titles.index(title)] for title in playlist_b_titles if title in playlist_a_titles])
+
+            den_cosine_sim = math.sqrt(sum([i ** 2 for i in tf_idf_playlist_a])) * math.sqrt(
+                sum([i ** 2 for i in tf_idf_playlist_b]))
+
+            try:
+                cosine_sim = num_cosine_sim / den_cosine_sim
+            except ZeroDivisionError:
+                cosine_sim = 0
+            
+            neighborhood.append([playlist_b, cosine_sim])
+            
+        return [playlist for playlist, value in sorted(neighborhood, key=itemgetter(1), reverse=True)][0:knn]
+            
     def get_train_list(self):
         """
         getter for the train_list
@@ -115,9 +147,6 @@ class Database:
         """
         test_set = self.get_test_set()
         return [track for playlist, track in test_set if active_playlist == playlist]
-
-
-
 
     def load_train_list(self, test=None):
         if test == None:
