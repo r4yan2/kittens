@@ -203,9 +203,16 @@ class Database:
         """
         playlists = self.get_track_playlists(track)
 
-        normalized_rating =  self.get_playlist_user_tracks(playlist).count(track) - self.get_average_global_track_inclusion()
+        normalized_rating = self.get_average_track_inclusion(track)
 
         return normalized_rating
+    
+    def get_average_track_inclusion(self, track):
+        """
+        """
+        track_playlists_map = self.get_track_playlists_map()
+        list_playlists = track_playlists_map[track]
+        return len(list_playlists)
 
     def get_average_global_track_inclusion(self):
         """
@@ -247,20 +254,48 @@ class Database:
 
     def get_tag_idf(self, tag):
         """
-
-        :return:
+        returns the idf of a specific tag
+        :return: idf
         """
         tag_playlist_map = self.get_tag_playlists_map()
         playlist_tags_included = tag_playlist_map[tag]
-        den_idf = float(len(playlist_tags_included))
-        num_idf = self.get_max_inclusion_value()
+        N = len(self.get_playlists())
+        n = float(len(playlist_tags_included))
         try:
-            idf = math.log(1.0 + (num_idf/den_idf), 10)
+            idf = math.log((N - n + 0.5) / (n + 0.5), 10)
         except ValueError:
             idf = 0
         except ZeroDivisionError:
             idf = 0
         return idf
+    
+    def get_tag_idf_track(self, tag):
+        """
+        :param N:
+        :param n:
+        :return: idf
+        """
+        try:
+            return self.tag_idf_track_map[tag]
+        except AttributeError:
+            self.tag_idf_track_map = {}
+            track_map = self.get_tracks_map()
+            self.tracks_number = len(track_map.keys())
+            self.track_tags_map_a = [set(lst[4]) for lst in track_map.values()]
+            tags = self.track_tags_map_a
+            N = self.tracks_number
+            n = len([1 for lst in tags if tag in lst])
+            idf = math.log((N - n + 0.5) / (n + 0.5), 10)
+            self.tag_idf_track_map[tag] = idf
+            return idf
+        except KeyError:
+            tags = self.track_tags_map_a
+            N = self.tracks_number
+            n = len([1 for lst in tags if tag in lst])
+            idf = math.log((N - n + 0.5) / (n + 0.5), 10)
+            self.tag_idf_track_map[tag] = idf
+            return idf
+
 
     def get_playlist_final(self):
         """
@@ -329,7 +364,34 @@ class Database:
         except AttributeError:
             self.tracks_map = self.compute_tracks_map()
             return self.tracks_map
-
+        
+    def get_average_playlist_length(self):
+        """
+        get the average of the length of the playlists of the dataset
+        :return: average
+        """
+        try:
+            return self.average_playlist_length
+        except AttributeError:
+            playlist_tracks_map = self.get_playlist_tracks_map()
+            tracks_list = playlist_tracks_map.values()
+            ravanello = [len([tag for track in tracks for tag in self.get_track_tags(track)]) for tracks in tracks_list]
+            self.average_playlist_length =  sum(ravanello) / float(len(ravanello))
+            return self.average_playlist_length
+        
+    def get_average_tags_length(self):
+        """
+        """
+        try:
+            return self.average_tags_length
+        except AttributeError:
+            track_map = self.get_tracks_map()
+            tags_list = [lst[4] for lst in track_map.values()]
+            carota = [len(tags) for tags in tags_list]
+            self.average_tags_length = sum(carota) / float(len(carota))
+            return self.average_tags_length
+        
+            
     def compute_tracks_map(self):
         """
         parse tracks_final.csv dividing all field into the corresponding part of the list
@@ -492,6 +554,12 @@ class Database:
             train_list = self.get_train_list()
             [self.playlist_tracks_map[playlist].append(track) for playlist, track in train_list]
             return self.playlist_tracks_map[target_playlist]
+        
+    def get_playlist_tracks_map(self):
+        """
+        
+        """
+        return self.playlist_tracks_map
 
     def get_track_playlists(self, track):
         """
