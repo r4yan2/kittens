@@ -430,8 +430,10 @@ class Recommender:
 
         neighborhood = self.db.compute_playlists_similarity(playlist)
         neighborhood_tracks = list(set([track for item in neighborhood for track in self.db.get_playlist_tracks(item)]))
+        print "playlist:",playlist,"neighborhood length", len(neighborhood) 
         target_tracks = set(self.db.get_target_tracks())
         target_tracks = [track for track in neighborhood_tracks if track in target_tracks]
+        print "target_tracks length", len(target_tracks)
         
         for track in target_tracks:
             tags = self.db.get_track_tags(track)
@@ -537,6 +539,18 @@ class Recommender:
         return recs
 
     def make_artists_recommendations(self, playlist, recommendations=[], knn=5):
+        """
+        Make recommendations based on the artist of the playlist, if there is enough confidence to affirm
+        that a playlist is based on a single dominant artist then target_tracks are choosen from the same artist
+        catalogue
+        
+        :param playlist: Active playlist
+        :param recommendations: Already done recommendations
+        :param knn: Number of recommendations to generate
+        :return: recommendations
+        :raise LookupError: if the playlist is empty
+        :raise ValueError: if the playlist have no dominant artist or already includes all song of such artist
+        """
 
         knn -= len(recommendations)
 
@@ -549,7 +563,7 @@ class Recommender:
         artists_percentages = []
         for track in playlist_tracks:
             artist_tracks = self.db.get_artist_tracks(track)
-            float_is_in_artist_tracks = map(float, [track in artist_tracks for track in playlist_tracks])
+            float_is_in_artist_tracks = [float(track in artist_tracks) for track in playlist_tracks]
             artist_percentage = sum(float_is_in_artist_tracks)/len(playlist_tracks)
             artist_id = self.db.get_artist(track)
             artists_percentages.append([artist_id, artist_percentage, artist_tracks])
@@ -557,7 +571,7 @@ class Recommender:
         artists_percentages.sort(key = itemgetter(1),reverse = True)
         most_in_artist = artists_percentages[0][1]
 
-        if most_in_artist > 0.75:
+        if most_in_artist > 0.66:
             artist_tracks = artists_percentages[0][2]
         else:
             raise ValueError("The playlist have no dominant artist")
@@ -577,25 +591,19 @@ class Recommender:
             tags = self.db.get_track_tags(track)
             track_duration = self.db.get_track_duration(track)
             if (track_duration > 30000 or track_duration < 0):
-                tf_idf_track = []
-                for tag in tags:
-                    tf = 1.0
-                    idf = self.db.get_tag_idf(tag)
-                    tf_idf = tf * idf
-                    tf_idf_track.append(tf_idf)
+                tf_idf_track = [self.db.get_tag_idf(tag) for tag in tags]
 
-                num_cosine_sim = [tf_idf_track[tags.index(tag)] * tf_idf_playlist[playlist_features_set.index(tag)] for
-                                  tag in tags if tag in playlist_features_set]
+                num_cosine_sim = sum([tf_idf_track[tags.index(tag)] * tf_idf_playlist[playlist_features_set.index(tag)] for
+                                  tag in tags if tag in playlist_features_set])
 
                 den_cosine_sim = math.sqrt(sum([i ** 2 for i in tf_idf_playlist])) * math.sqrt(
                     sum([i ** 2 for i in tf_idf_track]))
 
                 try:
-                    cosine_sim = sum(num_cosine_sim) / (den_cosine_sim)
+                    cosine_sim = num_cosine_sim / den_cosine_sim
                 except ZeroDivisionError:
                     cosine_sim = 0
-                if cosine_sim > 0.8:
-                    possible_recommendations.append([track, cosine_sim])
+                possible_recommendations.append([track, cosine_sim])
 
         possible_recommendations.sort(key=itemgetter(1), reverse=True)
         recs = recommendations + [recommendation for recommendation, value in possible_recommendations[0:knn]]
