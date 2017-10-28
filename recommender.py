@@ -323,7 +323,7 @@ class Recommender:
         if len(playlist_features) == 0:
             raise ValueError("playlist have no features!")
 
-        tf_idf_playlist = [(1.0 + math.log(playlist_features.count(tag), 10)) * self.db.get_tag_idf(tag)
+        tf_idf_playlist = [(self.db.get_tag_idf(tag) * playlist_features.count(tag)) / len(playlist_features)
                            for tag in playlist_features_set]
 
         """
@@ -341,7 +341,7 @@ class Recommender:
             track_duration = self.db.get_track_duration(track)
             if track not in playlist_tracks_set and (track_duration > 30000 or track_duration < 0) and track not in recommendations:
 
-                tf_idf_track = [1.0 * self.db.get_tag_idf(tag) for tag in tags]
+                tf_idf_track = [self.db.get_tag_idf(tag) / len(tags) for tag in tags]
 
                 """
                 tf_idf_track = []
@@ -351,6 +351,8 @@ class Recommender:
                     tf_idf = tf * idf
                     tf_idf_track.append(tf_idf)
                 """
+
+
 
                 tag_mask = [float(tag in playlist_features_set) for tag in tags]
                 tag_mask_summation = sum(tag_mask)
@@ -371,9 +373,31 @@ class Recommender:
                 except ValueError:
                     continue
 
-                num_cosine_sim = [tf_idf_track[tags.index(tag)] * tf_idf_playlist[playlist_features_set.index(tag)] for
-                                  tag in tags if tag in playlist_features_set]
+                '''
+                #Pearson correlation coefficient
 
+                mean_tfidf_track = sum(tf_idf_track) / len(tf_idf_track)
+
+                mean_tfidf_playlist = sum(tf_idf_playlist) / len(tf_idf_playlist)
+
+                num_pearson_sim = [(tf_idf_track[tags.index(tag)] - mean_tfidf_track) *
+                                   (tf_idf_playlist[playlist_features_set.index(tag)] - mean_tfidf_playlist)
+                                   for tag in tags if tag in playlist_features_set]
+
+
+                den_pearson_sim = math.sqrt(sum([(i - mean_tfidf_playlist) ** 2 for i in tf_idf_playlist]) *
+                    sum([(i - mean_tfidf_track) ** 2 for i in tf_idf_track]))
+
+                try:
+                    pearson_sim = sum(num_pearson_sim)/ (den_pearson_sim)
+                except ZeroDivisionError:
+                    pearson_sim = 0
+                '''
+                #Cosine similarity
+
+                num_cosine_sim = [tf_idf_track[tags.index(tag)] * tf_idf_playlist[playlist_features_set.index(tag)]
+                                  for
+                                  tag in tags if tag in playlist_features_set]
 
                 den_cosine_sim = math.sqrt(sum([i ** 2 for i in tf_idf_playlist])) * math.sqrt(
                     sum([i ** 2 for i in tf_idf_track]))
@@ -383,7 +407,7 @@ class Recommender:
                 except ZeroDivisionError:
                     cosine_sim = 0
 
-                possible_recommendations.append([track, cosine_sim])
+            possible_recommendations.append([track, cosine_sim])
 
         possible_recommendations.sort(key=itemgetter(1), reverse=True)
         recs = recommendations + [recommendation for recommendation, value in possible_recommendations[0:knn]]

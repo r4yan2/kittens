@@ -1,4 +1,5 @@
 import csv
+import math
 
 
 def write(filename, content, delimiter_char=','):
@@ -60,3 +61,34 @@ def multiply_lists(lst1, lst2):
 def divide_lists(lst1, lst2):
 
     return [a / b for a, b in zip(lst1, lst2)]
+
+
+def square_sum (x):
+    """
+    Squares each element of the list and returns the sum
+    :param x:
+    :return:
+    """
+    return sum([elem*elem for elem in x])
+
+
+def pearsonr(x, y):
+    """
+    return the pearson correlation between x and y
+    :param x:
+    :param y:
+    :return:
+    """
+    length_x = len(x)
+    length_y = len(y)
+    if length_x != length_y:
+        raise ValueError("The two arrays have different lenght")
+    mean_x = sum(x) / len(x)
+    mean_y = sum(y) / len(y)
+    normalized_x = [(elem - mean_x) for elem in x]
+    normalized_y = [(elem - mean_y) for elem in y]
+
+    numerator = sum(multiply_lists(normalized_x, normalized_y))
+    denominator = math.sqrt(square_sum(normalized_x) * square_sum(normalized_y))
+
+    return  numerator / denominator
