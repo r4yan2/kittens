@@ -114,7 +114,7 @@ class Recommender:
                     recommendations = self.make_bad_tf_idf_recommendations(target)
                 except ValueError:
                     recommendations = self.make_top_included_recommendations(target)
-                    
+
             elif choice == 12:
                 try:
                     recommendations = self.make_artists_recommendations(target)
@@ -132,6 +132,14 @@ class Recommender:
             elif choice == 13:
                 recommendations = self.make_hybrid_recommendations(target)
 
+            elif choice == 14:
+                try:
+                    recommendations = self.make_neighborhood_similarity(target)
+                except ValueError: # No tracks or features
+                    recommendations = self.make_top_included_recommendations(target)
+                if len(recommendations) < 5: # padding needed
+                    recommendations = self.make_some_padding(target, recommendations)
+
             # doing testing things if test mode enabled
             if test:
                 test_result = self.check_recommendations(target, recommendations)
@@ -140,11 +148,11 @@ class Recommender:
             else:
                 # else put the result into the out queue
                 q_out.put([identifier, target, recommendations])
-                
+
     def make_some_padding(self, playlist, recommendations, knn=5):
         """
-        Make some padding when needed 
-        
+        Make some padding when needed
+
         :param playlist: target playlist
         :param recommendations: actual recommended tracks
         :return: the full list of tracks recommended to the target playlist
@@ -160,7 +168,7 @@ class Recommender:
             remaining = knn - len(recommendations)
             i = (i + 1) % len(methods)
         return recommendations
-            
+
 
     def make_random_recommendations(self, playlist, target_tracks=[], recommendations=[], knn=5):
         """
@@ -252,8 +260,6 @@ class Recommender:
         :param knn: Number of items to recommend
         :return: Recommendations
         """
-        #already_included = self.db.get_playlist_user_tracks(active_playlist)
-
         if target_tracks == []:
             target_tracks = self.db.get_target_tracks()
 
@@ -296,7 +302,7 @@ class Recommender:
     def make_tf_idf_recommendations(self, playlist, target_tracks=[], recommendations=[], knn=5):
         """
         Make Recommendations based on the tf-idf of the track tags
-        
+
         :param playlist: Target playlist
         :param target_tracks: Set of target in which choose the random one
         :param recommendations: Set of recommendations already included
@@ -315,8 +321,6 @@ class Recommender:
         if playlist_tracks == []:
             raise ValueError("playlist is empty")
 
-        already_listened = self.db.get_playlist_user_tracks(playlist)
-
         playlist_features = [tag for track in playlist_tracks for tag in self.db.get_track_tags(track)]
 
         playlist_features_set = list(set(playlist_features))
@@ -326,38 +330,19 @@ class Recommender:
         tf_idf_playlist = [(self.db.get_tag_idf(tag) * playlist_features.count(tag)) / len(playlist_features)
                            for tag in playlist_features_set]
 
-        """
-        above list comprehension summarize the following:
-
-        tf_idf_playlist = []
-        for tag in playlist_features_set:
-            tf = 1.0 + math.log(playlist_features.count(tag), 10)
-            idf = self.db.get_tag_idf(tag)
-            tf_idf = tf * idf
-            tf_idf_playlist.append(tf_idf)
-        """
         for track in target_tracks:
             tags = self.db.get_track_tags(track)
             track_duration = self.db.get_track_duration(track)
             if track not in playlist_tracks_set and (track_duration > 30000 or track_duration < 0) and track not in recommendations:
 
-                tf_idf_track = [self.db.get_tag_idf(tag) / len(tags) for tag in tags]
-
-                """
-                tf_idf_track = []
-                for tag in tags:
-                    tf = 1.0
-                    idf = self.db.get_tag_idf(tag)
-                    tf_idf = tf * idf
-                    tf_idf_track.append(tf_idf)
-                """
+                tf_idf_track = [self.db.get_tag_idf(tag) for tag in tags]
 
 
 
                 tag_mask = [float(tag in playlist_features_set) for tag in tags]
                 tag_mask_summation = sum(tag_mask)
-                
-                # MAP@5
+
+                # MAP@5 it may be useful if only we knew how to use it
                 p_to_k_num = helper.multiply_lists(tag_mask, helper.cumulative_sum(tag_mask))
                 p_to_k_den = range(1,len(tag_mask)+1)
                 p_to_k = helper.divide_lists(p_to_k_num, p_to_k_den)
@@ -367,7 +352,7 @@ class Recommender:
                     continue
 
                 precision = tag_mask_summation/len(playlist_features_set)
-                
+
                 try:
                     shrink = math.log(precision, 10) * 35
                 except ValueError:
@@ -403,7 +388,7 @@ class Recommender:
                     sum([i ** 2 for i in tf_idf_track]))
 
                 try:
-                    cosine_sim = sum(num_cosine_sim) / (den_cosine_sim - shrink)
+                    cosine_sim = num_cosine_sim / den_cosine_sim
                 except ZeroDivisionError:
                     cosine_sim = 0
 
@@ -416,7 +401,7 @@ class Recommender:
     def make_hybrid_recommendations(self, playlist, recommendations=[], knn=5):
         """
         Hybrid recommendations method which takes into account the number of tracks and titles in a playlist
-        
+
         :param playlist: Target playlist
         :param recommendations: Actual recommendations made to the playlist
         :param knn: number of recommendations to generate
@@ -440,6 +425,83 @@ class Recommender:
             if len(recommendations) < 5:
                 recommendations = self.make_some_padding(playlist, recommendations=recommendations)
         return recommendations
+
+    def make_neighborhood_similarity(self, playlist, recommendations=[], knn=5):
+        """
+        Make recommendations based on the knn most similar playlists to the active one
+
+        :param playlist: Target playlist
+        :return: recommendations
+        :raise ValueError: if the active playlist have no tracks or empty tracks
+        """
+
+        knn = knn - len(recommendations)
+
+        possible_recommendations = []
+        playlist_tracks = self.db.get_playlist_tracks(playlist)
+        playlist_tracks_set = set(playlist_tracks)
+        if playlist_tracks == []:
+            raise ValueError("playlist is empty")
+
+        playlist_features = [tag for track in playlist_tracks for tag in self.db.get_track_tags(track)]
+
+        playlist_features_set = list(set(playlist_features))
+        if len(playlist_features) == 0:
+            raise ValueError("playlist have no features!")
+
+        tf_idf_playlist = [(1.0 + math.log(playlist_features.count(tag), 10)) * self.db.get_tag_idf(tag)
+                           for tag in playlist_features_set]
+
+        neighborhood = self.db.compute_playlists_similarity(playlist)
+        neighborhood_tracks = list(set([track for item in neighborhood for track in self.db.get_playlist_tracks(item)]))
+        print "playlist:",playlist,"neighborhood length", len(neighborhood)
+        target_tracks = set(self.db.get_target_tracks())
+        target_tracks = [track for track in neighborhood_tracks if track in target_tracks]
+        print "target_tracks length", len(target_tracks)
+
+        for track in target_tracks:
+            tags = self.db.get_track_tags(track)
+            track_duration = self.db.get_track_duration(track)
+            if track not in playlist_tracks_set and (track_duration > 30000 or track_duration < 0) and track not in recommendations:
+
+                tf_idf_track = [self.db.get_tag_idf(tag) for tag in tags]
+
+                tag_mask = [float(tag in playlist_features_set) for tag in tags]
+                tag_mask_summation = sum(tag_mask)
+
+                # MAP@5 it may be useful if only we knew how to use it
+                p_to_k_num = helper.multiply_lists(tag_mask, helper.cumulative_sum(tag_mask))
+                p_to_k_den = range(1,len(tag_mask)+1)
+                p_to_k = helper.divide_lists(p_to_k_num, p_to_k_den)
+                try:
+                    map_score = sum(p_to_k) / min(len(playlist_features_set), len(tag_mask))
+                except ZeroDivisionError:
+                    continue
+
+                precision = tag_mask_summation/len(playlist_features_set)
+
+                try:
+                    shrink = math.log(precision, 10) * 35
+                except ValueError:
+                    continue
+
+                num_cosine_sim = sum([tf_idf_track[tags.index(tag)] * tf_idf_playlist[playlist_features_set.index(tag)] for
+                                  tag in tags if tag in playlist_features_set])
+
+                den_cosine_sim = math.sqrt(sum([i ** 2 for i in tf_idf_playlist])) * math.sqrt(
+                    sum([i ** 2 for i in tf_idf_track]))
+
+                try:
+                    cosine_sim = num_cosine_sim / den_cosine_sim
+                except ZeroDivisionError:
+                    cosine_sim = 0
+
+                possible_recommendations.append([track, cosine_sim])
+
+        possible_recommendations.sort(key=itemgetter(1), reverse=True)
+        recs = recommendations + [recommendation for recommendation, value in possible_recommendations[0:knn]]
+        return recs
+
 
     def make_user_based_recommendations(self, playlist):
         """
@@ -470,31 +532,12 @@ class Recommender:
         tf_idf_user = [(1.0 + math.log(user_features.count(tag), 10)) * self.db.get_tag_idf(tag)
                            for tag in user_features_set]
 
-        """
-        above list comprehension summarize the following:
-
-        tf_idf_user = []
-        for tag in user_features_set:
-            tf = 1.0 + math.log(user_features.count(tag), 10)
-            idf = self.db.get_tag_idf(tag)
-            tf_idf = tf * idf
-            tf_idf_user.append(tf_idf)
-        """
         for track in target_tracks:
             tags = self.db.get_track_tags(track)
             track_duration = self.db.get_track_duration(track)
             if track not in user_tracks_set and (track_duration > 30000 or track_duration < 0):
 
                 tf_idf_track = [1.0 * self.db.get_tag_idf(tag) for tag in tags]
-
-                """
-                tf_idf_track = []
-                for tag in tags:
-                    tf = 1.0
-                    idf = self.db.get_tag_idf(tag)
-                    tf_idf = tf * idf
-                    tf_idf_track.append(tf_idf)
-                """
 
                 tag_mask = [float(tag in user_features_set) for tag in tags]
 
@@ -517,10 +560,21 @@ class Recommender:
 
         possible_recommendations.sort(key=itemgetter(1), reverse=True)
         recs = [recommendation for recommendation, value in possible_recommendations[0:knn]]
-        #logging.debug("top5 recomm for %i : (item,value) %s" % (playlist, possible_recommendations[0:5]))
         return recs
 
     def make_artists_recommendations(self, playlist, recommendations=[], knn=5):
+        """
+        Make recommendations based on the artist of the playlist, if there is enough confidence to affirm
+        that a playlist is based on a single dominant artist then target_tracks are choosen from the same artist
+        catalogue
+
+        :param playlist: Active playlist
+        :param recommendations: Already done recommendations
+        :param knn: Number of recommendations to generate
+        :return: recommendations
+        :raise LookupError: if the playlist is empty
+        :raise ValueError: if the playlist have no dominant artist or already includes all song of such artist
+        """
 
         knn -= len(recommendations)
 
@@ -533,7 +587,7 @@ class Recommender:
         artists_percentages = []
         for track in playlist_tracks:
             artist_tracks = self.db.get_artist_tracks(track)
-            float_is_in_artist_tracks = map(float, [track in artist_tracks for track in playlist_tracks])
+            float_is_in_artist_tracks = [float(track in artist_tracks) for track in playlist_tracks]
             artist_percentage = sum(float_is_in_artist_tracks)/len(playlist_tracks)
             artist_id = self.db.get_artist(track)
             artists_percentages.append([artist_id, artist_percentage, artist_tracks])
@@ -541,7 +595,7 @@ class Recommender:
         artists_percentages.sort(key = itemgetter(1),reverse = True)
         most_in_artist = artists_percentages[0][1]
 
-        if most_in_artist > 0.75:
+        if most_in_artist > 0.66:
             artist_tracks = artists_percentages[0][2]
         else:
             raise ValueError("The playlist have no dominant artist")
@@ -557,39 +611,23 @@ class Recommender:
 
         tf_idf_playlist = [(1.0 + math.log(playlist_features.count(tag))) * self.db.get_tag_idf(tag) for tag in playlist_features_set]
 
-        """
-        summed-up by the above list-comprehension
-        tf_idf_playlist = []
-        for tag in playlist_features_set:
-            tf = 1.0 + math.log(playlist_features.count(tag))
-            idf = self.db.get_tag_idf(tag)
-            tf_idf = tf * idf
-            tf_idf_playlist.append(tf_idf)
-        """
-
         for track in target_tracks:
             tags = self.db.get_track_tags(track)
             track_duration = self.db.get_track_duration(track)
             if (track_duration > 30000 or track_duration < 0):
-                tf_idf_track = []
-                for tag in tags:
-                    tf = 1.0
-                    idf = self.db.get_tag_idf(tag)
-                    tf_idf = tf * idf
-                    tf_idf_track.append(tf_idf)
+                tf_idf_track = [self.db.get_tag_idf(tag) for tag in tags]
 
-                num_cosine_sim = [tf_idf_track[tags.index(tag)] * tf_idf_playlist[playlist_features_set.index(tag)] for
-                                  tag in tags if tag in playlist_features_set]
+                num_cosine_sim = sum([tf_idf_track[tags.index(tag)] * tf_idf_playlist[playlist_features_set.index(tag)] for
+                                  tag in tags if tag in playlist_features_set])
 
                 den_cosine_sim = math.sqrt(sum([i ** 2 for i in tf_idf_playlist])) * math.sqrt(
                     sum([i ** 2 for i in tf_idf_track]))
 
                 try:
-                    cosine_sim = sum(num_cosine_sim) / (den_cosine_sim)
+                    cosine_sim = num_cosine_sim / den_cosine_sim
                 except ZeroDivisionError:
                     cosine_sim = 0
-                if cosine_sim > 0.8:
-                    possible_recommendations.append([track, cosine_sim])
+                possible_recommendations.append([track, cosine_sim])
 
         possible_recommendations.sort(key=itemgetter(1), reverse=True)
         recs = recommendations + [recommendation for recommendation, value in possible_recommendations[0:knn]]
@@ -598,7 +636,7 @@ class Recommender:
     def make_tf_idf_titles_recommendations(self, playlist, target_tracks=[], recommendations=[], knn=5):
         """
         Make some recommendations based only on the title of the target playlists
-        
+
         :param playlist: Target playlist
         :param target_tracks: Possible tracks to recommend, default to global target tracks
         :param recommendations: Actual recommendations, needed to not replicate recommendations
@@ -654,7 +692,7 @@ class Recommender:
         """
         This function filter knn tracks from the global target tracks with the
          top tag and then apply tf idf recommendations on the filtered list
-        
+
         :param playlist: Target playlist
         :param knn: cardinality of the neighborhood
         :return: Recommendations
@@ -666,7 +704,7 @@ class Recommender:
         """
         This function filter knn tracks from the global target tracks with the
          tf idf method and then apply tf idf title based on the filtered list
-        
+
         :param playlist: Target playlist
         :param knn: cardinality of the neighborhood
         :return: Recommendations
@@ -678,7 +716,7 @@ class Recommender:
         """
         This function filter knn tracks from the global target tracks with the
          tf idf method and then apply top tag method on the filtered list
-        
+
         :param playlist: Target playlist
         :param knn: cardinality of the neighborhood
         :return: Recommendations
@@ -690,7 +728,7 @@ class Recommender:
         """
         This function filter knn tracks from the global target tracks with the
          top tag method and then apply tf idf title based on the filtered list
-        
+
         :param playlist: Target playlist
         :param knn: cardinality of the neighborhood
         :return: Recommendations
@@ -702,7 +740,7 @@ class Recommender:
         """
         This function filter knn tracks from the global target tracks with the
          tf idf method and then apply tf idf title based on the filtered list
-        
+
         :param playlist: Target playlist
         :param knn: cardinality of the neighborhood
         :return: Recommendations
@@ -721,9 +759,9 @@ class Recommender:
     def make_bad_tf_idf_recommendations(self, playlist, target_tracks=[], recommendations=[], knn=5):
         """
         Bad because of the slowlyness. It's similar to the normal tf idf but take
-        into account every track on the target playlist as single set of tags 
+        into account every track on the target playlist as single set of tags
         insted of merging all tracks tags into a big list
-        
+
         :param playlist: Target playlist
         :param target_tracks: target tracks
         :param recommendations: partially filled recommendations list
@@ -737,89 +775,43 @@ class Recommender:
 
         knn -= len(recommendations)
         possible_recommendations = []
-        #logging.debug("playlist %s" % playlist)
         playlist_tracks = self.db.get_playlist_tracks(playlist)
         playlist_tracks_set = set(playlist_tracks)
         if playlist_tracks == []:
             raise ValueError("playlist is empty")
-        logging.debug("playlist tracks: %s" % playlist_tracks)
-        logging.debug("len playlist tracks: %i" % len(playlist_tracks))
 
-        normalized_rating = [self.db.get_normalized_rating(playlist, track) for track in playlist_tracks]
-        logging.debug("normalized ratings: %s" % normalized_rating)
-        logging.debug("len normalized ratings: %i" % len(normalized_rating))
-        tracks_tags = []
-        tf_idf_tracks_tags = []
+        tracks_tags = [self.db.get_track_tags(track) for track in playlist_tracks]
+        tf_idf_tracks_tags = [[self.db.get_tag_idf(tag) for tag in tags] for tags in tracks_tags]
 
-        for track in playlist_tracks:
-
-            tags = self.db.get_track_tags(track)
-            tracks_tags.append(tags)
-            tf_idf_s = [self.db.get_tag_idf(tag) for tag in tags]
-
-            '''
-            equivalent to the above list comprehension
-            tf_idf_s = []
-            for tag in tags:
-                tf = 1.0
-                idf = self.db.get_tag_idf(tag)
-                tf_idf = tf * idf
-                tf_idf_s.append(tf_idf)
-            '''
-            tf_idf_tracks_tags.append(tf_idf_s)
-        #logging.debug("tracks tags: %s" % tracks_tags)
-        #logging.debug("len tracks tags: %i" % len(tracks_tags))
-        #logging.debug("tf_idf_tracks_tags %s" % tf_idf_tracks_tags)
-        #logging.debug("len tf_idf_tracks_tags %i" % len(tf_idf_tracks_tags))
         if max([len(track_tags) for track_tags in tracks_tags]) == 0:
             raise ValueError("tracks have no feature")
-        #logging.debug("entering target_tracks loop")
+
         for track in target_tracks:
-            #logging.debug("track %i" % track)
             track_duration = self.db.get_track_duration(track)
             if track not in playlist_tracks_set and (track_duration > 30000 or track_duration < 0) and track not in recommendations:
                 tags = self.db.get_track_tags(track)
                 if tags == []:
                     continue
                 tf_idf_track = [self.db.get_tag_idf(tag) for tag in tags]
-                '''
-                tf_idf_track = []
-                for tag in tags:
-                    tf = 1.0
-                    idf = self.db.get_tag_idf(tag)
-                    tf_idf = tf * idf
-                    tf_idf_track.append(tf_idf)
-                '''
-                #logging.debug("tf_idf_track %s" % tf_idf_track)
-                #logging.debug("len tf_idf_track %i" % len(tf_idf_track))
+
                 denominator = []
                 numerator = []
                 for track_tags in tracks_tags:
-                    num_cosine_sim = [tf_idf_track[tags.index(tag)] * tf_idf_tracks_tags[tracks_tags.index(track_tags)][track_tags.index(tag)] for tag in tags if tag in track_tags]
+                    num_cosine_sim = sum([tf_idf_track[tags.index(tag)] * tf_idf_tracks_tags[tracks_tags.index(track_tags)][track_tags.index(tag)] for tag in tags if tag in track_tags])
 
-                    '''
-                    num_cosine_sim = []
-                    for tag in tags:
-                        if tag in track_tags:
-                            num_cosine_sim.append(tf_idf_track[tags.index(tag)] * tf_idf_tracks_tags[tracks_tags.index(track_tags)][track_tags.index(tag)])
-                    '''
                     den_cosine_sim = math.sqrt(sum([i**2 for i in tf_idf_tracks_tags[tracks_tags.index(track_tags)]])) * math.sqrt(sum([i**2 for i in tf_idf_track]))
 
                     try:
-                        cosine_sim = sum(num_cosine_sim)/float(den_cosine_sim)
+                        cosine_sim = num_cosine_sim/den_cosine_sim
                     except ZeroDivisionError:
                         cosine_sim = 0
-                    numerator.append(normalized_rating[tracks_tags.index(track_tags)] * cosine_sim)
-                    denominator.append(cosine_sim)
-                #logging.debug("numerator %s" % numerator)
-                #logging.debug("len numerator %i" % len(numerator))
-                #logging.debug("denominator %s" % denominator)
-                #logging.debug("len denominator %i" % len(denominator))
-                try:
-                    value = sum(numerator)/sum(denominator)
-                except ZeroDivisionError:
-                    value = 0
-                #logging.debug("track,value pair: %s" % [track, value])
-                possible_recommendations.append([track, value])
 
-        return recommendations + [recommendation for recommendation, value in sorted(possible_recommendations, key=itemgetter(1), reverse=True)[0:knn]]
+                    possible_recommendations.append([track, cosine_sim])
+        possible_recommendations.sort(key=itemgetter(1), reverse=True)
+        iterator = 0
+        while len(recommendations) < knn:
+            item = possible_recommendations[iterator][0]
+            if item not in recommendations:
+                recommendations.append(item)
+            iterator += 1
+        return recommendations
