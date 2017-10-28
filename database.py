@@ -95,8 +95,11 @@ class Database:
         
     def compute_playlists_similarity(self, playlist_a, knn=100):
         """
-        Thid method sould be called be an external script to generate the similarities between playlists 
-        in the dataset and store them somewhere for later retrieval
+        This method compute the neighborhood for a given playlists
+        
+        :param playlist_a: given playlist_a
+        :param knn: cardinality of the neighborhood
+        :return: neighborhood
         """
         playlists = self.get_playlists()
             

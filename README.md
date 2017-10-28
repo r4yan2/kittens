@@ -1,6 +1,6 @@
 # kittens
 
-The Engine is by default parallel but it's optimized to consume less RAM with respect to a normal parallel.
+The Engine is by default parallel. To have further info on the methods please refer to the specific method built-in documentation
 
 ## Random
 
@@ -26,6 +26,10 @@ Is performed by taking the tracks of the playlist as a whole, considering all ta
 
 This consider every track of the playlist and make an average at the end. Is slower and score less that the first so for the moment is discarded
 
+## Neighborhood based
+
+The ide is to restrict the selection of target tracks to the nearest neighborhood, selected by tdf-idfing the tags of the tracks of the playlists and selecting the playlist with the highest value of similarity
+
 ## Advanced Options
 
 ### Test-Utils
@@ -39,6 +43,10 @@ Is it possible to run the Engine in "Test Mode", which mean that:
 ### Script-utils
 
 Is possible to run some script to pre-compute some data maps, store it into a csv file for later retrival
+
+### Debug-mode
+
+Is possible to run the engine in debug mode, using only a single core and sending output to terminal for easier debugging of newer methods
 
 ## Table of results
 
