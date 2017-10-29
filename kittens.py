@@ -5,6 +5,7 @@ from multiprocessing import Process, Queue, Manager
 import sys
 from operator import itemgetter
 import logging
+from collections import Counter
 
 #sys.setcheckinterval(sys.maxint)
 
@@ -59,7 +60,7 @@ for p in proc:
 # Retrieve results from the out queue and display percentage
 completion = 0
 target_playlists_length = len(target_playlists)
-run_map5 = 0
+run_map5 = []
 run_map5_n = 0
 for i in xrange(target_playlists_length):
     r = q_out.get()
@@ -72,10 +73,11 @@ for i in xrange(target_playlists_length):
         logging.debug("worker number %i reporting result %s for playlist %i" % (r[1],r[0],r[2]))
         r = r[0]
         (map5, precision, recall) = r
-        run_map5 += map5
+        run_map5.append(map5)
         run_map5_n += 1
-        avg = float(run_map5)/run_map5_n
+        avg = sum(run_map5)/run_map5_n
         logging.debug("running map5 average %f" % avg)
+        logging.debug("map@5 distribution %s" % Counter(run_map5).items())
     results.append(r)
     logging.debug("results length so far: %i" % len(results))
 
@@ -85,10 +87,16 @@ logging.debug("All process terminated succesfully")
 # Parse result, depending if test mode in on or off
 if test:
     results_length = len(results)
-    avg_map5 = sum([map5 for map5, precision, recall in results])/float(results_length)
-    avg_precision = sum([precision for map5, precision, recall in results])/float(results_length)
-    avg_recall = sum([recall for map5, precision, recall in results])/float(results_length)
+    map5_res = [map5 for map5, precision, recall in results]
+    precision_res = [precision for map5, precision, recall in results]
+    recall_res = [recall for map5, precision, recall in results]
+
+    avg_map5 = sum(map5_res)/float(results_length)
+    avg_precision = sum(precision_res)/float(results_length)
+    avg_recall = sum(recall_res)/float(results_length)
+
     to_write = [["MAP@5", avg_map5], ["Precision", avg_precision], ["Recall", avg_recall]]
+    logging.debug("map@5 distribution %s" % Counter(map5_res).items())
     logging.debug(to_write)
     helper.write("test_result"+str(instance), to_write, '\t')
 else:
