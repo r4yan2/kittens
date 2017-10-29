@@ -68,9 +68,18 @@ if [[ -z "$mode" ]]; then exit 0; fi
 case $mode in
     2)
         script=$(whiptail --menu "Which script do you want to run?" 20 80 5 \
-        0 "Compute test set (x3)" 3>&2 2>&1 1>&3)
+        0 "Compute test set (x3)" \
+        1 "Compute neighborhood" \
+        3>&2 2>&1 1>&3)
         if [[ -z "$script" ]]; then exit 0; fi
-        /usr/bin/pypy scripts/test_set_generator.py
+        case $script in
+          0)
+            /usr/bin/pypy test_set_generator.py
+          ;;
+          1)
+            /usr/bin/pypy neighborhood_generator.py
+          ;;
+        esac
     ;;
     *)
         recommendations=$(whiptail --menu "Select Recommendations Method" 20 70 10 \
@@ -88,7 +97,9 @@ case $mode in
         11 "Bad tfidf recs" \
         12 "Artist Recommendations + tfidf padding" \
         13 "Hybrid recommendations" \
-        14 "Neighborhood similarity recommendations" 3>&2 2>&1 1>&3)
+        14 "Neighborhood similarity recommendations" \
+        15 "User based recommendations" \
+        3>&2 2>&1 1>&3)
 
         if [[ -z "$recommendations" ]]; then exit 0; fi
 
