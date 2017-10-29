@@ -149,7 +149,7 @@ class Recommender:
                 # else put the result into the out queue
                 q_out.put([identifier, target, recommendations])
 
-    def make_some_padding(self, playlist, recommendations, knn=5):
+    def make_some_padding(self, playlist, recommendations):
         """
         Make some padding when needed
 
@@ -159,13 +159,11 @@ class Recommender:
         """
         methods = [7, 2] # equal to choice parameter
         i = 0
-        remaining = knn - len(recommendations)
-        while remaining > 0:
+        while len(recommendations) < 0:
             if methods[i] == 7:
-                recommendations = self.make_tf_idf_titles_recommendations(playlist, recommendations=recommendations, knn=remaining)
+                recommendations = self.make_tf_idf_titles_recommendations(playlist, recommendations=recommendations)
             elif methods[i] == 2:
-                recommendations = self.make_top_included_recommendations(playlist, recommendations=recommendations, knn=remaining)
-            remaining = knn - len(recommendations)
+                recommendations = self.make_top_included_recommendations(playlist, recommendations=recommendations)
             i = (i + 1) % len(methods)
         return recommendations
 
@@ -326,7 +324,7 @@ class Recommender:
         playlist_features_set = list(set(playlist_features))
         if len(playlist_features) == 0:
             raise ValueError("playlist have no features!")
-        k = 2.0
+        k = 1.2
         b = 0.75
         average = self.db.get_average_playlist_length()
         tf_idf_playlist = [self.db.get_tag_idf(tag) * ((playlist_features.count(tag) * (k + 1)) / (playlist_features.count(tag) + k * (1 - b + b * (len(playlist_features) / average)))) 
@@ -683,7 +681,6 @@ class Recommender:
                 possible_recommendations.append([track, cosine_sim])
 
         possible_recommendations.sort(key=itemgetter(1), reverse=True)
-        logging.debug("top5 recomm for %i : (item,value) %s" % (playlist, possible_recommendations[0:5]))
         return recommendations + [recommendation for recommendation, value in possible_recommendations[0:knn]]
 
 
