@@ -17,7 +17,8 @@ class Recommender:
     def check_recommendations(self, playlist, recommendations):
         test_set = self.db.get_playlist_relevant_tracks(playlist)
         test_set_length = len(test_set)
-        if len(recommendations) < 5:
+        if len(recommendations) != 5:
+
             raise ValueError('Recommendations list have less than 5 recommendations')
         is_relevant = [float(item in test_set) for item in recommendations]
         is_relevant_length = len(is_relevant)
@@ -148,6 +149,14 @@ class Recommender:
                 if len(recommendations) < 5:
                     recommendations = self.make_some_padding(target, recommendations=recommendations)
 
+            elif choice == 16:
+                try:
+                    recommendations = self.make_naive_bayes_recommendations(target)
+                except ValueError:
+                    pass
+                if len(recommendations) < 5:
+                    recommendations = self.make_some_padding(target, recommendations)
+
             # doing testing things if test mode enabled
             if test:
                 test_result = self.check_recommendations(target, recommendations)
@@ -171,13 +180,12 @@ class Recommender:
             if methods[i] == 7:
                 try:
                     recommendations = self.make_tf_idf_titles_recommendations(playlist, recommendations=recommendations)
-                except:
+                except ValueError:
                     pass
             elif methods[i] == 2:
                 recommendations = self.make_top_included_recommendations(playlist, recommendations=recommendations)
             i = (i + 1) % len(methods)
         return recommendations
-
 
     def make_random_recommendations(self, playlist, target_tracks=[], recommendations=[], knn=5):
         """
@@ -338,7 +346,7 @@ class Recommender:
         k = 1.2
         b = 0.75
         average = self.db.get_average_playlist_length()
-        tf_idf_playlist = [self.db.get_tag_idf(tag) * ((playlist_features.count(tag) * (k + 1)) / (playlist_features.count(tag) + k * (1 - b + b * (len(playlist_features) / average)))) 
+        tf_idf_playlist = [self.db.get_tag_idf(tag) * ((playlist_features.count(tag) * (k + 1)) / (playlist_features.count(tag) + k * (1 - b + b * (len(playlist_features) / average))))
                            for tag in playlist_features_set]
                            
         for track in target_tracks:
@@ -351,7 +359,7 @@ class Recommender:
                 tag_mask = [float(tag in playlist_features_set) for tag in tags]
                 tag_mask_summation = sum(tag_mask)
 
-                # MAP@k it may be useful if only we knew how to use it
+                # MAP@k it may be useful if only we know how to use it
                 p_to_k_num = helper.multiply_lists(tag_mask, helper.cumulative_sum(tag_mask))
                 p_to_k_den = range(1,len(tag_mask)+1)
                 p_to_k = helper.divide_lists(p_to_k_num, p_to_k_den)
@@ -360,8 +368,8 @@ class Recommender:
                 except ZeroDivisionError:
                     continue
 
-                precision = tag_mask_summation/len(playlist_features_set)
-
+                precision = tag_mask_summation/ len(playlist_features_set)
+                recall = tag_mask_summation / len(tags)
                 try:
                     shrink = math.log(map_score * precision)
                 except ValueError:
@@ -400,6 +408,40 @@ class Recommender:
         possible_recommendations.sort(key=itemgetter(1), reverse=True)
         recs = recommendations + [recommendation for recommendation, value in possible_recommendations[0:knn]]
         return recs
+
+
+    def make_naive_bayes_recommendations(self, playlist, recommendations=[], knn=5):
+        """
+        This method tries to implement a machine learning approach using statistic predictions for a specific track
+        The main goal is, considering the tags of a track and that of a playlist, and computing the conditional probabilities
+        between them, to esthimate how much a track fits for a specific playlist
+
+        :return:
+        """
+        playlist_tracks = self.db.get_playlist_tracks(playlist)
+        playlist_tags = [tag for track in playlist_tracks for tag in self.db.get_track_tags(track)]
+        playlist_tags_length = float(len(playlist_tags))
+        if playlist_tags_length == 0:
+            raise ValueError("playlist have no tags!")
+
+        target_tracks = self.db.get_target_tracks()
+
+        possible_recommendations = []
+        for track in target_tracks:
+            tags = self.db.get_track_tags(track)
+            tags_length = float(len(tags))
+            if tags_length == 0:
+                continue
+            padella = [playlist_tags.count(tag)/tags_length for tag in tags]
+
+            sedano = sum(padella)/playlist_tags_length
+            possible_recommendations.append([track, sedano])
+
+        possible_recommendations.sort(key=itemgetter(1), reverse=True)
+        recs = recommendations + [recommendation for recommendation, value in possible_recommendations[0:knn]]
+        return recs
+
+
 
     def make_hybrid_recommendations(self, playlist, recommendations=[], knn=5):
         """
@@ -455,7 +497,7 @@ class Recommender:
         tf_idf_playlist = [(1.0 + math.log(playlist_features.count(tag), 10)) * self.db.get_tag_idf(tag)
                            for tag in playlist_features_set]
 
-        neighborhood = self.db.compute_playlists_similarity(playlist)
+        neighborhood = self.db.compute_playlists_similarity(playlist, knn>15000)
         neighborhood_tracks = list(set([track for item in neighborhood for track in self.db.get_playlist_tracks(item)]))
         target_tracks = set(self.db.get_target_tracks())
         target_tracks = [track for track in neighborhood_tracks if track in target_tracks]
@@ -596,11 +638,8 @@ class Recommender:
         artists_percentages.sort(key = itemgetter(1),reverse = True)
         most_in_artist = artists_percentages[0][1]
 
-
         if most_in_artist > 0.66:
             artist_tracks = artists_percentages[0][2]
-        else:
-            raise ValueError("The playlist have no dominant artist")
 
 
         target_tracks = helper.diff_list(artist_tracks, playlist_tracks)
@@ -795,7 +834,7 @@ class Recommender:
 
         if max([len(track_tags) for track_tags in tracks_tags]) == 0:
             raise ValueError("tracks have no feature")
-        
+
         normalized_rating = [self.db.get_normalized_rating(playlist, track) for track in playlist_tracks]
 
         for track in target_tracks:
@@ -808,7 +847,7 @@ class Recommender:
 
                 similarities = []
                 for track_tags in tracks_tags:
-                    
+
                     num_cosine_sim = sum([tf_idf_track[tags.index(tag)] *
                            tf_idf_tracks_tags[tracks_tags.index(track_tags)][track_tags.index(tag)] *
                            math.log(1.0 - (math.fabs(tags.index(tag) - track_tags.index(tag))/len(tags)),10)
