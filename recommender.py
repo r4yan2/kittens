@@ -11,10 +11,28 @@ import helper
 
 class Recommender:
     def __init__(self, db=None):
+        """
+        Init method for recommender class. The parameters may be always empty, except for debug cases in which
+        one may want to pass a database istance to use
+        
+        :param db: Defaulted to None, only useful for terminal debugging
+        :return: the allocated object
+        """
         if db:
-            self.db = db # only useful for debug
+            self.db = db
 
     def check_recommendations(self, playlist, recommendations):
+        """
+        Test the selected recommendation method with different metrics:
+        * Map@5
+        * Precision
+        * Recall
+        
+        :param playlist: playlist to be tested 
+        :recommendations: recommendations to be tested
+        :raise ValueError: in case the recommendations provided have more/less then 5 items
+        :return: the triple with the test results
+        """
         test_set = self.db.get_playlist_relevant_tracks(playlist)
         test_set_length = len(test_set)
         if len(recommendations) != 5:
@@ -49,6 +67,17 @@ class Recommender:
 
 
     def run(self, choice, db, q_in, q_out, test, number):
+        """
+        Main loop for the recommender worker, it fetch a new playlist from the general queue until it get a -1, then terminate
+        
+        :param choice: The choice of recommendation method to uses
+        :param db: The database instance
+        :param q_in: The input queue from which playlist are fetched
+        :param q_out: The output queue in which store results when ready
+        :param test: Flag which indicate if this is a test istance
+        :param number: Worker number identifier
+        :return: None
+        """
 
         # Retrieve the db from the list of arguments
         self.db = db
@@ -62,8 +91,10 @@ class Recommender:
             # if is the end stop working
             if target == -1:
                 break
+            # else start the hard work
             logging.debug("worker %i took playlist %i" % (number, target))
             recommendations = []
+            
             if choice == 0:
                 recommendations = self.make_random_recommendations(target)
 
@@ -416,7 +447,9 @@ class Recommender:
         The main goal is, considering the tags of a track and that of a playlist, and computing the conditional probabilities
         between them, to esthimate how much a track fits for a specific playlist
 
-        :return:
+        :param playlist: Target playlist
+        :param recommendations: Set of recommendations already included
+        :param knn: Number of items to recommend
         """
         playlist_tracks = self.db.get_playlist_tracks(playlist)
         playlist_tags = [tag for track in playlist_tracks for tag in self.db.get_track_tags(track)]
@@ -497,7 +530,7 @@ class Recommender:
         tf_idf_playlist = [(1.0 + math.log(playlist_features.count(tag), 10)) * self.db.get_tag_idf(tag)
                            for tag in playlist_features_set]
 
-        neighborhood = self.db.compute_playlists_similarity(playlist, knn>15000)
+        neighborhood = self.db.compute_playlists_similarity(playlist)
         neighborhood_tracks = list(set([track for item in neighborhood for track in self.db.get_playlist_tracks(item)]))
         target_tracks = set(self.db.get_target_tracks())
         target_tracks = [track for track in neighborhood_tracks if track in target_tracks]

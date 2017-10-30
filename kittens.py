@@ -60,19 +60,24 @@ for p in proc:
 # Retrieve results from the out queue and display percentage
 completion = 0
 target_playlists_length = len(target_playlists)
+
+# placeholder for a running map@5
 run_map5 = []
 run_map5_n = 0
 for i in xrange(target_playlists_length):
     r = q_out.get()
     percentage = (i*100)/(target_playlists_length-1)
     if percentage > completion:
+        # write percentage in a feasible way for dialog/whiptail
         sys.stdout.write("%i\n" % percentage)
         sys.stdout.flush()
         completion = percentage
-    if test:
+    if test: # if the test istance is enabled more logging is done
         logging.debug("worker number %i reporting result %s for playlist %i" % (r[1],r[0],r[2]))
         r = r[0]
         (map5, precision, recall) = r
+        
+        # calculate a running map@5 value
         run_map5.append(map5)
         run_map5_n += 1
         avg = sum(run_map5)/run_map5_n
@@ -86,6 +91,7 @@ for i in xrange(target_playlists_length):
 logging.debug("All process terminated succesfully")
 # Parse result, depending if test mode in on or off
 if test:
+    # write test results
     results_length = len(results)
     map5_res = [map5 for map5, precision, recall in results]
     precision_res = [precision for map5, precision, recall in results]
@@ -100,6 +106,7 @@ if test:
     logging.debug(to_write)
     helper.write("test_result"+str(instance), to_write, '\t')
 else:
+    # write normal results
     result = [[x[1], x[2]] for x in sorted(results, key=itemgetter(0))]
     for playlist, recommendation in result:
         elem = [playlist, reduce(lambda x, y: str(x) + ' ' + str(y), recommendation)]

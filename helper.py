@@ -5,8 +5,11 @@ import math
 def write(filename, content, delimiter_char=','):
     """
     write the result on the file
-    :param content:
-    :return:
+    
+    :param filename: The name of the file to create
+    :param content: The content to save
+    :param delimiter_char: The separator char for fields (csv)
+    :return: None
     """
     fp = open('data/' + filename + '.csv', 'w', 0)
     writer = csv.writer(fp, delimiter=delimiter_char, quoting=csv.QUOTE_NONE)
@@ -22,19 +25,21 @@ def write(filename, content, delimiter_char=','):
 def diff_list(a, b):
     """
     make the difference of the two lists
-    :param a:
-    :param b:
-    :return:
+    
+    :param a: One list
+    :param b: Another list
+    :return: a - b
     """
     b = set(b)
     return [aa for aa in a if aa not in b]
 
 def diff_test_set(a, b):
     """
-    make the difference between list of lists
-    :param a:
-    :param b:
-    :return:
+    make the difference between list of lists of type [[][]]
+    
+    :param a: One list of lists
+    :param b: Another list of lists
+    :return: a - b
     """
     b = set([str(x[0])+str(x[1]) for x in b])
     return [x for x in a if str(x[0])+str(x[1]) not in b]
@@ -42,12 +47,20 @@ def diff_test_set(a, b):
 def read(what):
     """
     what should be an existing csv, return the csv reader to be listed
-    :param what:
-    :return:
+    
+    :param what: The file to read
+    :return: the reader object to parse
     """
     return csv.reader(open('data/'+what+'.csv', 'rb'), delimiter='\t')
 
 def cumulative_sum(lis):
+    """
+    Do a cumulative sum operation on a given listed
+    [1,2,3] -> [1,3,6]
+    
+    :param lis: the list to process
+    :return: the cumulative sum list
+    """
 
     total = 0
     for x in lis:
@@ -55,19 +68,34 @@ def cumulative_sum(lis):
         yield total
 
 def multiply_lists(lst1, lst2):
+    """
+    Element wise multiplication
+    
+    :param lst1: First operand
+    :param lst2: Second operand
+    :return: list of multiplied elements
+    """
 
     return [a * b for a, b in zip(lst1, lst2)]
 
 def divide_lists(lst1, lst2):
-
+    """
+    Element wise division
+    Warning: if list of integer are used a list of integer is computed
+    
+    :param lst1: First operand
+    :param lst2: Second operand
+    :return: list of divided elements
+    """
     return [a / b for a, b in zip(lst1, lst2)]
 
 
 def square_sum (x):
     """
     Squares each element of the list and returns the sum
-    :param x:
-    :return:
+    
+    :param x: list of element to square
+    :return: result list
     """
     return sum([elem*elem for elem in x])
 
@@ -75,14 +103,16 @@ def square_sum (x):
 def pearsonr(x, y):
     """
     return the pearson correlation between x and y
-    :param x:
-    :param y:
-    :return:
+
+    :param x: first vector
+    :param y: second vector
+    :return: the similarity coefficient
+    :raise ValueError: if the two vectors have different length
     """
     length_x = len(x)
     length_y = len(y)
     if length_x != length_y:
-        raise ValueError("The two arrays have different lenght")
+        raise ValueError("The two arrays have different length")
     mean_x = sum(x) / len(x)
     mean_y = sum(y) / len(y)
     normalized_x = [(elem - mean_x) for elem in x]
@@ -94,6 +124,15 @@ def pearsonr(x, y):
     return  numerator / denominator
 
 def LevenshteinDistance(s, s_len, t, t_len):
+    """
+    Compute the LevenshteinDistance in recursive way(slow)
+    
+    :param s: list s 
+    :param s_len: length of list s
+    :param t: list t
+    :param t_len: length of list t
+    :return: computed distance
+    """
     cost = 0
     if t_len == 0:
         return s_len

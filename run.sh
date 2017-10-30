@@ -3,20 +3,9 @@
 disclaimer="
             --> Kitt<3ns Recommendation ENGINE <--
 
-    Capabilities:
+      Refer to the README for documentation and example usage
 
-    Random Recommendations
-    Top Listened Recommendations
-    Top Included Recommendations
-    Top Tags Recommendations
-    TF-IDF Recommendations
-    Various combined methods
-    Test Mode
-    Script Mode
-
-    Further informations available on the README
-
-    Please select your choice wisely...
+      Please select your choice wisely...
 "
 
 running="
@@ -34,6 +23,7 @@ end_test="
          Average Accuracy
 "
 
+# if pypy is not installed ask the user the permission to install it else terminate
 command -v pypy >/dev/null
 if [[ "$?" == "1" ]]; then
   whiptail --yesno "pypy is required, proceed with installation?" 10 40
@@ -44,6 +34,7 @@ if [[ "$?" == "1" ]]; then
   fi
 fi
 
+# calculate the amount of free memory
 mem=$(free | awk 'FNR == 2 {print int($7/(1024*1024*1.5))}')
 
 if [[ "$mem" == "0" ]]; then
@@ -51,13 +42,16 @@ if [[ "$mem" == "0" ]]; then
   exit 0
 fi
 
+# get the total number of process of this machine
 cpu=$(nproc --all)
 
+# select the amount of core to use core = min(available_memory mod 2GB, available_cpu)
 core=$(($mem<$cpu?$mem:$cpu))
 
-whiptail --msgbox "$disclaimer" 20 70
+whiptail --msgbox "$disclaimer" 15 70
 
-mode=$(whiptail --menu "Select Operational Mode" 20 70 5 \
+# ask the user to select operative mode
+mode=$(whiptail --menu "Select Operational Mode" 15 70 5 \
 0 "Test Mode" \
 1 "Recommendation Mode" \
 2 "Script Mode" \
@@ -82,7 +76,8 @@ case $mode in
         esac
     ;;
     *)
-        recommendations=$(whiptail --menu "Select Recommendations Method" 20 70 10 \
+        # ask the user to select a recommendations method
+        recommendations=$(whiptail --menu "Select Recommendations Method" 25 70 18 \
         0 "Random" \
         1 "Top Listened" \
         2 "Top Included" \
@@ -118,7 +113,7 @@ case $mode in
         exit 0
     ;;
     *)
-        whiptail --msgbox "$end" 20 50
+        whiptail --msgbox "$end" 15 50
     ;;
 esac
 exit 0

@@ -28,17 +28,23 @@ class Database:
         return self.test_set
 
     def load_test_set(self, test):
+        """
+        Loader for the test set
+        
+        :param test: integer which indicate the specific test istance
+        :return: None
+        """
         test_set = list(helper.read("test_set" + str(test)))
 
         self.test_set = [[int(playlist), int(track)] for playlist, track in test_set]
         self.target_playlists = set([playlist for playlist, track in self.test_set])
         self.target_tracks = set([track for playlist, track in self.test_set])
 
-
     def get_playlists(self):
         """
-        return the playlists set
-        :return:
+        getter for the playlists set
+        
+        :return: set of playlists
         """
         try:
             return self.playlists_set
@@ -49,11 +55,12 @@ class Database:
 
     def compute_test_set(self):
         """
-        computing the test set if Testing mode is enabled:
+        Computing the test set if Testing mode is enabled:
 
         * REMOVE a number of lines from the train set and put them in the test set
         * every line is randomly chosen to avoid over fitting of the test set
-        :return:
+        
+        :return: None
         """
         train = self.get_train_list()
         playlists_length = 5000
@@ -177,10 +184,8 @@ class Database:
                 cosine_sim = num_cosine_sim / den_cosine_sim
             except ZeroDivisionError:
                 cosine_sim = 0
-            
             neighborhood.append([playlist_b, cosine_sim])
-        knn_neighborg = [playlist for playlist, value in sorted(neighborhood, key=itemgetter(1), reverse=True)][0:knn]
-        print knn_neighborg
+        knn_neighborg = [playlist for playlist, value in sorted(neighborhood[0:knn], key=itemgetter(1), reverse=True)]
         return knn_neighborg
             
     def get_train_list(self):
@@ -209,6 +214,7 @@ class Database:
         else load the corresponding train set
         
         :param test: specify the istance of test if enabled
+        :return: None
         """
         if test == None:
             train_list = list(helper.read("train_final"))
@@ -219,8 +225,11 @@ class Database:
 
     def get_tag_playlists_map(self):
         """
+        getter for the hashmap which associate tag with the playlist that included tracks with such tag
+        
+        [tag] -> [playlist0, playlist1, ...]
 
-        :return:
+        :return: the hashmap
         """
         try:
             return self.tag_playlists_map
@@ -238,7 +247,9 @@ class Database:
 
     def get_favourite_user_track(self, track):
         """
-
+        Currently I don't know what this method do
+        track -> user?
+        
         :return:
         """
         playlists = self.get_track_playlists(track)
@@ -276,8 +287,8 @@ class Database:
 
     def get_average_global_track_inclusion(self):
         """
-
-        :return:
+        Getter for the global average inclusion coefficient of a track 
+        :return: a float coefficient
         """
         try:
             return self.avg_global_track
@@ -291,8 +302,10 @@ class Database:
 
     def get_title_playlists_map(self):
         """
-
-        :return:
+        Getter for the hashmap which associate a specific title with all the playlist that have such title
+        [title] -> [playlist1, playlist2, ...]
+        
+        :return: an hashmap
         """
 
         try:
@@ -306,26 +319,34 @@ class Database:
             return self.title_playlists_map
 
     def get_max_inclusion_value(self):
+        """
+        Getter for the maximum inclusion for a single track
+        
+        :return: an integer coefficient
+        """
         try:
             return self.max_inclusion_value
         except AttributeError:
             self.max_inclusion_value = max([len(items) for items in self.get_tag_playlists_map().values()])
             return self.max_inclusion_value
         
-    def get_track_idf(self, tag):
+    def get_track_idf(self, track):
         """
-        getter for the idf of the tag with respect to the track dataset
+        getter for the idf of the track
         
-        :param tag: the tag 
-        :result: the idf
+        :param track: the track
+        :result: the float idf
         """
-        n = self.get_tag_tracks(tag)
-        tracks_map = self.get_tracks_map()
-        N = len(tracks_map.keys())
+        n = len(self.get_track_playlists(track))
+        N = len(self.get_tracks_map())
         idf = math.log((N - n + 0.5) / (n + 0.5), 10)
         return idf
         
     def get_tag_tracks(self, tag):
+        """
+        getter for the idf of the tag with respect to the
+        """
+        
         try:
             return self.tags_list[tag]
         except AttributeError:
@@ -339,7 +360,7 @@ class Database:
 
     def get_tag_idf(self, tag):
         """
-        returns the idf of a specific tag
+        returns the idf of a specific tag with respect to the playlists which includes such tag
         :return: idf
         """
         tag_playlist_map = self.get_tag_playlists_map()
