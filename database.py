@@ -284,12 +284,18 @@ class Database:
             # Jaccard
             numerator = sum([active_tracks_counter[track] * tracks_counter[track] for track in tracks if track in active_tracks])
             denominator = sum([elem * elem for elem in active_tracks_counter.values()]) + sum([elem * elem for elem in tracks_counter.values()]) - numerator
+            try:
+                similarity = numerator / float(denominator)
+            except ZeroDivisionError:
+                continue
+            mean_square_difference = 1.0 - sum([(active_tracks_counter[track] - tracks_counter[track]) ** 2 for track in active_tracks if track in tracks])
+            neighborhood.append([tracks, similarity * mean_square_difference])
 
-            similarity = numerator / float(denominator)
-            neighborhood.append([tracks, similarity])
 
         neighborhood.sort(key=itemgetter(1), reverse=True)
         return [track for tracks, value in neighborhood[0:knn] for track in tracks]
+
+
 
     def get_train_list(self):
         """

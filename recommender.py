@@ -457,8 +457,9 @@ class Recommender:
         if playlist_tags_length == 0:
             raise ValueError("playlist have no tags!")
 
-        target_tracks = self.db.get_target_tracks()
-
+        target_tracks = set(self.db.get_target_tracks())
+	neighborhood_tracks = set(self.db.get_user_based_collaborative_filtering(playlist))
+	target_tracks = target_tracks.intersection(neighborhood_tracks)
         possible_recommendations = []
         for track in target_tracks:
             tags = self.db.get_track_tags(track)
@@ -563,7 +564,7 @@ class Recommender:
                 num_cosine_sim = sum([tf_idf_track[tags.index(tag)] * tf_idf_playlist[playlist_features_set.index(tag)] for
                                   tag in tags if tag in playlist_features_set])
 
-                den_cosine_sim = math.sqrt(sum([i ** 2 for i in tf_idf_playlist])) + math.sqrt(
+                den_cosine_sim = math.sqrt(sum([i ** 2 for i in tf_idf_playlist])) * math.sqrt(
                     sum([i ** 2 for i in tf_idf_track]))
 
                 try:
