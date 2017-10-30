@@ -90,7 +90,7 @@ class Database:
                 break
         self.train_list = helper.diff_test_set(train, self.test_set)
         
-    def compute_playlists_similarity(self, playlist_a, knn=75, title_flag=1, tag_flag=0, track_flag=1):
+    def compute_content_playlists_similarity(self, playlist_a, knn=75, title_flag=1, tag_flag=0, track_flag=1):
         """
         This method compute the neighborhood for a given playlists
         
@@ -105,7 +105,8 @@ class Database:
         tf_idf_playlist_a_tag = []
         tf_idf_playlist_a_title = []
         tf_idf_playlist_a_track = []
-            
+
+
         if tag_flag:
             playlist_a_tags = list(set([tag for track in self.get_playlist_tracks(playlist_a) for tag in self.get_track_tags(track)]))
             
@@ -187,7 +188,73 @@ class Database:
             neighborhood.append([playlist_b, cosine_sim])
         knn_neighborg = [playlist for playlist, value in sorted(neighborhood[0:knn], key=itemgetter(1), reverse=True)]
         return knn_neighborg
-            
+
+    def compute_collaborative_playlists_similarity(self, playlist, knn=50, coefficient="jacard"):
+        """
+        This method computes the similarities between playlists based on the tracks that are in
+        :param playlist:
+        :return:
+        """
+        playlists = self.get_playlists()
+        tracks_playlist = set(self.get_playlist_tracks(playlist))
+        similarities = []
+        for playlist_b in playlists:
+
+            tracks_playlist_b = self.get_playlist_tracks(playlist_b)
+
+            if coefficient == "jacard":
+                numerator = sum([float(track in tracks_playlist) for track in tracks_playlist_b])
+
+                denominator = len(tracks_playlist) + len(tracks_playlist_b) - numerator
+
+                jacard = numerator / denominator
+                similarities.append([playlist_b, jacard])
+
+            elif coefficient == "map":
+                # MAP@k it may be useful if only we know how to use it
+                tag_mask = [float(track in tracks_playlist) for track in tracks_playlist_b]
+                p_to_k_num = helper.multiply_lists(tag_mask, helper.cumulative_sum(tag_mask))
+                p_to_k_den = range(1,len(tag_mask)+1)
+                p_to_k = helper.divide_lists(p_to_k_num, p_to_k_den)
+                try:
+                    map_score = sum(p_to_k) / min(len(tracks_playlist), len(tag_mask))
+                except ZeroDivisionError:
+                    continue
+                similarities.append([playlist_b,map_score])
+
+            elif coefficient == "cosine":
+                num_cosine_sim = sum([float(track in tracks_playlist) for track in tracks_playlist_b])
+
+                den_cosine_sim = math.sqrt(len(tracks_playlist)) * math.sqrt(
+                    len(tracks_playlist_b))
+
+                try:
+                    cosine_sim = num_cosine_sim / den_cosine_sim
+                except ZeroDivisionError:
+                    cosine_sim = 0
+
+                similarities.append([playlist_b, cosine_sim])
+            elif coefficient == "pearson":
+                mean_playlist = sum(tf_idf_track) / len(tf_idf_track)
+
+                mean_tfidf_playlist = sum(tf_idf_playlist) / len(tf_idf_playlist)
+
+                numerator = sum([(tf_idf_track[tags.index(tag)] - mean_tfidf_track) *
+                                   (tf_idf_playlist[playlist_features_set.index(tag)] - mean_tfidf_playlist)
+                                   for tag in tags if tag in playlist_features_set])
+
+
+                denominator = math.sqrt(sum([(i - mean_tfidf_playlist) ** 2 for i in tf_idf_playlist]) *
+                    sum([(i - mean_tfidf_track) ** 2 for i in tf_idf_track]))
+ 
+
+
+
+        similarities.sort(key=itemgetter(1), reverse=True)
+        return  [playlist  for playlist, value in similarities[0:knn]]
+
+
+
     def get_train_list(self):
         """
         getter for the train_list

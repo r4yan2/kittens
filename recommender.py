@@ -14,7 +14,7 @@ class Recommender:
         """
         Init method for recommender class. The parameters may be always empty, except for debug cases in which
         one may want to pass a database istance to use
-        
+
         :param db: Defaulted to None, only useful for terminal debugging
         :return: the allocated object
         """
@@ -27,8 +27,8 @@ class Recommender:
         * Map@5
         * Precision
         * Recall
-        
-        :param playlist: playlist to be tested 
+
+        :param playlist: playlist to be tested
         :recommendations: recommendations to be tested
         :raise ValueError: in case the recommendations provided have more/less then 5 items
         :return: the triple with the test results
@@ -69,7 +69,7 @@ class Recommender:
     def run(self, choice, db, q_in, q_out, test, number):
         """
         Main loop for the recommender worker, it fetch a new playlist from the general queue until it get a -1, then terminate
-        
+
         :param choice: The choice of recommendation method to uses
         :param db: The database instance
         :param q_in: The input queue from which playlist are fetched
@@ -94,7 +94,7 @@ class Recommender:
             # else start the hard work
             logging.debug("worker %i took playlist %i" % (number, target))
             recommendations = []
-            
+
             if choice == 0:
                 recommendations = self.make_random_recommendations(target)
 
@@ -171,7 +171,7 @@ class Recommender:
                     recommendations = self.make_top_included_recommendations(target)
                 if len(recommendations) < 5: # padding needed
                     recommendations = self.make_some_padding(target, recommendations)
-                    
+
             elif choice == 15:
                 try:
                     recommendations = self.make_user_based_recommendations(target)
@@ -379,7 +379,7 @@ class Recommender:
         average = self.db.get_average_playlist_length()
         tf_idf_playlist = [self.db.get_tag_idf(tag) * ((playlist_features.count(tag) * (k + 1)) / (playlist_features.count(tag) + k * (1 - b + b * (len(playlist_features) / average))))
                            for tag in playlist_features_set]
-                           
+
         for track in target_tracks:
             tags = self.db.get_track_tags(track)
             track_duration = self.db.get_track_duration(track)
@@ -405,7 +405,7 @@ class Recommender:
                     shrink = math.log(map_score * precision)
                 except ValueError:
                     continue
-                
+
                 '''
                 #Pearson correlation coefficient
 
@@ -421,14 +421,14 @@ class Recommender:
                 denominator = math.sqrt(sum([(i - mean_tfidf_playlist) ** 2 for i in tf_idf_playlist]) *
                     sum([(i - mean_tfidf_track) ** 2 for i in tf_idf_track]))
                 '''
-                
+
                 #Cosine similarity
 
                 numerator = sum([tf_idf_track[tags.index(tag)] * tf_idf_playlist[playlist_features_set.index(tag)]
                                   for tag in tags if tag in playlist_features_set])
 
                 denominator = sum([i ** 2 for i in tf_idf_playlist]) + sum([i ** 2 for i in tf_idf_track]) - numerator - shrink
-                
+
                 try:
                     similarity = numerator / denominator
                 except ZeroDivisionError:
@@ -530,10 +530,10 @@ class Recommender:
         tf_idf_playlist = [(1.0 + math.log(playlist_features.count(tag), 10)) * self.db.get_tag_idf(tag)
                            for tag in playlist_features_set]
 
-        neighborhood = self.db.compute_playlists_similarity(playlist)
-        neighborhood_tracks = list(set([track for item in neighborhood for track in self.db.get_playlist_tracks(item)]))
+        neighborhood = self.db.compute_collaborative_playlists_similarity(playlist)
+        neighborhood_tracks = set([track for item in neighborhood for track in self.db.get_playlist_tracks(item)])
         target_tracks = set(self.db.get_target_tracks())
-        target_tracks = [track for track in neighborhood_tracks if track in target_tracks]
+        target_tracks = target_tracks.intersection(neighborhood_tracks)
 
         for track in target_tracks:
             tags = self.db.get_track_tags(track)
@@ -590,7 +590,7 @@ class Recommender:
         """
         possible_recommendations = []
         user_tracks = self.db.get_playlist_user_tracks(playlist)
-        
+
         if target_tracks == []:
             target_tracks = self.db.get_target_tracks()
 
@@ -634,7 +634,7 @@ class Recommender:
                 possible_recommendations.append([track, cosine_sim])
 
         possible_recommendations.sort(key=itemgetter(1), reverse=True)
-        
+
         recs = [recommendation for recommendation, value in possible_recommendations[0:knn]]
         return recs
 
