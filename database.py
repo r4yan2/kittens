@@ -257,15 +257,40 @@ class Database:
         similarities.sort(key=itemgetter(1), reverse=True)
         return  [playlist  for playlist, value in similarities[0:knn]]
 
-    def get_user_based_collaborative_filtering(self):
+    def get_user_based_collaborative_filtering(self, active_playlist, knn=50):
         """
         This method is created in order to provide a CF using users and tracks, and computes the similarities between different users
         considering the most K similar users to the active one; this is done using different similarity coefficients as
-        Pearson, Jacard or Cosine, counting the number of times a user includes a track in his playlists
+        Pearson, Jaccard or Cosine, counting the number of times a user includes a track in his playlists
 
-        :return:
+        :param playlist: active playlist
+        :return: list of similar user
         """
-        pass
+
+        active_tracks = self.get_playlist_user_tracks(active_playlist)
+        active_tracks_counter = Counter(active_tracks)
+        already_scanned_user = set()
+        playlists = self.get_playlists()
+
+        neighborhood = []
+        for playlist in playlists:
+            user = self.get_playlist_user(playlist)
+            if user in already_scanned_user:
+                continue
+            already_scanned_user.add(user)
+            tracks = self.get_playlist_user_tracks(playlist)
+            tracks_counter = Counter(tracks)
+
+            # Jaccard
+            numerator = sum([active_tracks_counter[track] * tracks_counter[track] for track in tracks if track in active_tracks])
+            denominator = sum([elem * elem for elem in active_tracks_counter.values()]) + sum([elem * elem for elem in tracks_counter.values()]) - numerator
+
+            similarity = numerator / float(denominator)
+            neighborhood.append([tracks, similarity])
+
+        neighborhood.sort(key=itemgetter(1), reverse=True)
+        return [track for tracks, value in neighborhood[0:knn] for track in tracks]
+
     def get_train_list(self):
         """
         getter for the train_list

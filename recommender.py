@@ -530,8 +530,7 @@ class Recommender:
         tf_idf_playlist = [(1.0 + math.log(playlist_features.count(tag), 10)) * self.db.get_tag_idf(tag)
                            for tag in playlist_features_set]
 
-        neighborhood = self.db.compute_collaborative_playlists_similarity(playlist)
-        neighborhood_tracks = set([track for item in neighborhood for track in self.db.get_playlist_tracks(item)])
+        neighborhood_tracks = set(self.db.get_user_based_collaborative_filtering(playlist))
         target_tracks = set(self.db.get_target_tracks())
         target_tracks = target_tracks.intersection(neighborhood_tracks)
 
