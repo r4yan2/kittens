@@ -189,7 +189,7 @@ class Database:
         knn_neighborg = [playlist for playlist, value in sorted(neighborhood[0:knn], key=itemgetter(1), reverse=True)]
         return knn_neighborg
 
-    def compute_collaborative_playlists_similarity(self, playlist, knn=50, coefficient="jacard"):
+    def compute_collaborative_playlists_similarity(self, playlist, knn=50, coefficient="pearson"):
         """
         This method computes the similarities between playlists based on the tracks that are in
         :param playlist:
@@ -197,15 +197,18 @@ class Database:
         """
         playlists = self.get_playlists()
         tracks_playlist = set(self.get_playlist_tracks(playlist))
+        tracks_playlist_length = len(tracks_playlist)
+
         similarities = []
         for playlist_b in playlists:
 
             tracks_playlist_b = self.get_playlist_tracks(playlist_b)
+            tracks_playlist_b_length = len(tracks_playlist_b)
 
             if coefficient == "jacard":
                 numerator = sum([float(track in tracks_playlist) for track in tracks_playlist_b])
 
-                denominator = len(tracks_playlist) + len(tracks_playlist_b) - numerator
+                denominator = tracks_playlist_length + tracks_playlist_b_length - numerator
 
                 jacard = numerator / denominator
                 similarities.append([playlist_b, jacard])
@@ -235,20 +238,21 @@ class Database:
 
                 similarities.append([playlist_b, cosine_sim])
             elif coefficient == "pearson":
-                mean_playlist = sum(tf_idf_track) / len(tf_idf_track)
 
-                mean_tfidf_playlist = sum(tf_idf_playlist) / len(tf_idf_playlist)
+                matched = sum([float(track in tracks_playlist) for track in tracks_playlist_b])
 
-                numerator = sum([(tf_idf_track[tags.index(tag)] - mean_tfidf_track) *
-                                   (tf_idf_playlist[playlist_features_set.index(tag)] - mean_tfidf_playlist)
-                                   for tag in tags if tag in playlist_features_set])
+                not_matched_a = tracks_playlist_length - matched
+                not_matched_b = tracks_playlist_b_length - matched
+                mean_playlist_a = tracks_playlist_length / self.get_num_tracks()
+                mean_playlist_b = tracks_playlist_b_length / self.get_num_tracks()
 
+                numerator = sum([matched * (1.0 - mean_playlist_a) * (1.0 - mean_playlist_b), not_matched_a * (1.0 - mean_playlist_a) * (0.0 - mean_playlist_b), not_matched_b * (0.0 - mean_playlist_a) * (1.0 - mean_playlist_b), (self.get_num_tracks() - not_matched_a - not_matched_b - matched) * (0.0 - mean_playlist_a) * (0.0 - mean_playlist_b)])
 
-                denominator = math.sqrt(sum([(i - mean_tfidf_playlist) ** 2 for i in tf_idf_playlist]) *
-                    sum([(i - mean_tfidf_track) ** 2 for i in tf_idf_track]))
- 
+                denominator = math.sqrt(sum([tracks_playlist_length * (1.0 - mean_playlist_a), (self.get_num_tracks() - tracks_playlist_length) * (0.0 - mean_playlist_a)])) * math.sqrt(sum([tracks_playlist_b_length * (1.0 - mean_playlist_b), (self.get_num_tracks() - tracks_playlist_length) * (0.0 - mean_playlist_b)]))
 
+                pearson = numerator/denominator
 
+                similarities.append([playlist_b, pearson])
 
         similarities.sort(key=itemgetter(1), reverse=True)
         return  [playlist  for playlist, value in similarities[0:knn]]
@@ -669,20 +673,30 @@ class Database:
         except ZeroDivisionError:
             return 0.0
 
-    def get_tracks_set(self):
+    def get_tracks(self):
         """
-        gettter for the tracks set.
-        get_tracks and get_tracks_set are different because the former return the dataset taken from tracks_final
-        the latter return a set containing the id of all the tracks in the dataset
-        :return:
+        gettter for the tracks in train, so the item in URM
+        
+        :return: a set of tracks
         """
         try:
             return self.tracks_set
         except AttributeError:
             train = self.get_train_list()
-            tracks = self.get_tracks()
-            self.tracks_set = set(map(lambda x: x[0], tracks) + map(lambda x: x[1], train))
+            self.tracks_set = set([track for playlist, track in train])
             return self.tracks_set
+
+    def get_num_tracks(self):
+        """
+        getter for the total number of tracks in the URM
+        
+        :return: number of tracks
+        """
+        try:
+            return self.num_tracks
+        except AttributeError:
+            self.num_tracks = len(self.get_tracks())
+            return self.num_tracks
 
     def get_track_tags(self, track):
         """
