@@ -54,7 +54,11 @@ It is possible to run some script to pre-compute some data maps, store it into a
 It is possible to run the engine in debug mode, using only a single core and sending output to terminal for easier debugging of newer methods
 
 ### results
-KNN = 200, Collaborative Jacard Filtering: [['MAP@5', 0.09052783333333327], ['Precision', 0.08283999999999833], ['Recall', 0.1205779186740333]]
 KNN = 50, Cosine similarity: [['MAP@5', 0.08836894444444429], ['Precision', 0.07927999999999846], ['Recall', 0.11659921008729825]]
+KNN = 50, Jacard similarity: [['MAP@5', 0.08927627777777772], ['Precision', 0.08107999999999835], ['Recall', 0.11767104167074746]]
+KNN = 75, Jacard similarity: ['MAP@5', 0.09094077777777773], ['Precision', 0.08291999999999831], ['Recall', 0.12050940969161551]] -> scored about 0.06800
+KNN = 75, Cosine similarity: ['MAP@5', 0.08981249999999992], ['Precision', 0.08103999999999838], ['Recall', 0.11927983612792434]]
+KNN = 125, Jacard similarity:['MAP@5', 0.09120927777777771], ['Precision', 0.08351999999999828], ['Recall', 0.12145908388567055]]
+
 
 \* means outdated
