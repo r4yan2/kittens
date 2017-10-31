@@ -4,6 +4,7 @@ import helper
 import random
 import logging
 from operator import itemgetter
+import sqlite3
 
 class Database:
     def __init__(self, test):
@@ -13,6 +14,10 @@ class Database:
         * if we are in test execution train set is splitted and test_set is generated
         :param test:
         """
+        connection = sqlite3.connect("data/db")
+        connection.row_factory = lambda cursor, row: row[0]
+
+        self.cursor = connection.cursor()
         if test > 0:
             self.load_test_set(test)
             self.load_train_list(test)
@@ -189,7 +194,7 @@ class Database:
         knn_neighborg = [playlist for playlist, value in sorted(neighborhood[0:knn], key=itemgetter(1), reverse=True)]
         return knn_neighborg
 
-    def compute_collaborative_playlists_similarity(self, playlist, knn=50, coefficient="pearson"):
+    def compute_collaborative_playlists_similarity(self, playlist, knn=50, coefficient="jaccard"):
         """
         This method computes the similarities between playlists based on the tracks that are in
         :param playlist:
@@ -205,7 +210,7 @@ class Database:
             tracks_playlist_b = self.get_playlist_tracks(playlist_b)
             tracks_playlist_b_length = len(tracks_playlist_b)
 
-            if coefficient == "jacard":
+            if coefficient == "jaccard":
                 numerator = sum([float(track in tracks_playlist) for track in tracks_playlist_b])
 
                 denominator = tracks_playlist_length + tracks_playlist_b_length - numerator
@@ -291,9 +296,15 @@ class Database:
             mean_square_difference = 1.0 - sum([(active_tracks_counter[track] - tracks_counter[track]) ** 2 for track in active_tracks if track in tracks])
             neighborhood.append([tracks, similarity * mean_square_difference])
 
+            # Naive Bayes
+
+
 
         neighborhood.sort(key=itemgetter(1), reverse=True)
         return [track for tracks, value in neighborhood[0:knn] for track in tracks]
+
+
+
 
 
 
@@ -366,6 +377,7 @@ class Database:
         try:
             return self.favourite_user_track_map[track]
         except KeyError:
+
             users = [playlist_final[playlist][4] for playlist in playlists]
             users_set = set(users)
             if users == []:
@@ -562,12 +574,9 @@ class Database:
         if the target_tracks does not exists it create the list from the corresponding csv
         :return:
         """
-        try:
-            return self.target_tracks
-        except AttributeError:
-            target_tracks = list(helper.read("target_tracks"))
-            self.target_tracks = [int(elem[0]) for elem in target_tracks[1:]]
-            return self.target_tracks
+        target_tracks = self.cursor.execute("select track_id from target_tracks").fetchall()
+
+        return target_tracks
 
     def get_tracks_map(self):
         """
@@ -656,6 +665,20 @@ class Database:
         tracks_listened = [track for playlist in playlist_list for track in self.get_playlist_tracks(playlist)]
 
         return tracks_listened
+
+    def get_user_playlists(self, playlist):
+        """
+        return the playlists of the user who created the given playlist
+        :param playlist: the playlist of the user
+        :return: a list of tracks
+        """
+        playlist_final = self.get_playlist_final()
+        owned_by = playlist_final[playlist][4]
+
+        owner_playlist = self.get_owner_playlists()
+        playlist_list = owner_playlist[owned_by]
+
+        return playlist_list
 
     def get_playlist_user(self, playlist):
         """

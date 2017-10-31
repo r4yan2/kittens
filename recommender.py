@@ -8,6 +8,7 @@ import random
 from operator import itemgetter
 import logging
 import helper
+from collections import Counter
 
 class Recommender:
     def __init__(self, db=None):
@@ -451,30 +452,56 @@ class Recommender:
         :param recommendations: Set of recommendations already included
         :param knn: Number of items to recommend
         """
-        playlist_tracks = self.db.get_playlist_tracks(playlist)
-        playlist_tags = [tag for track in playlist_tracks for tag in self.db.get_track_tags(track)]
-        playlist_tags_length = float(len(playlist_tags))
-        if playlist_tags_length == 0:
-            raise ValueError("playlist have no tags!")
+        user_tracks = self.db.get_playlist_user_tracks(playlist)
+        user_tracks_len = len(user_tracks)
+        number_user_playlists = len(self.db.get_user_playlists(playlist))
 
-        target_tracks = set(self.db.get_target_tracks())
-	neighborhood_tracks = set(self.db.get_user_based_collaborative_filtering(playlist))
-	target_tracks = target_tracks.intersection(neighborhood_tracks)
+        user_tracks_counter = Counter(user_tracks)
+
+        probability_track = [[track, (user_tracks_counter[track] * sum(user_tracks_counter.values())) /
+                             ((user_tracks_counter[track] + (number_user_playlists - user_tracks_counter[track])) / float(user_tracks_len))]
+                             for track in set(user_tracks)]
+        probs = sorted(probability_track, key = itemgetter(1), reverse=True)[0:25]
+        k = 1.2
+        b = 0.75
+        active_tags = [tag for track, value in probs for tag in self.db.get_track_tags(track)]
+        active_tags_set = list(set(active_tags))
+
+        active_tags_length = len(active_tags)
+        tf_idf_active_tags = [self.db.get_tag_idf(tag) * ((active_tags.count(tag) * (k + 1)) / (
+        active_tags.count(tag) + k * (1 - b + b * (len(active_tags) / self.db.get_average_tags_length()))))
+                           for tag in active_tags_set
+                              ]
+
+        target_tracks = self.db.get_target_tracks()
         possible_recommendations = []
+
         for track in target_tracks:
             tags = self.db.get_track_tags(track)
             tags_length = float(len(tags))
+
+
+            tf_idf_track = [self.db.get_tag_idf_track(tag) * (
+            (k + 1) / (1 + k * (1 - b + b * (len(tags) / self.db.get_average_tags_length())))) for tag in tags]
+
             if tags_length == 0:
                 continue
-            padella = [playlist_tags.count(tag)/tags_length for tag in tags]
+                # Cosine similarity
 
-            sedano = sum(padella)/playlist_tags_length
-            possible_recommendations.append([track, sedano])
+            numerator = sum([tf_idf_track[tags.index(tag)] * tf_idf_active_tags[active_tags_set.index(tag)] for tag in tags if tag in active_tags_set])
+
+            denominator = sum([i ** 2 for i in tf_idf_track]) + sum(
+                [i ** 2 for i in tf_idf_track]) - numerator
+            try:
+                similarity = numerator / denominator
+            except ZeroDivisionError:
+                similarity = -1000000000
+
+            possible_recommendations.append([track, similarity])
 
         possible_recommendations.sort(key=itemgetter(1), reverse=True)
         recs = recommendations + [recommendation for recommendation, value in possible_recommendations[0:knn]]
         return recs
-
 
 
     def make_hybrid_recommendations(self, playlist, recommendations=[], knn=5):
@@ -532,8 +559,12 @@ class Recommender:
                            for tag in playlist_features_set]
 
         neighborhood_tracks = set(self.db.get_user_based_collaborative_filtering(playlist))
+        neighborhood_content = set([track for playlist in self.db.compute_content_playlists_similarity(playlist) for track in self.db.get_playlist_tracks(playlist)])
         target_tracks = set(self.db.get_target_tracks())
-        target_tracks = target_tracks.intersection(neighborhood_tracks)
+        target_tracks = target_tracks.intersection(neighborhood_content.intersection(neighborhood_tracks))
+
+        if len(target_tracks) == 0:
+            target_tracks = set(self.db.get_target_tracks()).intersection(neighborhood_content)
 
         for track in target_tracks:
             tags = self.db.get_track_tags(track)
