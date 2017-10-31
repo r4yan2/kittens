@@ -458,8 +458,8 @@ class Recommender:
             raise ValueError("playlist have no tags!")
 
         target_tracks = set(self.db.get_target_tracks())
-	neighborhood_tracks = set(self.db.get_user_based_collaborative_filtering(playlist))
-	target_tracks = target_tracks.intersection(neighborhood_tracks)
+        neighborhood_tracks = set(self.db.get_user_based_collaborative_filtering(playlist))
+        target_tracks = target_tracks.intersection(neighborhood_tracks)
         possible_recommendations = []
         for track in target_tracks:
             tags = self.db.get_track_tags(track)
