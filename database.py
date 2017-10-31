@@ -82,7 +82,7 @@ class Database:
                 elif len(already_selected_playlists) >= playlists_length and len(already_selected_tracks) < tracks_length and playlist in already_selected_playlists:
                     self.test_set.append(train[line])
                     already_selected_tracks.add(track)
-                elif len(already_selected_playlists) < playlists_length and len(already_selected_tracks) >= tracks_length and track in already_selected_track:
+                elif len(already_selected_playlists) < playlists_length and len(already_selected_tracks) >= tracks_length and track in already_selected_tracks:
                     self.test_set.append(train[line])
                     already_selected_playlists.add(playlist)
 
