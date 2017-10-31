@@ -6,6 +6,7 @@ import sys
 from operator import itemgetter
 import logging
 from collections import Counter
+import sqlite3
 
 #sys.setcheckinterval(sys.maxint)
 
@@ -26,7 +27,19 @@ core = eval(sys.argv[3])
 # Initializing the recommender instance
 recommender_system = Recommender()
 
-db = Database(instance) # the database is istancied accordingly to the number passed, 0 no test else test mode
+"""
+connection = sqlite3.connect("data/db")
+connection.row_factory = lambda cursor, row: row[0]
+cursor = connection.cursor()
+
+
+sqlite_file      = "data/db"
+conn             = sqlite3.connect(sqlite_file)
+conn.row_factory = sqlite3.Row
+cursor           = conn.cursor()
+"""
+
+db = Database(instance) # the database is built accordingly to the number passed, 0 no test else test mode
 
 # This list will store the result just before writing to file
 to_write = []

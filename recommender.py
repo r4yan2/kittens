@@ -144,7 +144,7 @@ class Recommender:
 
             elif choice == 11:
                 try:
-                    recommendations = self.make_bad_tf_idf_recommendations(target)
+                    recommendations = self.make_collaborative_item_item_recommendations(target)
                 except ValueError:
                     recommendations = self.make_top_included_recommendations(target)
 
@@ -869,7 +869,7 @@ class Recommender:
         except ValueError: #playlist have no title
             return filtered[0:5]
 
-    def make_bad_tf_idf_recommendations(self, playlist, target_tracks=[], recommendations=[], knn=5):
+    def make_collaborative_item_item_recommendations(self, active_playlist, target_tracks=[], recommendations=[], knn=5):
         """
         Bad because of the slowlyness. It's similar to the normal tf idf but takes
         into account every track on the target playlist as single set of tags
@@ -887,55 +887,56 @@ class Recommender:
             target_tracks = self.db.get_target_tracks()
 
         knn -= len(recommendations)
-        possible_recommendations = []
-        playlist_tracks = self.db.get_playlist_tracks(playlist)
-        playlist_tracks_set = set(playlist_tracks)
-        if playlist_tracks == []:
+        active_user = self.db.get_playlist_user(active_playlist)
+        user_tracks = self.db.get_playlist_user_tracks(active_playlist)
+        user_tracks_set = set(user_tracks)
+        playlist_tracks_set = self.db.get_playlist_tracks(active_playlist)
+        if user_tracks == []:
             raise ValueError("playlist is empty")
 
-        tracks_tags = [self.db.get_track_tags(track) for track in playlist_tracks]
-        tf_idf_tracks_tags = [[self.db.get_tag_idf(tag) for tag in tags] for tags in tracks_tags]
+        ratings = Counter(user_tracks)
+        playlists = self.db.get_playlists()
+        predictions = []
 
-        if max([len(track_tags) for track_tags in tracks_tags]) == 0:
-            raise ValueError("tracks have no feature")
+        for i in target_tracks:
+            duration = self.db.get_track_duration(i)
+            if i in playlist_tracks_set or not (duration > 30000 or duration < 0):
+                continue
 
-        normalized_rating = [self.db.get_normalized_rating(playlist, track) for track in playlist_tracks]
+            similarities = {}
+            for j in user_tracks_set:
+                already_scanned_user = set([active_user])
+                numerator = []
+                denominator = []
+                for playlist in playlists:
 
-        for track in target_tracks:
-            track_duration = self.db.get_track_duration(track)
-            if track not in playlist_tracks_set and (track_duration > 30000 or track_duration < 0) and track not in recommendations:
-                tags = self.db.get_track_tags(track)
-                if tags == []:
-                    continue
-                tf_idf_track = [self.db.get_tag_idf(tag) for tag in tags]
+                    user = self.db.get_playlist_user(playlist)
+                    if user in already_scanned_user:
+                        continue
+                    already_scanned_user.add(user)
+                    tracks = self.db.get_playlist_user_tracks(playlist)
+                    tracks_counter = Counter(tracks)
 
-                similarities = []
-                for track_tags in tracks_tags:
+                    numerator.append(tracks_counter[i] * tracks_counter[j])
 
-                    num_cosine_sim = sum([tf_idf_track[tags.index(tag)] *
-                           tf_idf_tracks_tags[tracks_tags.index(track_tags)][track_tags.index(tag)] *
-                           math.log(1.0 - (math.fabs(tags.index(tag) - track_tags.index(tag))/len(tags)),10)
-                           for tag in tags if tag in track_tags])
-
-                    den_cosine_sim = math.sqrt(sum([i**2 for i in tf_idf_tracks_tags[tracks_tags.index(track_tags)]])) * math.sqrt(sum([i**2 for i in tf_idf_track]))
-
-                    try:
-                        cosine_sim = num_cosine_sim/den_cosine_sim
-                    except ZeroDivisionError:
-                        cosine_sim = -1000000000
-                    similarities.append(cosine_sim)
-                numerator = sum([similarity * normalized_rating[similarities.index(similarity)] for similarity in similarities])
-                denominator = sum(similarities)
+                    denominator.append(tracks_counter[i] * tracks_counter[i] + tracks_counter[j] * tracks_counter[j] -
+                                       tracks_counter[i] * tracks_counter[j])
                 try:
-                    value = numerator/denominator
+                    similarity = sum(numerator) / float(sum(denominator))
                 except ZeroDivisionError:
-                    value = 0
-                possible_recommendations.append([track, value])
-        possible_recommendations.sort(key=itemgetter(1), reverse=True)
-        iterator = 0
-        while len(recommendations) < knn:
-            item = possible_recommendations[iterator][0]
-            if item not in recommendations:
-                recommendations.append(item)
-            iterator += 1
-        return recommendations
+                    similarity = 0
+
+                similarities[j] = similarity
+            prediction_numerator = sum([ratings[j] * similarities[j] for j in user_tracks_set])
+            prediction_denominator = float(sum(similarities.values()))
+
+            try:
+                prediction = prediction_numerator / prediction_denominator
+            except ZeroDivisionError:
+                prediction = 0
+            predictions.append([i, prediction])
+
+        return sorted(predictions, key=itemgetter(1), reverse=True)[0:knn]
+
+
+

@@ -89,7 +89,7 @@ case $mode in
         8 "Tfidf tags combined tfIdf titles" \
         9 "Top-Tag combined TfIdf titles" \
         10 "Tfidf Titles filter applied on normal tfidf" \
-        11 "Bad tfidf recs" \
+        11 "Collaborative item-item recommendations" \
         12 "Artist Recommendations + tfidf padding" \
         13 "Hybrid recommendations" \
         14 "Neighborhood similarity recommendations" \

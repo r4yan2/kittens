@@ -4,20 +4,17 @@ import helper
 import random
 import logging
 from operator import itemgetter
-import sqlite3
 
 class Database:
-    def __init__(self, test):
+    def __init__(self, test, cursor=None):
         """
         initializing the database:
 
         * if we are in test execution train set is splitted and test_set is generated
         :param test:
         """
-        connection = sqlite3.connect("data/db")
-        connection.row_factory = lambda cursor, row: row[0]
 
-        self.cursor = connection.cursor()
+        self.cursor = cursor
         if test > 0:
             self.load_test_set(test)
             self.load_train_list(test)
@@ -288,11 +285,13 @@ class Database:
 
             # Jaccard
             numerator = sum([active_tracks_counter[track] * tracks_counter[track] for track in tracks if track in active_tracks])
-            denominator = sum([elem * elem for elem in active_tracks_counter.values()]) + sum([elem * elem for elem in tracks_counter.values()]) - numerator
+            denominator = sum([elem * elem for elem in active_tracks_counter.values()]) \
+                          + sum([elem * elem for elem in tracks_counter.values()]) - numerator
             try:
                 similarity = numerator / float(denominator)
             except ZeroDivisionError:
                 continue
+
             mean_square_difference = 1.0 - sum([(active_tracks_counter[track] - tracks_counter[track]) ** 2 for track in active_tracks if track in tracks])
             neighborhood.append([tracks, similarity * mean_square_difference])
 
@@ -574,6 +573,7 @@ class Database:
         if the target_tracks does not exists it create the list from the corresponding csv
         :return:
         """
+        return self.target_tracks
         target_tracks = self.cursor.execute("select track_id from target_tracks").fetchall()
 
         return target_tracks
