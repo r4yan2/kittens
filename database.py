@@ -4,6 +4,7 @@ import helper
 import random
 import logging
 from operator import itemgetter
+import sqlite3
 
 class Database:
     def __init__(self, test):
@@ -14,6 +15,10 @@ class Database:
         :param test: istance
         :return: the initialized object
         """
+        connection = sqlite3.connect("data/db")
+        connection.row_factory = lambda cursor, row: row[0]
+        cursor = connection.cursor()
+        self.cursor = cursor
 
         if test > 0:
             self.load_test_set(test)
@@ -293,12 +298,12 @@ class Database:
 
             tracks_playlist_b = set(self.get_playlist_tracks(playlist_b))
             tracks_playlist_b_length = len(tracks_playlist_b)
-            
+
             matched = tracks_playlist.intersection(tracks_playlist_b)
             matched_len = len(matched)
             not_matched = tracks_playlist.union(tracks_playlist_b).difference(matched)
             not_matched_len = len(not_matched)
-            
+
             MSE = not_matched_len / float(len(tracks_playlist.union(tracks_playlist_b)))
 
             if coefficient == "jaccard":
@@ -361,7 +366,7 @@ class Database:
             while len(tracks) < tracks_knn:
                 tracks += self.get_playlist_tracks(similarities[iterator][0])
                 iterator += 1
-            return tracks 
+            return tracks
 
     def get_user_based_collaborative_filtering(self, active_playlist, knn=20, coefficient="jaccard"):
         """
@@ -418,7 +423,7 @@ class Database:
     def get_knn_track_similarities(self, active_track, knn=50):
         """
         Getter for the most similar track to the passed one
-        
+
         :param active_track: active_track
         :param knn: cardinality of the neighborhood
         :return: list of similar tracks
@@ -435,8 +440,8 @@ class Database:
             elif active_track == track_b:
                 similarities_list.append([track_a, similarities_map[(track_a, active_track)]])
         return sorted(similarities_list, key=itemgetter(1), reverse=True)[0:knn]
-            
-        
+
+
 
     def get_item_similarities(self, i, j):
         """
@@ -473,13 +478,13 @@ class Database:
         """
         """
         return self.num_interactions
-    
+
     def init_item_similarities_epoch(self):
         """
         Init the similarities map used later for the epoch iteration method
         """
         self.similarities_map = defaultdict(lambda: defaultdict(lambda: 0.0),{})
-        
+
     def get_item_similarities_epoch(self, i, j):
         """
         """
@@ -489,7 +494,7 @@ class Database:
             return self.similarities_map[j][i]
         else:
             return 0.0
-             
+
     def get_item_similarities_alt(self, i, j):
         """
         This method parse the item similairities csv and returns the similarity
@@ -545,11 +550,11 @@ class Database:
                 self.similarities_map[(j,i)] = value + update
             except KeyError:
                 pass
-    
+
     def set_item_similarities_epoch(self, i, j, update):
         """
         """
-        
+
         if i < j:
             value = self.similarities_map[i][j]
             self.similarities_map[i][j] = value + update
@@ -569,7 +574,7 @@ class Database:
                 self.similarities_map[(j,i)] = 0
             except KeyError:
                 pass
-            
+
     def null_item_similarities_alt(self, i, j):
         """
         """
@@ -600,8 +605,7 @@ class Database:
         :param active_playlist: the playlist for which return the tracks
         :return: a set of tracks
         """
-        test_set = self.get_test_set()
-        return [track for playlist, track in test_set if active_playlist == playlist]
+        return self.cursor.execute("select track_id from test_set1 where  playlist_id = (?) ", (active_playlist,))
 
     def load_train_list(self, test=None):
         """
@@ -851,11 +855,8 @@ class Database:
         if the target_playlists does not exists it create the list from the corresponding csv
         :return:
         """
-        try:
-            return self.target_playlists
-        except AttributeError:
-            self.compute_target_playlists()
-            return self.target_playlists
+        return self.cursor.execute("select * from target_playlists").fetchall()
+
 
     def compute_target_playlists(self):
         """
@@ -872,14 +873,7 @@ class Database:
         if the target_tracks does not exists it create the list from the corresponding csv
         :return:
         """
-        try:
-            return self.target_tracks
-        except:
-            # the set cast is just for commodity
-            target_tracks = helper.read("target_tracks")
-            target_tracks.next()
-            self.target_tracks = set([int(track[0]) for track in target_tracks])
-            return self.target_tracks
+        return self.cursor.execute("select track_id from target_tracks").fetchall()
 
     def get_tracks_map(self):
         """
