@@ -619,8 +619,9 @@ class Recommender:
         :raise ValueError: if user had no other playlists or have playlist with some tracks but tagless
         """
         possible_recommendations = []
-        user_tracks = self.db.get_playlist_user_tracks(playlist)
-
+        playlist_tags = set([tag for track in self.db.get_playlist_tracks(playlist) for tag in self.db.get_track_tags(track)])
+        active_user = self.db.get_playlist_user(playlist)
+        neighborhood = self.db.user_user_similarity(active_user)
         if target_tracks == []:
             target_tracks = self.db.get_target_tracks()
 
@@ -628,41 +629,14 @@ class Recommender:
             raise ValueError("user is strunz")
         user_tracks_set = set(user_tracks)
 
-        user_features = [tag for track in user_tracks for tag in self.db.get_track_tags(track)]
-
-        user_features_set = list(set(user_features))
-        if len(user_features_set) == 0:
-            raise ValueError("user have no features!")
-
-        tf_idf_user = [(1.0 + math.log(user_features.count(tag), 10)) * self.db.get_tag_idf_track(tag)
-                           for tag in user_features_set]
-
+        neighborhood_tracks = [track for user in neighborhood for track in self.db.get_user_tracks(user)]
+        target_tracks = set(target_tracks).intersection(set(neighborhood_tracks))
         for track in target_tracks:
-            tags = self.db.get_track_tags(track)
-            track_duration = self.db.get_track_duration(track)
-            if track not in user_tracks_set and (track_duration > 30000 or track_duration < 0):
+            track_tags = set(self.db.get_track_tags(track))
+            shrink = math.log(1.0 + 1 / float(len(track_tags)),10) * len(playlist_tags)
+            coefficient = len(playlist_tags.intersection(track_tags)) / (float(len(playlist_tags.union(track_tags))) + shrink)
 
-                tf_idf_track = [self.db.get_tag_idf_track(tag) for tag in tags]
-
-                tag_mask = [float(tag in user_features_set) for tag in tags]
-
-                num_cosine_sim = [tf_idf_track[tags.index(tag)] * tf_idf_user[user_features_set.index(tag)] for
-                                  tag in tags if tag in user_features_set]
-
-
-                den_cosine_sim = math.sqrt(sum([i ** 2 for i in tf_idf_user])) * math.sqrt(
-                    sum([i ** 2 for i in tf_idf_track]))
-                try:
-                    shrink = math.log(sum(tag_mask)/len(user_features_set), 10) * 35
-                except ValueError:
-                    shrink = -100
-                try:
-                    cosine_sim = sum(num_cosine_sim) / den_cosine_sim
-                except ZeroDivisionError:
-                    cosine_sim = 0
-
-                possible_recommendations.append([track, cosine_sim])
-
+            possible_recommendations.append([track, coefficient])
         possible_recommendations.sort(key=itemgetter(1), reverse=True)
 
         recs = [recommendation for recommendation, value in possible_recommendations[0:knn]]

@@ -570,6 +570,19 @@ class Database:
             self.playlist_final = result
             return self.playlist_final
 
+    def user_user_similarity(self, active_user, knn=75):
+        """
+        """
+        similarities = []
+        active_user_tracks = set(self.get_user_tracks(active_user))
+        for user in users_set:
+            user_tracks = set(self.get_user_tracks(user))
+            coefficient = len(active_user_tracks.intersection(user_tracks)) / float(len(active_user_tracks.union(user_tracks)))
+
+            similarities.append([user, coefficient])
+        similarities.sort(key=itemgetter(1), reverse=True)
+        return [user for user, coefficient in similarities[0:knn]]
+
     def get_target_playlists(self):
         """
         getter for the target playlists for which recommend tracks in target_tracks
