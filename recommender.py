@@ -66,8 +66,19 @@ class Recommender:
         # return the triple
         return [map_score, precision, recall]
 
+    def database_init(self, test):
+        """
+        Sqlite database initialization
+        :return:
+        """
 
-    def run(self, choice, db, q_in, q_out, test, number):
+        connection = sqlite3.connect("data/db")
+        connection.row_factory = lambda cursor, row: row[0]
+        cursor = connection.cursor()
+
+        return Database(test, cursor)
+
+    def run(self, choice, q_in, q_out, test, number):
         """
         Main loop for the recommender worker, it fetch a new playlist from the general queue until it get a -1, then terminate
 
@@ -81,7 +92,7 @@ class Recommender:
         """
 
         # Retrieve the db from the list of arguments
-        self.db = db
+        self.db = database_init(test)
 
         # main loop for the worker
         while True:
@@ -909,7 +920,7 @@ class Recommender:
                 prediction = prediction_numerator / prediction_denominator
             except ZeroDivisionError:
                 prediction = 0
-            print prediction 
+            print prediction
             predictions.append([i, prediction])
 
         recommendations = sorted(predictions, key=itemgetter(1), reverse=True)[0:knn]

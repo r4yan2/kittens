@@ -17,7 +17,7 @@ def compute_item_item_similarities(db, q_in, q_out):
         if not (duration > 30000 or duration < 0):
             continue
 
-        similarities = {}
+        similarities = []
         scanned_users = set()
         scanned_tracks = set()
         for playlist in playlists:
@@ -40,13 +40,13 @@ def compute_item_item_similarities(db, q_in, q_out):
 
                 denominator.append(user_tracks_counter[i] * user_tracks_counter[i] + user_tracks_counter[j] * user_tracks_counter[j] -
                                    user_tracks_counter[i] * user_tracks_counter[j])
-                try:
-                    similarity = sum(numerator) / float(sum(denominator))
-                except ZeroDivisionError:
-                    similarity = 0
+            try:
+                similarity = sum(numerator) / float(sum(denominator))
+            except ZeroDivisionError:
+                continue
 
-                similarities[(i,j)] = similarity
-        q_out.put(sorted([[keys[0],keys[1],value] for keys, value in similarities.items() if value !=0], key=itemgetter(2), reverse=True)[0:150])
+            similarities.append((i,j,similarity))
+        q_out.put(sorted(similarities, key=itemgetter(2), reverse=True)[0:500])
 
 fp = open('data/item-item-similarities.csv', 'w', 0)
 writer = csv.writer(fp, delimiter=',', quoting=csv.QUOTE_NONE)
@@ -64,6 +64,7 @@ target_tracks = db.get_target_tracks()
 q_in = Queue()
 q_out = Queue()
 [q_in.put((i, x)) for i, x in enumerate(target_tracks)]
+[q_in.put((-1, -1)) for _ in xrange(core)]
 
 proc = [Process(target=compute_item_item_similarities, args=(db, q_in, q_out))
         for i in xrange(core)]
