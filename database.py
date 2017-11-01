@@ -949,15 +949,10 @@ class Database:
         :param playlist: the playlist of the user
         :return: a list of tracks
         """
-        playlist_final = self.get_playlist_final()
-        owned_by = playlist_final[playlist][4]
-
-        owner_playlist = self.get_owner_playlists()
-        playlist_list = owner_playlist[owned_by]
-
-        tracks_listened = [track for playlist in playlist_list for track in self.get_playlist_tracks(playlist)]
-
-        return tracks_listened
+        return self.cursor.execute("select track_id from train_set1 \
+                                    where playlist_id = ( select playlist_id from playlists_final \
+                                    where owner = ( select owner from playlists_final \
+                                    where playlist_id = (?)))", (playlist,)).fetchall()
 
     def get_user_playlists(self, playlist, user=None):
         """
@@ -980,9 +975,7 @@ class Database:
 
         :return:
         """
-        playlist_final = self.get_playlist_final()
-        return playlist_final[playlist][4]
-
+        return self.cursor.execute("select owner from playlists_final where playlist_id = (?)", (playlist,)).fetchall()
 
     def get_owner_playlists(self):
         """
@@ -1099,13 +1092,8 @@ class Database:
         :param playlist:
         :return:
         """
-        try:
-            return self.playlist_tracks_map[target_playlist]
-        except AttributeError:
-            self.playlist_tracks_map = defaultdict(lambda: [], {})
-            train_list = self.get_train_list()
-            [self.playlist_tracks_map[playlist].append(track) for playlist, track in train_list]
-            return self.playlist_tracks_map[target_playlist]
+        return self.cursor.execute("select track_id from train_set1 where playlist_id = (?)", (target_playlist,)).fetchall()
+
 
     def get_playlist_tracks_map(self):
         """
