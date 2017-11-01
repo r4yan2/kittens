@@ -15,7 +15,7 @@ def compute_item_item_similarities(db, q_in, q_out):
 
         duration = db.get_track_duration(i)
         if not (duration > 30000 or duration < 0):
-            return
+            continue
 
         similarities = {}
         scanned_users = set()
@@ -51,7 +51,7 @@ def compute_item_item_similarities(db, q_in, q_out):
 fp = open('data/item-item-similarities.csv', 'w', 0)
 writer = csv.writer(fp, delimiter=',', quoting=csv.QUOTE_NONE)
 
-core=2
+core=4
 
 db = Database(1)
 

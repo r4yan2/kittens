@@ -5,7 +5,7 @@ import math
 def write(filename, content, delimiter_char=','):
     """
     write the result on the file
-    
+
     :param filename: The name of the file to create
     :param content: The content to save
     :param delimiter_char: The separator char for fields (csv)
@@ -25,7 +25,7 @@ def write(filename, content, delimiter_char=','):
 def diff_list(a, b):
     """
     make the difference of the two lists
-    
+
     :param a: One list
     :param b: Another list
     :return: a - b
@@ -36,7 +36,7 @@ def diff_list(a, b):
 def diff_test_set(a, b):
     """
     make the difference between list of lists of type [[][]]
-    
+
     :param a: One list of lists
     :param b: Another list of lists
     :return: a - b
@@ -44,20 +44,20 @@ def diff_test_set(a, b):
     b = set([str(x[0])+str(x[1]) for x in b])
     return [x for x in a if str(x[0])+str(x[1]) not in b]
 
-def read(what):
+def read(what, delimiter='\t'):
     """
     what should be an existing csv, return the csv reader to be listed
-    
+
     :param what: The file to read
     :return: the reader object to parse
     """
-    return csv.reader(open('data/'+what+'.csv', 'rb'), delimiter='\t')
+    return csv.reader(open('data/'+what+'.csv', 'rb'), delimiter=delimiter)
 
 def cumulative_sum(lis):
     """
     Do a cumulative sum operation on a given listed
     [1,2,3] -> [1,3,6]
-    
+
     :param lis: the list to process
     :return: the cumulative sum list
     """
@@ -70,7 +70,7 @@ def cumulative_sum(lis):
 def multiply_lists(lst1, lst2):
     """
     Element wise multiplication
-    
+
     :param lst1: First operand
     :param lst2: Second operand
     :return: list of multiplied elements
@@ -82,7 +82,7 @@ def divide_lists(lst1, lst2):
     """
     Element wise division
     Warning: if list of integer are used a list of integer is computed
-    
+
     :param lst1: First operand
     :param lst2: Second operand
     :return: list of divided elements
@@ -93,7 +93,7 @@ def divide_lists(lst1, lst2):
 def square_sum (x):
     """
     Squares each element of the list and returns the sum
-    
+
     :param x: list of element to square
     :return: result list
     """
@@ -126,8 +126,8 @@ def pearsonr(x, y):
 def LevenshteinDistance(s, s_len, t, t_len):
     """
     Compute the LevenshteinDistance in recursive way(slow)
-    
-    :param s: list s 
+
+    :param s: list s
     :param s_len: length of list s
     :param t: list t
     :param t_len: length of list t

@@ -902,41 +902,15 @@ class Recommender:
             duration = self.db.get_track_duration(i)
             if i in playlist_tracks_set or not (duration > 30000 or duration < 0):
                 continue
-
-            similarities = {}
-            for j in user_tracks_set:
-                already_scanned_user = set([active_user])
-                numerator = []
-                denominator = []
-                for playlist in playlists:
-
-                    user = self.db.get_playlist_user(playlist)
-                    if user in already_scanned_user:
-                        continue
-                    already_scanned_user.add(user)
-                    tracks = self.db.get_playlist_user_tracks(playlist)
-                    tracks_counter = Counter(tracks)
-
-                    numerator.append(tracks_counter[i] * tracks_counter[j])
-
-                    denominator.append(tracks_counter[i] * tracks_counter[i] + tracks_counter[j] * tracks_counter[j] -
-                                       tracks_counter[i] * tracks_counter[j])
-                try:
-                    similarity = sum(numerator) / float(sum(denominator))
-                except ZeroDivisionError:
-                    similarity = 0
-
-                similarities[j] = similarity
-            prediction_numerator = sum([ratings[j] * similarities[j] for j in user_tracks_set])
-            prediction_denominator = float(sum(similarities.values()))
+            prediction_numerator = sum([ratings[j] * self.db.get_item_similarities(i,j) for j in user_tracks_set])
+            prediction_denominator = sum(self.db.get_item_similarities(i,j) for j in user_tracks_set)
 
             try:
                 prediction = prediction_numerator / prediction_denominator
             except ZeroDivisionError:
                 prediction = 0
+            print prediction 
             predictions.append([i, prediction])
 
-        return sorted(predictions, key=itemgetter(1), reverse=True)[0:knn]
-
-
-
+        recommendations = sorted(predictions, key=itemgetter(1), reverse=True)[0:knn]
+	return [recommendation for recommendation, value in recommendations]

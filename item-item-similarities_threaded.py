@@ -4,6 +4,7 @@ import csv
 from Queue import Queue
 from threading import Thread
 import gc
+from operator import itemgetter
 
 def compute_item_item_similarities(db, q_in, q_out):
     gc.collect()
@@ -15,7 +16,7 @@ def compute_item_item_similarities(db, q_in, q_out):
 
         duration = db.get_track_duration(i)
         if not (duration > 30000 or duration < 0):
-            return
+            continue
 
         similarities = {}
         scanned_users = set()
@@ -46,7 +47,7 @@ def compute_item_item_similarities(db, q_in, q_out):
                     similarity = 0
 
                 similarities[(i,j)] = similarity
-        q_out.put([[keys[0],keys[1],value] for keys, value in similarities.items() if value != 0][0:150])
+        q_out.put(sorted([[keys[0],keys[1],value] for keys, value in similarities.items() if value != 0], key=itemgetter(1), reverse=True)[0:150])
 
 
 
