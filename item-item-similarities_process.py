@@ -46,7 +46,7 @@ def compute_item_item_similarities(db, q_in, q_out):
                 continue
 
             similarities.append((i,j,similarity))
-        q_out.put(sorted(similarities, key=itemgetter(2), reverse=True)[0:500])
+        q_out.put(sorted(similarities, key=itemgetter(2), reverse=True)[0:150])
 
 fp = open('data/item-item-similarities.csv', 'w', 0)
 writer = csv.writer(fp, delimiter=',', quoting=csv.QUOTE_NONE)

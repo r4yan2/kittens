@@ -6,7 +6,7 @@ import logging
 from operator import itemgetter
 
 class Database:
-    def __init__(self, test, cursor=None):
+    def __init__(self, test):
         """
         initializing the database:
 
@@ -14,7 +14,6 @@ class Database:
         :param test:
         """
 
-        self.cursor = cursor
         if test > 0:
             self.load_test_set(test)
             self.load_train_list(test)
@@ -598,9 +597,6 @@ class Database:
         :return:
         """
         return self.target_tracks
-        target_tracks = self.cursor.execute("select track_id from target_tracks").fetchall()
-
-        return target_tracks
 
     def get_tracks_map(self):
         """
