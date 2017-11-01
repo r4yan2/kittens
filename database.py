@@ -302,8 +302,32 @@ class Database:
         neighborhood.sort(key=itemgetter(1), reverse=True)
         return [track for tracks, value in neighborhood[0:knn] for track in tracks]
 
+    def get_item_similarities(self, i, j):
+        """
+        This method maps the similarities between the tracks in the dataset
+        and returns the similarity between tracks i and j
+        :return:
+        """
+        try:
+            return self.similarities_map[(i,j)]
 
-
+        except KeyError:
+            try:
+                return self.similarities_map[(j,i)]
+            except KeyError:
+                return 0
+        except AttributeError:
+            similarities = list(helper.read("item-item-similarities", ","))
+            self.similarities_map = {}
+            for (i,j, value) in similarities:
+                i = int(i)
+                j = int(j)
+                value = float(value)
+                self.similarities_map[(i,j)] = value
+            try:
+                return self.similarities_map[(i,j)]
+            except KeyError:
+                return self.similarities_map[(j,i)]
 
 
 
