@@ -21,6 +21,16 @@ class Database:
         else:
             self.load_train_list()
 
+    def get_target_playlists_tracks_set(self):
+        try:
+            return self.target_playlists_tracks_set
+        except AttributeError:
+            target_playlists = self.get_target_playlists()
+            target_playlists_tracks_set = set([track for playlist in target_playlists for track in self.get_playlist_tracks(playlist)])
+            target_tracks = self.get_target_tracks()
+            self.target_playlists_tracks_set = target_playlists_tracks_set
+            return self.target_playlists_tracks_set
+
     def get_test_set(self):
         """
         getter for the test_set, used when the engine is run in Test Mode
@@ -91,6 +101,22 @@ class Database:
             if len(already_selected_playlists) >= playlists_length and len(already_selected_tracks) >= tracks_length:
                 break
         self.train_list = helper.diff_test_set(train, self.test_set)
+
+    def get_user_set():
+        try:
+            return self.user_set
+        except AttributeError:
+            self.user_set = set([int(u) for (u,i,r) in list(helper.read("urm", ','))])
+            return self.user_set
+
+    def get_user_tracks():
+        try:
+            return self.user_tracks[user]
+        except AttributeError:
+            self.user_tracks = defaultdict(lambda: [], {})
+            for (u,i,r) in list(helper.read("urm", ',')):
+                user_tracks[int(u)].append(int(i))
+            return self.user_tracks[user]
 
     def compute_content_playlists_similarity(self, playlist_a, knn=75, title_flag=1, tag_flag=0, track_flag=1):
         """
