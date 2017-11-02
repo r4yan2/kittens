@@ -11,7 +11,8 @@ class Database:
         initializing the database:
 
         * if we are in test execution train set is splitted and test_set is generated
-        :param test:
+        :param test: istance
+        :return: the initialized object
         """
 
         if test > 0:
@@ -93,7 +94,7 @@ class Database:
                 elif len(already_selected_playlists) >= playlists_length and len(already_selected_tracks) < tracks_length and playlist in already_selected_playlists:
                     self.test_set.append(train[line])
                     already_selected_tracks.add(track)
-                elif len(already_selected_playlists) < playlists_length and len(already_selected_tracks) >= tracks_length and track in already_selected_track:
+                elif len(already_selected_playlists) < playlists_length and len(already_selected_tracks) >= tracks_length and track in already_selected_tracks:
                     self.test_set.append(train[line])
                     already_selected_playlists.add(playlist)
 
@@ -919,8 +920,10 @@ class Database:
 
     def get_titles_playlist(self, playlist):
         """
+        Getter for the playlist titles
 
-        :return:
+        :param playlist: the playlist
+        :return: list of titles
         """
         #TODO SISTEMARE TUTTO
         playlist_final = self.get_playlist_final()
@@ -961,10 +964,11 @@ class Database:
             return self.track_playlists_map
 
     def get_top_included(self):
-        '''
-        return a list of tuples (track, value) where
-        value is the number of featured playlists
-        '''
+        """
+        Return a list of tuples (track, value) where value is the number of featured playlists
+        
+        :return: top included list
+        """
         try:
             return self.top_included
         except AttributeError:
@@ -993,26 +997,32 @@ class Database:
 
     def get_artist(self, track):
         """
-
-        :return:
+        Getter for the artist who made the track
+        
+        :param track: A single track
+        :return: the artist id integer
         """
         map_tracks = self.get_tracks_map()
         return map_tracks[track][0]
 
     def get_artist_tracks(self, track):
         """
-        :param artist:
-        :return:
+        Getter for all the songs of the artist who made the track
+        
+        :param track: A single track
+        :return: the songs list
         """
         map_tracks = self.get_tracks_map()
         artist = map_tracks[track][0]
         return [track for track in map_tracks.keys() if artist == map_tracks[track][0]]
 
     def get_top_listened(self):
-        '''
+        """
         return a list of tuples (track, value) where
         value is the number of times played
-        '''
+        
+        :return: the top listened list sorted
+        """
         try:
             return self.top_listened
         except AttributeError:

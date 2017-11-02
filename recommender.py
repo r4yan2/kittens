@@ -510,7 +510,6 @@ class Recommender:
         recs = recommendations + [recommendation for recommendation, value in possible_recommendations[0:knn]]
         return recs
 
-
     def make_hybrid_recommendations(self, playlist, recommendations=[], knn=5):
         """
         Hybrid recommendations method which takes into account the number of tracks and titles in a playlist

@@ -107,7 +107,7 @@ if test:
     logging.debug(to_write)
     helper.write("test_result"+str(instance), to_write, '\t')
 else:
-    # write normal results
+    #write normal results
     result = [[x[1], x[2]] for x in sorted(results, key=itemgetter(0))]
     for playlist, recommendation in result:
         elem = [playlist, reduce(lambda x, y: str(x) + ' ' + str(y), recommendation)]
