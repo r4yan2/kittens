@@ -6,7 +6,7 @@ import logging
 from operator import itemgetter
 
 class Database:
-    def __init__(self, test):
+    def __init__(self, test, cursor=None):
         """
         initializing the database:
 
@@ -14,11 +14,23 @@ class Database:
         :param test: istance
         :return: the initialized object
         """
+
+        self.cursor = cursor
         if test > 0:
             self.load_test_set(test)
             self.load_train_list(test)
         else:
             self.load_train_list()
+
+    def get_target_playlists_tracks_set(self):
+        try:
+            return self.target_playlists_tracks_set
+        except AttributeError:
+            target_playlists = self.get_target_playlists()
+            target_playlists_tracks_set = set([track for playlist in target_playlists for track in self.get_playlist_tracks(playlist)])
+            target_tracks = self.get_target_tracks()
+            self.target_playlists_tracks_set = target_playlists_tracks_set
+            return self.target_playlists_tracks_set
 
     def get_test_set(self):
         """
@@ -90,6 +102,22 @@ class Database:
             if len(already_selected_playlists) >= playlists_length and len(already_selected_tracks) >= tracks_length:
                 break
         self.train_list = helper.diff_test_set(train, self.test_set)
+
+    def get_user_set():
+        try:
+            return self.user_set
+        except AttributeError:
+            self.user_set = set([int(u) for (u,i,r) in list(helper.read("urm", ','))])
+            return self.user_set
+
+    def get_user_tracks():
+        try:
+            return self.user_tracks[user]
+        except AttributeError:
+            self.user_tracks = defaultdict(lambda: [], {})
+            for (u,i,r) in list(helper.read("urm", ',')):
+                user_tracks[int(u)].append(int(i))
+            return self.user_tracks[user]
 
     def compute_content_playlists_similarity(self, playlist_a, knn=75, title_flag=1, tag_flag=0, track_flag=1):
         """
@@ -190,7 +218,7 @@ class Database:
         knn_neighborg = [playlist for playlist, value in sorted(neighborhood[0:knn], key=itemgetter(1), reverse=True)]
         return knn_neighborg
 
-    def compute_collaborative_playlists_similarity(self, playlist, knn=50, coefficient="pearson"):
+    def compute_collaborative_playlists_similarity(self, playlist, knn=50, coefficient="jaccard"):
         """
         This method computes the similarities between playlists based on the tracks that are in
         :param playlist:
@@ -206,7 +234,7 @@ class Database:
             tracks_playlist_b = self.get_playlist_tracks(playlist_b)
             tracks_playlist_b_length = len(tracks_playlist_b)
 
-            if coefficient == "jacard":
+            if coefficient == "jaccard":
                 numerator = sum([float(track in tracks_playlist) for track in tracks_playlist_b])
 
                 denominator = tracks_playlist_length + tracks_playlist_b_length - numerator
@@ -284,17 +312,49 @@ class Database:
 
             # Jaccard
             numerator = sum([active_tracks_counter[track] * tracks_counter[track] for track in tracks if track in active_tracks])
-            denominator = sum([elem * elem for elem in active_tracks_counter.values()]) + sum([elem * elem for elem in tracks_counter.values()]) - numerator
+            denominator = sum([elem * elem for elem in active_tracks_counter.values()]) \
+                          + sum([elem * elem for elem in tracks_counter.values()]) - numerator
             try:
                 similarity = numerator / float(denominator)
             except ZeroDivisionError:
                 continue
+
             mean_square_difference = 1.0 - sum([(active_tracks_counter[track] - tracks_counter[track]) ** 2 for track in active_tracks if track in tracks])
             neighborhood.append([tracks, similarity * mean_square_difference])
+
+            # Naive Bayes
+
 
 
         neighborhood.sort(key=itemgetter(1), reverse=True)
         return [track for tracks, value in neighborhood[0:knn] for track in tracks]
+
+    def get_item_similarities(self, i, j):
+        """
+        This method maps the similarities between the tracks in the dataset
+        and returns the similarity between tracks i and j
+        :return:
+        """
+        try:
+            return self.similarities_map[(i,j)]
+
+        except KeyError:
+            try:
+                return self.similarities_map[(j,i)]
+            except KeyError:
+                return 0
+        except AttributeError:
+            similarities = list(helper.read("item-item-similarities", ","))
+            self.similarities_map = {}
+            for (i,j, value) in similarities:
+                i = int(i)
+                j = int(j)
+                value = float(value)
+                self.similarities_map[(i,j)] = value
+            try:
+                return self.similarities_map[(i,j)]
+            except KeyError:
+                return self.similarities_map[(j,i)]
 
 
 
@@ -367,6 +427,7 @@ class Database:
         try:
             return self.favourite_user_track_map[track]
         except KeyError:
+
             users = [playlist_final[playlist][4] for playlist in playlists]
             users_set = set(users)
             if users == []:
@@ -563,12 +624,10 @@ class Database:
         if the target_tracks does not exists it create the list from the corresponding csv
         :return:
         """
-        try:
-            return self.target_tracks
-        except AttributeError:
-            target_tracks = list(helper.read("target_tracks"))
-            self.target_tracks = [int(elem[0]) for elem in target_tracks[1:]]
-            return self.target_tracks
+        return self.target_tracks
+        target_tracks = self.cursor.execute("select track_id from target_tracks").fetchall()
+
+        return target_tracks
 
     def get_tracks_map(self):
         """
@@ -657,6 +716,20 @@ class Database:
         tracks_listened = [track for playlist in playlist_list for track in self.get_playlist_tracks(playlist)]
 
         return tracks_listened
+
+    def get_user_playlists(self, playlist):
+        """
+        return the playlists of the user who created the given playlist
+        :param playlist: the playlist of the user
+        :return: a list of tracks
+        """
+        playlist_final = self.get_playlist_final()
+        owned_by = playlist_final[playlist][4]
+
+        owner_playlist = self.get_owner_playlists()
+        playlist_list = owner_playlist[owned_by]
+
+        return playlist_list
 
     def get_playlist_user(self, playlist):
         """
