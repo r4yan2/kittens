@@ -188,6 +188,14 @@ class Recommender:
                 if len(recommendations) < 5:
                     recommendations = self.make_some_padding(target, recommendations)
 
+            elif choice == 17:
+                try:
+                    recommendations = self.make_playlist_based_recommendations(target)
+                except ValueError:
+                    pass
+                if len(recommendations) < 5:
+                    recommendations = self.make_some_padding(target, recommendations=recommendations)
+
             # doing testing things if test mode enabled
             if test:
                 test_result = self.check_recommendations(target, recommendations)
@@ -608,6 +616,37 @@ class Recommender:
         recs = recommendations + [recommendation for recommendation, value in possible_recommendations[0:knn]]
         return recs
 
+    def make_playlist_based_recommendations(self, playlist, target_tracks=[], knn=5):
+        """
+        Make Recommendations based on the similarity between playlists
+
+        :param playlist: Target playlist
+        :return: recommendations
+        :raise ValueError: if user had no other playlists or have playlist with some tracks but tagless
+        """
+        possible_recommendations = []
+        playlist_tags = set([tag for track in self.db.get_playlist_tracks(playlist) for tag in self.db.get_track_tags(track)])
+        neighborhood = self.db.playlist_playlist_similarity(playlist)
+        neighborhood_similarity_sum = math.fsum([value for playlist, value in neighborhood])
+        if target_tracks == []:
+            target_tracks = self.db.get_target_tracks()
+
+        if playlist_tags == []:
+            raise ValueError("user is strunz")
+
+        neighborhood_tracks = [track for playlist, value in neighborhood for track in self.db.get_playlist_tracks(playlist)]
+        target_tracks = set(target_tracks).intersection(set(neighborhood_tracks))
+        for track in target_tracks:
+
+            prediction = sum([float(track in self.db.get_playlist_tracks(playlist)) * value for playlist, value in neighborhood]) / neighborhood_similarity_sum
+            #track_tags = set(self.db.get_track_tags(track))
+            #coefficient = neighborhood_tracks.count(track) * len(playlist_tags.intersection(track_tags)) / (float(len(playlist_tags.union(track_tags))))
+
+            possible_recommendations.append([track, prediction])
+        possible_recommendations.sort(key=itemgetter(1), reverse=True)
+        recs = [recommendation for recommendation, value in possible_recommendations[0:knn]]
+        return recs
+
 
     def make_user_based_recommendations(self, playlist, target_tracks=[], knn=5):
         """
@@ -622,21 +661,21 @@ class Recommender:
         playlist_tags = set([tag for track in self.db.get_playlist_tracks(playlist) for tag in self.db.get_track_tags(track)])
         active_user = self.db.get_playlist_user(playlist)
         neighborhood = self.db.user_user_similarity(active_user)
+        neighborhood_similarity_sum = math.fsum([value for user, value in neighborhood])
         if target_tracks == []:
             target_tracks = self.db.get_target_tracks()
 
-        if user_tracks == []:
+        if playlist_tags == []:
             raise ValueError("user is strunz")
-        user_tracks_set = set(user_tracks)
 
-        neighborhood_tracks = [track for user in neighborhood for track in self.db.get_user_tracks(user)]
+        neighborhood_tracks = [track for user, value in neighborhood for track in self.db.get_user_tracks(user)]
         target_tracks = set(target_tracks).intersection(set(neighborhood_tracks))
         for track in target_tracks:
-            track_tags = set(self.db.get_track_tags(track))
-            shrink = math.log(1.0 + 1 / float(len(track_tags)),10) * len(playlist_tags)
-            coefficient = len(playlist_tags.intersection(track_tags)) / (float(len(playlist_tags.union(track_tags))) + shrink)
+            prediction = sum([self.db.get_user_tracks(user).count(track) * value for user, value in neighborhood]) / neighborhood_similarity_sum
+            #track_tags = set(self.db.get_track_tags(track))
+            #coefficient = neighborhood_tracks.count(track) * len(playlist_tags.intersection(track_tags)) / (float(len(playlist_tags.union(track_tags))))
 
-            possible_recommendations.append([track, coefficient])
+            possible_recommendations.append([track, prediction])
         possible_recommendations.sort(key=itemgetter(1), reverse=True)
 
         recs = [recommendation for recommendation, value in possible_recommendations[0:knn]]

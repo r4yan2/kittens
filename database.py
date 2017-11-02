@@ -101,20 +101,20 @@ class Database:
                 break
         self.train_list = helper.diff_test_set(train, self.test_set)
 
-    def get_user_set():
+    def get_user_set(self):
         try:
             return self.user_set
         except AttributeError:
             self.user_set = set([int(u) for (u,i,r) in list(helper.read("urm", ','))])
             return self.user_set
 
-    def get_user_tracks():
+    def get_user_tracks(self, user):
         try:
             return self.user_tracks[user]
         except AttributeError:
             self.user_tracks = defaultdict(lambda: [], {})
             for (u,i,r) in list(helper.read("urm", ',')):
-                user_tracks[int(u)].append(int(i))
+                self.user_tracks[int(u)].append(int(i))
             return self.user_tracks[user]
 
     def compute_content_playlists_similarity(self, playlist_a, knn=75, title_flag=1, tag_flag=0, track_flag=1):
@@ -596,18 +596,43 @@ class Database:
             self.playlist_final = result
             return self.playlist_final
 
+    def playlist_playlist_similarity(self, active_playlist, knn=20):
+        """
+        """
+        similarities = []
+        active_playlist_tracks = set(self.get_playlist_tracks(active_playlist))
+        playlists = self.get_playlists()
+        for playlist in playlists:
+            playlist_tracks = set(self.get_playlist_tracks(playlist))
+            try:
+                coefficient = len(active_playlist_tracks.intersection(playlist_tracks)) / (float(len(active_playlist_tracks.union(playlist_tracks))) \
+                                                                                            - len(active_playlist_tracks.intersection(playlist_tracks)))
+            except ZeroDivisionError:
+                coefficient == 0
+            if coefficient == 0:
+                continue
+            similarities.append([playlist, coefficient])
+        similarities.sort(key=itemgetter(1), reverse=True)
+        return similarities[0:knn]
+
     def user_user_similarity(self, active_user, knn=75):
         """
         """
         similarities = []
         active_user_tracks = set(self.get_user_tracks(active_user))
-        for user in users_set:
+        for user in self.get_user_set():
             user_tracks = set(self.get_user_tracks(user))
-            coefficient = len(active_user_tracks.intersection(user_tracks)) / float(len(active_user_tracks.union(user_tracks)))
+            try:
 
+                coefficient = len(active_user_tracks.intersection(user_tracks)) / (float(len(active_user_tracks.union(user_tracks))) \
+                                                                                - len(active_user_tracks.intersection(user_tracks)))
+            except ZeroDivisionError:
+                coefficient = 0
+            if coefficient == 0:
+                continue
             similarities.append([user, coefficient])
         similarities.sort(key=itemgetter(1), reverse=True)
-        return [user for user, coefficient in similarities[0:knn]]
+        return similarities[0:knn]
 
     def get_target_playlists(self):
         """

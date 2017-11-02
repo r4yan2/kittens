@@ -95,7 +95,7 @@ case $mode in
         14 "Neighborhood similarity recommendations" \
         15 "User based recommendations" \
         16 "Naive Bayes computation" \
-        3>&2 2>&1 1>&3)
+        17 "Playlist Based CF" 3>&2 2>&1 1>&3)
 
         if [[ -z "$recommendations" ]]; then exit 0; fi
 
