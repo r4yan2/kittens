@@ -103,20 +103,20 @@ class Database:
                 break
         self.train_list = helper.diff_test_set(train, self.test_set)
 
-    def get_user_set():
+    def get_user_set(self):
         try:
             return self.user_set
         except AttributeError:
             self.user_set = set([int(u) for (u,i,r) in list(helper.read("urm", ','))])
             return self.user_set
 
-    def get_user_tracks():
+    def get_user_tracks(self, user):
         try:
             return self.user_tracks[user]
         except AttributeError:
             self.user_tracks = defaultdict(lambda: [], {})
             for (u,i,r) in list(helper.read("urm", ',')):
-                user_tracks[int(u)].append(int(i))
+                self.user_tracks[int(u)].append(int(i))
             return self.user_tracks[user]
 
     def compute_content_playlists_similarity(self, playlist_a, knn=75, title_flag=1, tag_flag=0, track_flag=1):
