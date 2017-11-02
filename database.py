@@ -437,6 +437,31 @@ class Database:
                 self.favourite_user_track_map[track] = [user for user in users_set if users.count(user) == max_count]
             return self.favourite_user_track_map[track]
 
+    def get_normalized_rating(self, track):
+        """
+        """
+        try:
+            (v,c) = self.normalized_rating[track]
+            if c == 0:
+                return 0.0
+            rat = v/c
+            return rat
+        except AttributeError:
+            self.normalized_rating = defaultdict(lambda: (0,0),{})
+            urm = list(helper.read("urm", ','))
+            #user_set_length = len(set([int(u) for (u,i,v) in urm]))
+            #item_set = set([int(i) for (u,i,v) in urm])
+            for (u,i,v) in urm:
+                #u = int(u)
+                i = int(i)
+                v = float(v)
+                self.normalized_rating[i] = (self.normalized_rating[i][0] + v, self.normalized_rating[i][1] + 1)
+            (v,c) = self.normalized_rating[track]
+            if c == 0:
+                return 0.0
+            rat = v/c
+            return rat
+
     def get_playlist_tracks_ratings(self, playlist):
         """
         Get the ratings of the tracks in the playlist where each rating is the number of times the track
