@@ -870,9 +870,8 @@ class Recommender:
 
     def make_collaborative_item_item_recommendations(self, active_playlist, target_tracks=[], recommendations=[], knn=5):
         """
-        Bad because of the slowlyness. It's similar to the normal tf idf but takes
-        into account every track on the target playlist as single set of tags
-        insted of merging all tracks tags into a big list
+        Collaborative recommendations which uses item to item similarity
+        for building the neighborhood and the predictions 
 
         :param playlist: Target playlist
         :param target_tracks: target tracks

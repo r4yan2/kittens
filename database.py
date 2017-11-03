@@ -23,6 +23,11 @@ class Database:
             self.load_train_list()
 
     def get_target_playlists_tracks_set(self):
+        """
+        Compute the set of all the tracks present in playlists
+        
+        :return: a set of tracks
+        """
         try:
             return self.target_playlists_tracks_set
         except AttributeError:
@@ -104,6 +109,11 @@ class Database:
         self.train_list = helper.diff_test_set(train, self.test_set)
 
     def get_user_set(self):
+        """
+        Getter for the user set taken from the pre-built urm
+        
+        :return: user set
+        """
         try:
             return self.user_set
         except AttributeError:
@@ -111,6 +121,12 @@ class Database:
             return self.user_set
 
     def get_user_tracks(self, user):
+        """
+        Getter for the tracks of the user, taken from the pre-built urm
+        
+        :param user: the user for which we need the tracks
+        :return: the list of tracks
+        """
         try:
             return self.user_tracks[user]
         except AttributeError:

@@ -57,6 +57,8 @@ mode=$(whiptail --menu "Select Operational Mode" 15 70 5 \
 2 "Script Mode" \
 3 "Debug Mode" \
 3>&2 2>&1 1>&3)
+
+# if user has selected "Cancel" then exit
 if [[ -z "$mode" ]]; then exit 0; fi
 
 case $mode in
@@ -65,6 +67,8 @@ case $mode in
         0 "Compute test set (x3)" \
         1 "Compute neighborhood" \
         3>&2 2>&1 1>&3)
+        
+        # if user has selected "Cancel" then exit
         if [[ -z "$script" ]]; then exit 0; fi
         case $script in
           0)
@@ -97,8 +101,10 @@ case $mode in
         16 "Naive Bayes computation" \
         3>&2 2>&1 1>&3)
 
+        # if user has selected "Cancel" then exit
         if [[ -z "$recommendations" ]]; then exit 0; fi
 
+        # if in debug mode no progress bar is showed, so print could be shown
         if [[ "$mode" == "3" ]]
         then /usr/bin/pypy kittens.py 0 "$recommendations" 1 1
         else /usr/bin/pypy kittens.py "$mode" "$recommendations" "$core" 1 | whiptail --gauge "$running" 15 60 0
@@ -107,12 +113,15 @@ case $mode in
 esac
 case $mode in
     0)
+        # end of test mode with test results on screen
         whiptail --textbox data/test_result1.csv 12 60
     ;;
     3)
+        # end of debug mode
         exit 0
     ;;
     *)
+        # end with fancy message
         whiptail --msgbox "$end" 15 50
     ;;
 esac
