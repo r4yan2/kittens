@@ -217,7 +217,7 @@ class Database:
         knn_neighborg = [playlist for playlist, value in sorted(neighborhood[0:knn], key=itemgetter(1), reverse=True)]
         return knn_neighborg
 
-    def compute_collaborative_playlists_similarity(self, playlist, knn=80, coefficient="jaccard"):
+    def compute_collaborative_playlists_similarity(self, playlist, knn=50, coefficient="jaccard"):
         """
         This method computes the similarities between playlists based on the tracks that are in
         :param playlist:
@@ -226,9 +226,12 @@ class Database:
         playlists = self.get_playlists()
         tracks_playlist = set(self.get_playlist_tracks(playlist))
         tracks_playlist_length = len(tracks_playlist)
-
+        created_at_active = self.get_created_at_playlist(playlist)
         similarities = []
         for playlist_b in playlists:
+            created_at = self.get_created_at_playlist(playlist_b)
+            if not math.fabs(created_at_active - created_at) < (60 * 60 * 24 * 365):
+                continue
 
             tracks_playlist_b = self.get_playlist_tracks(playlist_b)
             tracks_playlist_b_length = len(tracks_playlist_b)
@@ -282,7 +285,7 @@ class Database:
                 similarities.append([playlist_b, pearson])
 
         similarities.sort(key=itemgetter(1), reverse=True)
-        return  [(playlist, value)  for playlist, value in similarities[0:knn]]
+        return  [playlist  for playlist, value in similarities[0:knn]]
 
     def get_user_based_collaborative_filtering(self, active_playlist, knn=50):
         """
@@ -650,7 +653,7 @@ class Database:
             try:
 
                 coefficient = len(active_user_tracks.intersection(user_tracks)) / (float(len(active_user_tracks.union(user_tracks))) \
-                                                                                - len(active_user_tracks.intersection(user_tracks)))
+                                                                                   - len(active_user_tracks.intersection(user_tracks)))
             except ZeroDivisionError:
                 continue
             similarities.append([user, coefficient])
@@ -811,14 +814,23 @@ class Database:
             return self.owner_playlist
 
         except AttributeError:
-            playlists = list(helper.read("playlists_final"))
+            playlists = self.get_playlist_final()
             self.owner_playlist = defaultdict(lambda: [], {})
-            for owner in playlists[1:]:
-                owned_by = int(owner[5])
-                playlist_id = int(owner[1])
-                self.owner_playlist[owned_by].append(playlist_id)
+            for playlist in playlists:
+                owned_by= playlists[playlist][4]
+                self.owner_playlist[owned_by].append(playlist)
 
             return self.owner_playlist
+
+    def get_created_at_playlist(self, playlist):
+        """
+
+        :return:
+        """
+        playlists = self.get_playlist_final()
+
+        return playlists[playlist][0]
+
 
     def get_track_duration(self, track):
         """
@@ -1042,7 +1054,17 @@ class Database:
         """
         map_tracks = self.get_tracks_map()
         artist = map_tracks[track][0]
-        return [track for track in map_tracks.keys() if artist == map_tracks[track][0]]
+        return [track for track in map_tracks if artist == map_tracks[track][0]]
+
+    def get_album_tracks(self, track):
+        """
+        Getter of all the songs of the album which contains also the current track
+        :param track: A single track
+        :return: the songs list
+        """
+        map_tracks = self.get_tracks_map()
+        album = map_tracks[track][3]
+        return [track for track in map_tracks if album == map_tracks[track][3]]
 
     def get_top_listened(self):
         """
