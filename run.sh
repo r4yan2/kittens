@@ -84,7 +84,7 @@ case $mode in
         3 "Top Tags" \
         4 "TF-IDF based on tags" \
         5 "Top-Tag combined TfIdf" \
-        6 "TfIdf combined Top-Tag" \
+        6 "Ensamble tfidf with naive bayes" \
         7 "TfIdf based on titles" \
         8 "Tfidf tags combined tfIdf titles" \
         9 "Top-Tag combined TfIdf titles" \
