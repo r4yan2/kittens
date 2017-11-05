@@ -29,7 +29,7 @@ def compute_item_item_similarities(db, q_in, q_out, number):
 fp = open('data/item-item-similarities.csv', 'w', 0)
 writer = csv.writer(fp, delimiter=',', quoting=csv.QUOTE_NONE)
 
-core=1
+core=4
 
 db = Database(1)
 
