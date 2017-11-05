@@ -247,16 +247,15 @@ class Database:
         similarities = []
         for playlist_b in playlists:
 
-            tracks_playlist_b = self.get_playlist_tracks(playlist_b)
+            tracks_playlist_b = set(self.get_playlist_tracks(playlist_b))
             tracks_playlist_b_length = len(tracks_playlist_b)
 
             if coefficient == "jaccard":
-                numerator = sum([float(track in tracks_playlist) for track in tracks_playlist_b])
-
-                denominator = tracks_playlist_length + tracks_playlist_b_length - numerator
-
-                jacard = numerator / denominator
-                similarities.append([playlist_b, jacard])
+                numerator = len(tracks_playlist.intersection(tracks_playlist_b))
+                denominator = len(tracks_playlist.union(tracks_playlist_b))
+                jacard = numerator / float(denominator)
+                MSD = 1.0 - (len(tracks_playlist.union(tracks_playlist_b).difference(tracks_playlist.intersection(tracks_playlist_b)))/float(len(tracks_playlist.union(tracks_playlist_b))))
+                similarities.append([playlist_b, jacard * MSD])
 
             elif coefficient == "map":
                 # MAP@k it may be useful if only we know how to use it
@@ -300,7 +299,7 @@ class Database:
                 similarities.append([playlist_b, pearson])
 
         similarities.sort(key=itemgetter(1), reverse=True)
-        return  [playlist  for playlist, value in similarities[0:knn]]
+        return  [playlist for playlist, value in similarities[0:knn]]
 
     def get_user_based_collaborative_filtering(self, active_playlist, knn=50):
         """
@@ -349,18 +348,20 @@ class Database:
         """
         This method maps the similarities between the tracks in the dataset
         and returns the similarity between tracks i and j
-        :return:
+        
+        :param i: track i int
+        :param j: track j int
+        :return: similarity between i and j float
         """
         try:
             return self.similarities_map[(i,j)]
-
         except KeyError:
             try:
                 return self.similarities_map[(j,i)]
             except KeyError:
-                return 0
+                return 0.0
         except AttributeError:
-            similarities = list(helper.read("item-item-similarities", ","))
+            similarities = list(helper.read("item-item-similarities1", ","))
             self.similarities_map = {}
             for (i,j, value) in similarities:
                 i = int(i)
@@ -371,8 +372,6 @@ class Database:
                 return self.similarities_map[(i,j)]
             except KeyError:
                 return self.similarities_map[(j,i)]
-
-
 
     def get_train_list(self):
         """
@@ -598,19 +597,19 @@ class Database:
         except AttributeError:
             self.tag_idf_track_map = {}
             track_map = self.get_tracks_map()
-            self.tracks_number = len(track_map.keys())
+            self.tracks_number = len(self.get_tracks())
             self.track_tags_map_a = [set(lst[4]) for lst in track_map.values()]
             tags = self.track_tags_map_a
             N = self.tracks_number
-            n = len([1 for lst in tags if tag in lst])
-            idf = math.log((N - n + 0.5) / (n + 0.5), 10)
+            n = sum([1.0 for lst in tags if tag in lst])
+            idf = math.log(1.0 + (N/n), 10)
             self.tag_idf_track_map[tag] = idf
             return idf
         except KeyError:
             tags = self.track_tags_map_a
             N = self.tracks_number
-            n = len([1 for lst in tags if tag in lst])
-            idf = math.log((N - n + 0.5) / (n + 0.5), 10)
+            n = sum([1.0 for lst in tags if tag in lst])
+            idf = math.log(1.0 + (N/n), 10)
             self.tag_idf_track_map[tag] = idf
             return idf
 
