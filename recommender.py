@@ -105,7 +105,9 @@ class Recommender:
                 recommendations = self.make_top_included_recommendations(target)
 
             elif choice == 3:
+
                 recommendations = self.make_top_tag_recommendations(target)
+
 
             elif choice == 4:
                 try:
@@ -328,13 +330,9 @@ class Recommender:
             target_tracks = self.db.get_target_tracks()
 
         neighborhood = self.db.compute_collaborative_playlists_similarity(active_playlist)
-        neighborhood2  =self.db.get_user_based_collaborative_filtering(active_playlist)
         neighborhood_tracks = [track for playlist in neighborhood for track in self.db.get_playlist_tracks(playlist)]
-        neighborhood_tracks2 = [track for playlist in neighborhood2 for track in self.db.get_playlist_tracks(playlist)]
-        set_neighborhood_tracks = set(neighborhood_tracks)
-        neigh_tracks = set_neighborhood_tracks.union(neighborhood_tracks2)
-        target_tracks = target_tracks.intersection(neigh_tracks)
-        #target_tracks = target_tracks.intersection(neighborhood_tracks)
+        target_tracks = target_tracks.intersection(neighborhood_tracks)
+
         knn -= len(recommendations)
         active_tracks = self.db.get_playlist_tracks(active_playlist) # get already included tracks
         already_included = active_tracks
@@ -343,7 +341,7 @@ class Recommender:
 
         top_tracks = []
         track_playlists_map = self.db.get_track_playlists_map()
-
+        print target_tracks
         for track in target_tracks: # make the actual recommendation
             track_duration = self.db.get_track_duration(track) # get the track length
             tags = self.db.get_track_tags(track)
