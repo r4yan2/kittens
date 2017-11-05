@@ -217,7 +217,7 @@ class Database:
         knn_neighborg = [playlist for playlist, value in sorted(neighborhood[0:knn], key=itemgetter(1), reverse=True)]
         return knn_neighborg
 
-    def compute_collaborative_playlists_similarity(self, playlist, knn=50, coefficient="jaccard"):
+    def compute_collaborative_playlists_similarity(self, playlist, knn=80, coefficient="jaccard"):
         """
         This method computes the similarities between playlists based on the tracks that are in
         :param playlist:
@@ -234,12 +234,11 @@ class Database:
             tracks_playlist_b_length = len(tracks_playlist_b)
 
             if coefficient == "jaccard":
-                numerator = sum([float(track in tracks_playlist) for track in tracks_playlist_b])
-
-                denominator = tracks_playlist_length + tracks_playlist_b_length - numerator
-
-                jacard = numerator / denominator
-                similarities.append([playlist_b, jacard])
+                numerator = len(tracks_playlist.intersection(tracks_playlist_b))
+                denominator = len(tracks_playlist.union(tracks_playlist_b))
+                jacard = numerator / float(denominator)
+                MSD = 1.0 - (len(tracks_playlist.union(tracks_playlist_b).difference(tracks_playlist.intersection(tracks_playlist_b)))/float(len(tracks_playlist.union(tracks_playlist_b))))
+                similarities.append([playlist_b, jacard * MSD])
 
             elif coefficient == "map":
                 # MAP@k it may be useful if only we know how to use it
@@ -283,7 +282,7 @@ class Database:
                 similarities.append([playlist_b, pearson])
 
         similarities.sort(key=itemgetter(1), reverse=True)
-        return  [playlist  for playlist, value in similarities[0:knn]]
+        return  [(playlist, value)  for playlist, value in similarities[0:knn]]
 
     def get_user_based_collaborative_filtering(self, active_playlist, knn=50):
         """
@@ -597,7 +596,7 @@ class Database:
             self.playlist_final = result
             return self.playlist_final
 
-    def playlist_playlist_similarity(self, active_playlist, knn=20):
+    def playlist_playlist_similarity(self, active_playlist, knn=50):
         """
         """
         similarities = []
@@ -606,15 +605,15 @@ class Database:
         for playlist in playlists:
             playlist_tracks = set(self.get_playlist_tracks(playlist))
             try:
-                coefficient = len(active_playlist_tracks.intersection(playlist_tracks)) / (float(len(active_playlist_tracks.union(playlist_tracks))) \
-                                                                                            - len(active_playlist_tracks.intersection(playlist_tracks)))
+                coefficient = len(active_playlist_tracks.intersection(playlist_tracks)) / float(len(active_playlist_tracks.union(playlist_tracks)))
+
             except ZeroDivisionError:
                 coefficient == 0
             if coefficient == 0:
                 continue
             similarities.append([playlist, coefficient])
         similarities.sort(key=itemgetter(1), reverse=True)
-        return similarities[0:knn]
+        return [playlist for playlist, coefficient in similarities[0:knn]]
 
     def user_user_similarity(self, active_user, knn=75):
         """
@@ -628,8 +627,6 @@ class Database:
                 coefficient = len(active_user_tracks.intersection(user_tracks)) / (float(len(active_user_tracks.union(user_tracks))) \
                                                                                 - len(active_user_tracks.intersection(user_tracks)))
             except ZeroDivisionError:
-                coefficient = 0
-            if coefficient == 0:
                 continue
             similarities.append([user, coefficient])
         similarities.sort(key=itemgetter(1), reverse=True)
@@ -661,7 +658,11 @@ class Database:
         if the target_tracks does not exists it create the list from the corresponding csv
         :return:
         """
-        return self.target_tracks
+        try:
+            return self.target_tracks
+        except:
+            self.target_tracks = [int(track[0]) for track in list(helper.read("target_tracks"))[1:]]
+            return self.target_tracks
 
     def get_tracks_map(self):
         """
@@ -751,16 +752,18 @@ class Database:
 
         return tracks_listened
 
-    def get_user_playlists(self, playlist):
+    def get_user_playlists(self, playlist, user=None):
         """
         return the playlists of the user who created the given playlist
         :param playlist: the playlist of the user
         :return: a list of tracks
         """
+        owner_playlist = self.get_owner_playlists()
+        if user:
+            return owner_playlist[user]
         playlist_final = self.get_playlist_final()
         owned_by = playlist_final[playlist][4]
 
-        owner_playlist = self.get_owner_playlists()
         playlist_list = owner_playlist[owned_by]
 
         return playlist_list
@@ -966,7 +969,7 @@ class Database:
     def get_top_included(self):
         """
         Return a list of tuples (track, value) where value is the number of featured playlists
-        
+
         :return: top included list
         """
         try:
@@ -998,7 +1001,7 @@ class Database:
     def get_artist(self, track):
         """
         Getter for the artist who made the track
-        
+
         :param track: A single track
         :return: the artist id integer
         """
@@ -1008,7 +1011,7 @@ class Database:
     def get_artist_tracks(self, track):
         """
         Getter for all the songs of the artist who made the track
-        
+
         :param track: A single track
         :return: the songs list
         """
@@ -1020,7 +1023,7 @@ class Database:
         """
         return a list of tuples (track, value) where
         value is the number of times played
-        
+
         :return: the top listened list sorted
         """
         try:
