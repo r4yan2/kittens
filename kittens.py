@@ -27,18 +27,6 @@ core = eval(sys.argv[3])
 # Initializing the recommender instance
 recommender_system = Recommender()
 
-"""
-connection = sqlite3.connect("data/db")
-connection.row_factory = lambda cursor, row: row[0]
-cursor = connection.cursor()
-
-
-sqlite_file      = "data/db"
-conn             = sqlite3.connect(sqlite_file)
-conn.row_factory = sqlite3.Row
-cursor           = conn.cursor()
-"""
-
 db = Database(instance) # the database is built accordingly to the number passed, 0 no test else test mode
 
 # This list will store the result just before writing to file
@@ -89,7 +77,7 @@ for i in xrange(target_playlists_length):
         logging.debug("worker number %i reporting result %s for playlist %i" % (r[1],r[0],r[2]))
         r = r[0]
         (map5, precision, recall) = r
-        
+
         # calculate a running map@5 value
         run_map5.append(map5)
         run_map5_n += 1
