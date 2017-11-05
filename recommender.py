@@ -209,7 +209,7 @@ class Recommender:
                 except ValueError:
                     recommendations = self.make_some_padding(target, recommendations)
 
-            elif choice == 17:
+            elif choice == 19:
                 try:
                     recommendations = self.make_playlist_based_recommendations(target)
                 except ValueError:
@@ -342,13 +342,8 @@ class Recommender:
             target_tracks = self.db.get_target_tracks()
 
         neighborhood = self.db.compute_collaborative_playlists_similarity(active_playlist)
-        neighborhood2  =self.db.get_user_based_collaborative_filtering(active_playlist)
         neighborhood_tracks = [track for playlist in neighborhood for track in self.db.get_playlist_tracks(playlist)]
-        neighborhood_tracks2 = [track for playlist in neighborhood2 for track in self.db.get_playlist_tracks(playlist)]
-        set_neighborhood_tracks = set(neighborhood_tracks)
-        neigh_tracks = set_neighborhood_tracks.union(neighborhood_tracks2)
-        target_tracks = target_tracks.intersection(neigh_tracks)
-        #target_tracks = target_tracks.intersection(neighborhood_tracks)
+        target_tracks = target_tracks.intersection(neighborhood_tracks)
         knn -= len(recommendations)
         active_tracks = self.db.get_playlist_tracks(active_playlist) # get already included tracks
         already_included = active_tracks
@@ -372,17 +367,16 @@ class Recommender:
                     value_a = 0
                 except ValueError:
                     value_a = 0
+                
                 try:
-                    # calculate second parameter: matched over track tags
-                    value_b = len(matched)/float(len(tags))
-                except ZeroDivisionError:
-                    value_b = 0
+                    MSD = (1.0 - len(active_tags_set.union(tags).difference(active_tags_set.intersection(tags)))/float(len(active_tags_set.union(tags))))
+                    value_c = (len(active_tags_set.intersection(tags))/float(len(active_tags_set.union(tags)))) * MSD
+                except ValueError:
+                    value_c = 0
 
-                top_value = len(track_playlists_map[track]) # get the value from the top-included
+                top_tracks.append([track, value_a * value_c * sum([self.db.get_item_similarities(track,j) for j in active_tracks])]) # joining all parameters together
 
-                top_tracks.append([track, value_a, value_b, top_value]) # joining all parameters together
-
-        top_tracks.sort(key=itemgetter(1, 2, 3), reverse=True)
+        top_tracks.sort(key=itemgetter(1), reverse=True)
         return recommendations + [recommendation[0] for recommendation in top_tracks[0:knn]]
 
     def make_tf_idf_recommendations(self, active_playlist, target_tracks=[], recommendations=[], knn=5, ensamble=0):
