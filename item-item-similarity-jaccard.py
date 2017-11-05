@@ -7,6 +7,7 @@ from operator import itemgetter
 
 def compute_item_item_similarities(db, q_in, q_out, number):
     gc.collect()
+    tracks = set(db.get_tracks()).difference(db.get_target_tracks())
     while True:
         (identifier, i) = q_in.get()
         print "worker", number, "IN", i
@@ -20,16 +21,21 @@ def compute_item_item_similarities(db, q_in, q_out, number):
         duration = db.get_track_duration(i)
         if not (duration > 30000 or duration < 0):
             continue
+        
+        # numerator jaccard = A intersection B
+        # denominator jaccard = A union B
+        # MSE numerator = disjoint element from A and B
+        # MSE denominator = A union B
 
-        similarities = [[i,j,(len(i_playlists.intersection(j_playlists)) / float(len(i_playlists.union(j_playlists)))) * (1.0 - (len(i_playlists.union(j_playlists).difference(i_playlists.intersection(j_playlists)))/float(len(i_playlists.union(j_playlists)))))] for j in db.get_target_playlists_tracks_set() for j_playlists in [set(db.get_track_playlists(j))] if i !=j and j_playlists != []]
+        similarities = [[i,j,(len(i_playlists.intersection(j_playlists)) / float(len(i_playlists.union(j_playlists)))) * (1.0 - (len(i_playlists.union(j_playlists).difference(i_playlists.intersection(j_playlists)))/float(len(i_playlists.union(j_playlists)))))] for j in tracks for j_playlists in [set(db.get_track_playlists(j))] if j_playlists != []]
 
-        q_out.put(sorted(similarities, key=itemgetter(2), reverse=True)[0:150])
+        q_out.put(sorted(similarities, key=itemgetter(2), reverse=True)[0:75])
         print "worker", number, "OUT", i
 
-fp = open('data/item-item-similarities.csv', 'w', 0)
+fp = open('data/item-item-similarities1.csv', 'w', 0)
 writer = csv.writer(fp, delimiter=',', quoting=csv.QUOTE_NONE)
 
-core=1
+core=4
 
 db = Database(1)
 
