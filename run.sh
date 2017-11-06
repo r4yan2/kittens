@@ -47,6 +47,7 @@ cpu=$(nproc --all)
 
 # select the amount of core to use core = min(available_memory mod 2GB, available_cpu)
 core=$(($mem<$cpu?$mem:$cpu))
+core=3
 
 whiptail --msgbox "$disclaimer" 15 70
 
@@ -67,7 +68,7 @@ case $mode in
         0 "Compute test set (x3)" \
         1 "Compute neighborhood" \
         3>&2 2>&1 1>&3)
-        
+
         # if user has selected "Cancel" then exit
         if [[ -z "$script" ]]; then exit 0; fi
         case $script in

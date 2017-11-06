@@ -317,9 +317,13 @@ class Database:
         active_tracks_counter = Counter(active_tracks)
         already_scanned_user = set()
         playlists = self.get_playlists()
+        created_at_active = self.get_created_at_playlist(playlist)
 
         neighborhood = []
         for playlist in playlists:
+            created_at = self.get_created_at_playlist(playlist_b)
+            if not math.fabs(created_at_active - created_at) < (60 * 60 * 24 * 365):
+                continue
             user = self.get_playlist_user(playlist)
             if user in already_scanned_user:
                 continue
