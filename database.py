@@ -246,7 +246,7 @@ class Database:
         similarities = []
         for playlist_b in playlists:
             created_at = self.get_created_at_playlist(playlist_b)
-            if not math.fabs(created_at_active - created_at) < (60 * 60 * 24 * 365):
+            if not math.fabs(created_at_active - created_at) < (60 * 60 * 24 * 365 * 2):
                 continue
 
             tracks_playlist_b = set(self.get_playlist_tracks(playlist_b))
@@ -640,7 +640,7 @@ class Database:
             self.playlist_final = result
             return self.playlist_final
 
-    def playlist_playlist_similarity(self, active_playlist, knn=50):
+    def playlist_playlist_similarity(self, active_playlist, knn=50, value="None"):
         """
         """
         similarities = []
@@ -657,6 +657,8 @@ class Database:
                 continue
             similarities.append([playlist, coefficient])
         similarities.sort(key=itemgetter(1), reverse=True)
+        if value == "all":
+            return similarities[0:knn]
         return [playlist for playlist, coefficient in similarities[0:knn]]
 
     def user_user_similarity(self, active_user, knn=75):
