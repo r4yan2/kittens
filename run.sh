@@ -47,7 +47,6 @@ cpu=$(nproc --all)
 
 # select the amount of core to use core = min(available_memory mod 2GB, available_cpu)
 core=$(($mem<$cpu?$mem:$cpu))
-core=3
 
 whiptail --msgbox "$disclaimer" 15 70
 
