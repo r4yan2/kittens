@@ -123,6 +123,9 @@ def pearsonr(x, y):
 
     return  numerator / denominator
 
+def parseIntList(lst):
+    return [int(num) for num in lst[1:-1].split(',') if num != 'None' and num != '']
+
 def LevenshteinDistance(s, s_len, t, t_len):
     """
     Compute the LevenshteinDistance in recursive way(slow)

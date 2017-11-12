@@ -134,7 +134,7 @@ class Database:
                 self.user_tracks[int(u)].append(int(i))
             return self.user_tracks[user]
 
-    def compute_content_playlists_similarity(self, playlist_a, knn=75, title_flag=1, tag_flag=0, track_flag=1):
+    def compute_content_playlists_similarity(self, playlist_a, knn=75, title_flag=1, tag_flag=0, track_flag=0, coefficient="jaccard"):
         """
         This method compute the neighborhood for a given playlists
 
@@ -156,6 +156,7 @@ class Database:
 
         if title_flag:
             playlist_a_titles = self.get_titles_playlist(playlist_a)
+            playlist_a_titles_set = set(playlist_a_titles)
 
         if track_flag:
             playlist_a_tracks = self.get_playlist_tracks(playlist_a)
@@ -163,21 +164,23 @@ class Database:
         if not (len(playlist_a_tags) and tag_flag or len(playlist_a_titles) and title_flag or len(playlist_a_tracks) and track_flag):
             raise ValueError("cannot generate neighborhood for", playlist_a)
 
-        if tag_flag:
+        if tag_flag and coefficient == "cosine":
             tf_idf_playlist_a_tag = [(1.0 + math.log(playlist_a_tags.count(tag),10)) * self.get_tag_idf(tag) for tag in playlist_a_tags]
 
-        if title_flag:
-            tf_idf_playlist_a_title = [(1.0 + math.log(playlist_a_titles.count(title),10)) * self.get_title_idf(title) for title in playlist_a_titles]
+        if title_flag and coefficient == "cosine":
+            tf_idf_playlist_a_title = [self.get_title_idf(title) for title in playlist_a_titles]
 
-        if track_flag:
+        if track_flag and coefficient == "cosine":
             tf_idf_playlist_a_track = [(1.0 + math.log(playlist_a_tracks.count(track),10)) * self.get_track_idf(track) for track in playlist_a_tracks]
 
-        tf_idf_playlist_a = tf_idf_playlist_a_tag + tf_idf_playlist_a_title + tf_idf_playlist_a_track
+        if coefficient == "cosine":
+            tf_idf_playlist_a = tf_idf_playlist_a_tag + tf_idf_playlist_a_title + tf_idf_playlist_a_track
 
         neighborhood = []
 
         for playlist_b in playlists:
 
+            similarity = []
             playlist_b_tags = []
             playlist_b_titles = []
             playlist_b_tracks = []
@@ -197,14 +200,14 @@ class Database:
             if not (len(playlist_b_tags) and tag_flag or len(playlist_b_titles) and title_flag or len(playlist_b_tracks) and track_flag):
                 continue
 
-            if tag_flag:
+            if tag_flag and coefficient == "cosine":
                 tf_idf_playlist_b_tag = [(1.0 + math.log(playlist_b_tags.count(tag),10)) * self.get_tag_idf(tag) for tag in playlist_b_tags]
 
-            if title_flag:
-                tf_idf_playlist_b_title = [(1.0 + math.log(playlist_b_titles.count(title),10)) * self.get_title_idf(title) for title in playlist_b_titles]
+            if title_flag and coefficient == "cosine":
+                tf_idf_playlist_b_title = [self.get_title_idf(title) for title in playlist_b_titles]
 
-            if track_flag:
-                tf_idf_playlist_b_track = [(1.0 + math.log(playlist_b_tracks.count(track),10)) * self.get_track_idf(track) for track in playlist_b_tracks]
+            if track_flag and coefficient == "cosine":
+                tf_idf_playlist_b_track = [self.get_track_idf(track) for track in playlist_b_tracks]
 
             tf_idf_playlist_b = tf_idf_playlist_b_tag + tf_idf_playlist_b_title + tf_idf_playlist_b_track
 
@@ -212,24 +215,28 @@ class Database:
             num_cosine_sim_title = 0
             num_cosine_sim_track = 0
 
-            if tag_flag:
-                num_cosine_sim_tag = sum([tf_idf_playlist_a[playlist_a_tags.index(tag)] * tf_idf_playlist_b[playlist_b_tags.index(tag)] for tag in playlist_b_tags if tag in playlist_a_tags])
+            if tag_flag and coefficient == "cosine":
+                num_cosine_sim_tag = sum([tf_idf_playlist_a_tag[playlist_a_tags.index(tag)] * tf_idf_playlist_b_tag[playlist_b_tags.index(tag)] for tag in playlist_b_tags if tag in playlist_a_tags])
 
-            if title_flag:
-                num_cosine_sim_title = sum([tf_idf_playlist_a[playlist_a_titles.index(title)] * tf_idf_playlist_b[playlist_b_titles.index(title)] for title in playlist_b_titles if title in playlist_a_titles])
+            if title_flag and coefficient == "cosine":
+                num_cosine_sim_title = sum([tf_idf_playlist_a_title[playlist_a_titles.index(title)] * tf_idf_playlist_b_title[playlist_b_titles.index(title)] for title in playlist_b_titles if title in playlist_a_titles])
+            elif title_flag and coefficient == "jaccard":
+                try:
+                    similarity = ( len(playlist_a_titles_set.intersection(playlist_b_titles))/float(len(playlist_a_titles_set.union(playlist_b_titles))) ) * (1.0 - (len(playlist_a_titles_set.union(playlist_b_titles).difference(playlist_a_titles_set.intersection(playlist_b_titles)))/float(len(playlist_a_titles_set.union(playlist_b_titles)))))
+                except:
+                    continue
+            if track_flag and coefficient == "cosine":
+                num_cosine_sim_track = sum([tf_idf_playlist_a_track[playlist_a_tracks.index(track)] * tf_idf_playlist_b_track[playlist_b_tracks.index(track)] for track in playlist_b_tracks if track in playlist_a_tracks])
 
-            if track_flag:
-                num_cosine_sim_track = sum([tf_idf_playlist_a[playlist_a_tracks.index(track)] * tf_idf_playlist_b[playlist_b_tracks.index(track)] for track in playlist_b_tracks if track in playlist_a_tracks])
+            if coefficient == "cosine":
+                num_cosine_sim = num_cosine_sim_tag + num_cosine_sim_title + num_cosine_sim_track
+                den_cosine_sim = math.sqrt(sum([i ** 2 for i in tf_idf_playlist_a])) * math.sqrt(sum([i ** 2 for i in tf_idf_playlist_b]))
 
-            num_cosine_sim = num_cosine_sim_tag + num_cosine_sim_title + num_cosine_sim_track
-            den_cosine_sim = math.sqrt(sum([i ** 2 for i in tf_idf_playlist_a])) * math.sqrt(
-                sum([i ** 2 for i in tf_idf_playlist_b]))
-
-            try:
-                cosine_sim = num_cosine_sim / den_cosine_sim
-            except ZeroDivisionError:
-                cosine_sim = 0
-            neighborhood.append([playlist_b, cosine_sim])
+                try:
+                    similarity = num_cosine_sim / den_cosine_sim
+                except ZeroDivisionError:
+                    continue
+            neighborhood.append([playlist_b, similarity])
         knn_neighborg = [playlist for playlist, value in sorted(neighborhood[0:knn], key=itemgetter(1), reverse=True)]
         return knn_neighborg
 
@@ -244,9 +251,12 @@ class Database:
         tracks_playlist_length = len(tracks_playlist)
         created_at_active = self.get_created_at_playlist(playlist)
         similarities = []
+
         for playlist_b in playlists:
+
             created_at = self.get_created_at_playlist(playlist_b)
-            if not math.fabs(created_at_active - created_at) < (60 * 60 * 24 * 365 * 2):
+            diff = math.fabs(created_at_active - created_at)
+            if not diff < (60 * 60 * 24 * 365 * 2):
                 continue
 
             tracks_playlist_b = set(self.get_playlist_tracks(playlist_b))
@@ -362,6 +372,7 @@ class Database:
         try:
             return self.similarities_map[(i,j)]
         except KeyError:
+            return 0.0
             try:
                 return self.similarities_map[(j,i)]
             except KeyError:
@@ -377,6 +388,7 @@ class Database:
             try:
                 return self.similarities_map[(i,j)]
             except KeyError:
+                return 0.0
                 return self.similarities_map[(j,i)]
 
     def get_train_list(self):
@@ -585,7 +597,7 @@ class Database:
         N = len(self.get_playlists())
         n = float(len(playlist_tags_included))
         try:
-            idf = math.log((N - n + 0.5) / (n + 0.5), 10)
+            idf = 0.5 + math.log((N - n + 0.5) / (n + 0.5), 10)
         except ValueError:
             idf = 0
         except ZeroDivisionError:
@@ -635,7 +647,7 @@ class Database:
             for playlist in playlist_list[1:]:
                 created_at = int(playlist[0])
                 playlist_id = int(playlist[1])
-                title = eval(playlist[2])
+                title = helper.parseIntList(playlist[2])
                 numtracks = int(playlist[3])
                 duration = int(playlist[4])
                 owner = int(playlist[5])
@@ -770,16 +782,13 @@ class Database:
                 playcount = float(track[3]) # yes, PLAYCOUNT is memorized as a floating point
             except ValueError:
                 playcount = 0.0
-            album = eval(track[4])
+            album = helper.parseIntList(track[4])
             try:
                 album = int(album[0])  # yes again, album is memorized as a list, even if no track have more than 1 album
-            except TypeError:
+            except:
                 album = iterator
                 iterator -= 1
-            except IndexError:
-                album = iterator
-                iterator -= 1
-            tags = eval(track[5]) # evaluation of the tags list
+            tags = helper.parseIntList(track[5]) # evaluation of the tags list
 
             tags_extended = [artist_id * 10000] + [album * 1000000000 if album > 0 else iterator] + tags
 
