@@ -8,9 +8,9 @@ from operator import itemgetter
 class Database:
     def __init__(self, test):
         """
-        initializing the database:
+        if we are in test execution train_set, test_set are loaded transparently,
+        otherwise the normal dataset are loaded
 
-        * if we are in test execution train set is splitted and test_set is generated
         :param test: istance
         :return: the initialized object
         """
@@ -40,7 +40,8 @@ class Database:
         """
         getter for the test_set, used when the engine is run in Test Mode
         if the set is not defined compute it with the appropriate method
-        :return:
+
+        :return: list of playlist,track corresponding to the slice of train taken
         """
         return self.test_set
 
@@ -136,10 +137,14 @@ class Database:
 
     def compute_content_playlists_similarity(self, playlist_a, knn=75, title_flag=1, tag_flag=0, track_flag=0, coefficient="jaccard"):
         """
-        This method compute the neighborhood for a given playlists
+        This method compute the neighborhood for a given playlists by using content or collaborative techniques
 
         :param playlist_a: given playlist_a
         :param knn: cardinality of the neighborhood
+        :param title_flag: specify if title have to be used
+        :param tag_flag: specify if tag have to be used
+        :param track_flag: specify if track have to be used
+        :coefficient: specify which coefficient to use
         :return: neighborhood
         """
         playlists = self.get_playlists()
@@ -240,11 +245,17 @@ class Database:
         knn_neighborg = [playlist for playlist, value in sorted(neighborhood[0:knn], key=itemgetter(1), reverse=True)]
         return knn_neighborg
 
-    def compute_collaborative_playlists_similarity(self, playlist, knn=50, coefficient="jaccard"):
+    def compute_collaborative_playlists_similarity(self, playlist, knn=50, coefficient="jaccard", values="None"):
         """
-        This method computes the similarities between playlists based on the tracks that are in
-        :param playlist:
-        :return:
+        This method computes the similarities between playlists based on the included tracks.
+        Various coefficient can be used (jaccard, map, cosine, pearson)
+        NB: the best is jaccard
+
+        :param playlist: active_playlist
+        :param knn: cardinality of the neighborhood
+        :param coefficient: coefficient to use
+        :param values: if None return only the playlists, if all return also the values
+        :return: list of playlists
         """
         playlists = self.get_playlists()
         tracks_playlist = set(self.get_playlist_tracks(playlist))
@@ -311,27 +322,32 @@ class Database:
                 similarities.append([playlist_b, pearson])
 
         similarities.sort(key=itemgetter(1), reverse=True)
-        return  [playlist for playlist, value in similarities[0:knn]]
+        if values == "None":
+            return  [playlist for playlist, value in similarities[0:knn]]
+        elif values == "all":
+            return similarities[0:knn]
 
-    def get_user_based_collaborative_filtering(self, active_playlist, knn=50):
+    def get_user_based_collaborative_filtering(self, active_playlist, knn=20, coefficient="jaccard"):
         """
-        This method is created in order to provide a CF using users and tracks, and computes the similarities between different users
-        considering the most K similar users to the active one; this is done using different similarity coefficients as
-        Pearson, Jaccard or Cosine, counting the number of times a user includes a track in his playlists
+        This method is created in order to provide a CF via users.
+        Calculate the most K similar users to the active one by jaccard index
 
         :param playlist: active playlist
-        :return: list of similar user
+        :param knn: cardinality of the neighborhood
+        :param coefficient: coefficient to use
+        :return: list of tracks of the knn similar users
         """
 
         active_tracks = self.get_playlist_user_tracks(active_playlist)
         active_tracks_counter = Counter(active_tracks)
+        active_tracks_set = set(active_tracks)
         already_scanned_user = set()
         playlists = self.get_playlists()
-        created_at_active = self.get_created_at_playlist(playlist)
+        created_at_active = self.get_created_at_playlist(active_playlist)
 
         neighborhood = []
         for playlist in playlists:
-            created_at = self.get_created_at_playlist(playlist_b)
+            created_at = self.get_created_at_playlist(playlist)
             if not math.fabs(created_at_active - created_at) < (60 * 60 * 24 * 365):
                 continue
             user = self.get_playlist_user(playlist)
@@ -340,23 +356,26 @@ class Database:
             already_scanned_user.add(user)
             tracks = self.get_playlist_user_tracks(playlist)
             tracks_counter = Counter(tracks)
+            tracks_set = set(tracks)
 
-            # Jaccard
-            numerator = sum([active_tracks_counter[track] * tracks_counter[track] for track in tracks if track in active_tracks])
-            denominator = sum([elem * elem for elem in active_tracks_counter.values()]) \
-                          + sum([elem * elem for elem in tracks_counter.values()]) - numerator
-            try:
-                similarity = numerator / float(denominator)
-            except ZeroDivisionError:
-                continue
+            if coefficient == "wtf":
+                # Jaccard
+                numerator = sum([active_tracks_counter[track] * tracks_counter[track] for track in tracks if track in active_tracks])
+                denominator = sum([elem * elem for elem in active_tracks_counter.values()]) \
+                              + sum([elem * elem for elem in tracks_counter.values()]) - numerator
+                try:
+                    jaccard = numerator / float(denominator)
+                except ZeroDivisionError:
+                    continue
 
-            mean_square_difference = 1.0 - sum([(active_tracks_counter[track] - tracks_counter[track]) ** 2 for track in active_tracks if track in tracks])
-            neighborhood.append([tracks, similarity * mean_square_difference])
+                mean_square_difference = 1.0 - sum([(active_tracks_counter[track] - tracks_counter[track]) ** 2 for track in active_tracks if track in tracks])
 
-            # Naive Bayes
+                similarity = jaccard * mean_square_difference
 
+            elif coefficient == "jaccard":
+                similarity = helper.jaccard(active_tracks_set, tracks_set)
 
-
+            neighborhood.append([tracks, similarity])
         neighborhood.sort(key=itemgetter(1), reverse=True)
         return [track for tracks, value in neighborhood[0:knn] for track in tracks]
 
@@ -469,31 +488,6 @@ class Database:
                 max_count = max([users.count(user) for user in users_set])
                 self.favourite_user_track_map[track] = [user for user in users_set if users.count(user) == max_count]
             return self.favourite_user_track_map[track]
-
-    def get_normalized_rating(self, track):
-        """
-        """
-        try:
-            (v,c) = self.normalized_rating[track]
-            if c == 0:
-                return 0.0
-            rat = v/c
-            return rat
-        except AttributeError:
-            self.normalized_rating = defaultdict(lambda: (0,0),{})
-            urm = list(helper.read("urm", ','))
-            #user_set_length = len(set([int(u) for (u,i,v) in urm]))
-            #item_set = set([int(i) for (u,i,v) in urm])
-            for (u,i,v) in urm:
-                #u = int(u)
-                i = int(i)
-                v = float(v)
-                self.normalized_rating[i] = (self.normalized_rating[i][0] + v, self.normalized_rating[i][1] + 1)
-            (v,c) = self.normalized_rating[track]
-            if c == 0:
-                return 0.0
-            rat = v/c
-            return rat
 
     def get_playlist_tracks_ratings(self, playlist):
         """
@@ -656,27 +650,6 @@ class Database:
             self.playlist_final = result
             return self.playlist_final
 
-    def playlist_playlist_similarity(self, active_playlist, knn=50, value="None"):
-        """
-        """
-        similarities = []
-        active_playlist_tracks = set(self.get_playlist_tracks(active_playlist))
-        playlists = self.get_playlists()
-        for playlist in playlists:
-            playlist_tracks = set(self.get_playlist_tracks(playlist))
-            try:
-                coefficient = len(active_playlist_tracks.intersection(playlist_tracks)) / float(len(active_playlist_tracks.union(playlist_tracks)))
-
-            except ZeroDivisionError:
-                coefficient == 0
-            if coefficient == 0:
-                continue
-            similarities.append([playlist, coefficient])
-        similarities.sort(key=itemgetter(1), reverse=True)
-        if value == "all":
-            return similarities[0:knn]
-        return [playlist for playlist, coefficient in similarities[0:knn]]
-
     def user_user_similarity(self, active_user, knn=75):
         """
         """
@@ -723,7 +696,8 @@ class Database:
         try:
             return self.target_tracks
         except:
-            self.target_tracks = [int(track[0]) for track in list(helper.read("target_tracks"))[1:]]
+            # the set cast is just for commodity
+            self.target_tracks = set([int(track[0]) for track in list(helper.read("target_tracks"))[1:]])
             return self.target_tracks
 
     def get_tracks_map(self):
