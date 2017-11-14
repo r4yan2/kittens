@@ -245,6 +245,28 @@ class Database:
         knn_neighborg = [playlist for playlist, value in sorted(neighborhood[0:knn], key=itemgetter(1), reverse=True)]
         return knn_neighborg
 
+    def get_min_max_playlists(self):
+        """
+        """
+        try:
+            return self.min_playlist, self.max_playlist
+        except AttributeError:
+            playlists = self.get_playlists()
+            self.min_playlist = min(playlists)
+            self.max_playlist = max(playlists)
+            return self.min_playlist, self.max_playlist
+
+    def get_min_max_tracks(self):
+        """
+        """
+        try:
+            return self.min_track, self.max_track
+        except AttributeError:
+            tracks = self.get_tracks()
+            self.min_track = min(tracks)
+            self.max_track = max(tracks)
+            return self.min_track, self.max_track
+
     def compute_collaborative_playlists_similarity(self, playlist, knn=50, coefficient="jaccard", values="None"):
         """
         This method computes the similarities between playlists based on the included tracks.
@@ -409,6 +431,36 @@ class Database:
             except KeyError:
                 return 0.0
                 return self.similarities_map[(j,i)]
+
+
+    def set_item_similarities(self, i, j, update):
+        """
+        """
+
+        try:
+            value = self.similarities_map[(i,j)]
+            self.similarities_map[(i,j)] = value + update
+        except KeyError:
+            try:
+                value = self.similarities_map[(j,i)]
+                self.similarities_map[(j,i)] = value + update
+            except KeyError:
+                pass
+
+
+    def null_item_similarities(self, i, j):
+        """
+        """
+        try:
+            value = self.similarities_map[(i,j)]
+            self.similarities_map[(i,j)] = 0
+        except KeyError:
+            try:
+                value = self.similarities_map[(j,i)]
+                self.similarities_map[(j,i)] = 0
+            except KeyError:
+                pass
+
 
     def get_train_list(self):
         """
