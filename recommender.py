@@ -82,6 +82,11 @@ class Recommender:
         # Retrieve the db from the list of arguments
         self.db = db
 
+        # run some epoch_iteration
+        for i in xrange(1,11):
+            logging.debug("epoch %i/10" % i)
+            self.epoch_iteration()
+
         # main loop for the worker
         while True:
 
@@ -1020,7 +1025,7 @@ class Recommender:
 
         train_list = self.db.get_train_list()
         # Get number of available interactions
-        numPositiveIteractions = int(len(train_list) * 0.001)
+        numPositiveIteractions = int(len(train_list) * 0.05)
 
         # Uniform user sampling without replacement
         for _ in xrange(numPositiveIteractions):
@@ -1080,10 +1085,6 @@ class Recommender:
             raise ValueError("playlist is empty")
 
         predictions = []
-
-        for i in xrange(1,11):
-            logging.debug("epoch %i/10" % i)
-            self.epoch_iteration()
 
         for i in target_tracks:
             duration = self.db.get_track_duration(i)
