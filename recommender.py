@@ -1016,6 +1016,48 @@ class Recommender:
         except ValueError: #playlist have no title
             return filtered[0:5]
 
+    def epoch_iteration(self, learning_rate=0.01):
+
+        train_list = self.db.get_train_list()
+        # Get number of available interactions
+        numPositiveIteractions = int(len(train_list) * 0.001)
+
+        # Uniform user sampling without replacement
+        for _ in xrange(numPositiveIteractions):
+
+            # Sample
+            check = True
+            while check:
+                v_min, v_max = self.db.get_min_max_playlists()
+                playlist = random.randint(v_min, v_max)
+                playlist_tracks = self.db.get_playlist_tracks(playlist)
+                len_playlist_tracks = len(playlist_tracks)
+                check = not len_playlist_tracks > 10
+
+            positive_item_id = playlist_tracks[random.randint(0, len_playlist_tracks-1)]
+            check = True
+            while check:
+                v_min, v_max = self.db.get_min_max_tracks()
+                negative_item_id = random.randint(v_min, v_max)
+                check = negative_item_id in playlist_tracks
+
+            # Prediction
+            x_i = sum([self.db.get_item_similarities(positive_item_id, track) for track in playlist_tracks])
+            x_j = sum([self.db.get_item_similarities(negative_item_id, track) for track in playlist_tracks])
+
+            # Gradient
+            x_ij = x_i - x_j
+
+            gradient = 1 / (1 + math.exp(x_ij))
+
+            # Update
+            [self.db.set_item_similarities(positive_item_id, track, learning_rate * gradient) for track in playlist_tracks]
+            self.db.null_item_similarities(positive_item_id, positive_item_id)
+
+            [self.db.set_item_similarities(negative_item_id, track, -learning_rate * gradient) for track in playlist_tracks]
+            self.db.null_item_similarities(negative_item_id, negative_item_id)
+
+
     def make_collaborative_item_item_recommendations(self, active_playlist, target_tracks=[], recommendations=[], knn=5, ensemble=0):
         """
         Collaborative recommendations which uses pre-computed item to item similarity
@@ -1038,6 +1080,10 @@ class Recommender:
             raise ValueError("playlist is empty")
 
         predictions = []
+
+        for i in xrange(1,11):
+            logging.debug("epoch %i/10" % i)
+            self.epoch_iteration()
 
         for i in target_tracks:
             duration = self.db.get_track_duration(i)
