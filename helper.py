@@ -56,7 +56,7 @@ def read(what, delimiter='\t'):
 
 def cumulative_sum(lis):
     """
-    Do a cumulative sum operation on a given listed
+    Do a cumulative sum operation on a given list
     [1,2,3] -> [1,3,6]
 
     :param lis: the list to process

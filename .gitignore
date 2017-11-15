@@ -4,7 +4,9 @@
 *.pyc
 *.swp
 *.log
+item*
 .idea/
+env/
 data/
 doc/
 log/

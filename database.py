@@ -299,14 +299,14 @@ class Database:
             not_matched = tracks_playlist.union(tracks_playlist_b).difference(matched)
             not_matched_len = len(not_matched)
             
-            MSE = - not_matched_len / float(len(tracks_playlist.union(tracks_playlist_b)))
+            MSE = not_matched_len / float(len(tracks_playlist.union(tracks_playlist_b)))
 
             if coefficient == "jaccard":
                 numerator = matched_len
                 denominator = len(tracks_playlist.union(tracks_playlist_b))
-                jacard = numerator / float(denominator)
+                jaccard = numerator / float(denominator)
                 MSD = 1.0 - (len(tracks_playlist.union(tracks_playlist_b).difference(tracks_playlist.intersection(tracks_playlist_b)))/float(len(tracks_playlist.union(tracks_playlist_b))))
-                similarities.append([playlist_b, jacard * MSD, MSE])
+                similarities.append([playlist_b, jaccard * MSD])
 
             elif coefficient == "map":
                 # MAP@k it may be useful if only we know how to use it

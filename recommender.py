@@ -16,7 +16,7 @@ class Recommender:
         Init method for recommender class. The parameters may be always empty, except for debug cases in which
         one may want to pass a database istance to use
 
-        :param db: Defaulted to None, only useful for terminal debugging
+        :param db: Defaulted to None, only for terminal debugging
         :return: the allocated object
         """
         if db:
@@ -37,8 +37,8 @@ class Recommender:
         test_set = self.db.get_playlist_relevant_tracks(playlist)
         test_set_length = len(test_set)
         if len(recommendations) != 5:
-
             raise ValueError('Recommendations list have less than 5 recommendations')
+        
         is_relevant = [float(item in test_set) for item in recommendations]
         is_relevant_length = len(is_relevant)
 
@@ -53,13 +53,13 @@ class Recommender:
 
         # Precision
         try:
-            precision = sum(is_relevant)/float(is_relevant_length)
+            precision = sum(is_relevant)/is_relevant_length
         except ZeroDivisionError:
             precision = 0
 
         # Recall
         try:
-            recall = sum(is_relevant)/float(test_set_length)
+            recall = sum(is_relevant)/test_set_length
         except ZeroDivisionError:
             recall = 0
 
@@ -83,9 +83,9 @@ class Recommender:
         self.db = db
 
         # run some epoch_iteration
-        for i in xrange(1,11):
-            logging.debug("epoch %i/10" % i)
-            self.epoch_iteration()
+        #for i in xrange(1,11):
+        #    logging.debug("epoch %i/10" % i)
+        #    self.epoch_iteration()
 
         # main loop for the worker
         while True:
@@ -346,6 +346,13 @@ class Recommender:
         neighborhood_number = 0
         active_tracks = self.db.get_playlist_tracks(active_playlist) # get already included tracks
 
+        while len(target_tracks) < 75:
+            neighborhood_number += 1
+            target_tracks = self.db.get_target_tracks()
+            neighborhood = self.db.compute_collaborative_playlists_similarity(active_playlist, knn=neighborhood_number)
+            neighborhood_tracks = [track for playlist in neighborhood for track in self.db.get_playlist_tracks(playlist)]
+            target_tracks = target_tracks.intersection(neighborhood_tracks).difference(active_tracks)
+        
         knn -= len(recommendations)
         already_included = active_tracks
         active_tags = [tag for track in active_tracks for tag in self.db.get_track_tags(track)]
@@ -374,10 +381,12 @@ class Recommender:
                 value_c = (len(active_tags_set.intersection(tags))/float(len(active_tags_set.union(tags)))) * MSD
             except ValueError:
                 value_c = 0
+                
+            value_d = len(matched)
 
-            top_tracks.append([track, value_c * helper.mean([self.db.get_item_similarities(track,j) for j in active_tracks]) * value_a]) # joining all parameters together
+            top_tracks.append([track, value_c, sum([self.db.get_item_similarities_alt(track,j) for j in active_tracks]), value_d, value_a]) # joining all parameters together
 
-        top_tracks.sort(key=itemgetter(1), reverse=True)
+        top_tracks.sort(key=itemgetter(2,1,3,4), reverse=True)
         if ensemble:
             return top_tracks[0:knn]
         return recommendations + [recommendation[0] for recommendation in top_tracks[0:knn]]
@@ -599,7 +608,7 @@ class Recommender:
                 duration = self.db.get_track_duration(track)
                 if track in playlist_tracks_set or not (duration > 30000 or duration < 0):
                     continue
-                prediction = sum([self.db.get_item_similarities(track,j) for j in owner_playlists_tracks])
+                prediction = sum([self.db.get_item_similarities_alt(track,j) for j in owner_playlists_tracks])
                 predictions.append([track, prediction])
             predictions.sort(key=itemgetter(1), reverse=True)
             return [recommendation for recommendation, _ in predictions[0:knn]]
@@ -826,7 +835,7 @@ class Recommender:
             duration = self.db.get_track_duration(i)
             if (duration <= 30000 and duration >= 0):
                 continue
-            prediction = sum([self.db.get_item_similarities(i,j) for j in playlist_tracks])
+            prediction = sum([self.db.get_item_similarities_alt(i,j) for j in playlist_tracks])
             possible_recommendations.append([i, prediction])
 
         possible_recommendations.sort(key=itemgetter(1), reverse=True)
@@ -997,6 +1006,13 @@ class Recommender:
             recommendations3 = defaultdict(lambda: 0.0, {item[0]: (item[1] / float(normalizing3)) for item in recommendations3})
         except ZeroDivisionError:
             recommendations3 = defaultdict(lambda: 0.0, {})
+            
+        try:
+            recommendations5 = self.make_bad_tf_idf_recommendations(playlist, knn=knn, ensamble=1)
+            normalizing5 = max(recommendations5, key=itemgetter(1))[1]
+            recommendations4 = defaultdict(lambda: 0.0, {item[0]: (item[1] / float(normalizing5)) for item in recommendations4})
+        except ZeroDivisionError:
+            recommendations5 = defaultdict(lambda: 0.0, {})
 
         try:
             recommendations4 = self.make_bad_tf_idf_recommendations_jaccard(playlist, target_tracks=target_tracks, knn=knn, ensemble=1)
@@ -1082,8 +1098,8 @@ class Recommender:
                 check = negative_item_id in playlist_tracks
 
             # Prediction
-            x_i = sum([self.db.get_item_similarities(positive_item_id, track) for track in playlist_tracks])
-            x_j = sum([self.db.get_item_similarities(negative_item_id, track) for track in playlist_tracks])
+            x_i = sum([self.db.get_item_similarities_alt(positive_item_id, track) for track in playlist_tracks])
+            x_j = sum([self.db.get_item_similarities_alt(negative_item_id, track) for track in playlist_tracks])
 
             # Gradient
             x_ij = x_i - x_j
@@ -1125,7 +1141,7 @@ class Recommender:
             duration = self.db.get_track_duration(i)
             if i in playlist_tracks_set or not (duration > 30000 or duration < 0):
                 continue
-            prediction = sum([self.db.get_item_similarities(i,j) for j in playlist_tracks_set])
+            prediction = sum([self.db.get_item_similarities_alt(i,j) for j in playlist_tracks_set])
             predictions.append([i, prediction])
 
         recommendations = sorted(predictions, key=itemgetter(1), reverse=True)[0:knn]
