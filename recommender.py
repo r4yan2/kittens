@@ -82,11 +82,6 @@ class Recommender:
         # Retrieve the db from the list of arguments
         self.db = db
 
-        # run some epoch_iteration
-        #for i in xrange(1,11):
-        #    logging.debug("epoch %i/10" % i)
-        #    self.epoch_iteration()
-
         # main loop for the worker
         while True:
 
@@ -110,7 +105,6 @@ class Recommender:
                 recommendations = self.make_top_included_recommendations(target)
 
             elif choice == 3:
-
                 recommendations = self.make_top_tag_recommendations(target)
 
             elif choice == 4:
@@ -158,7 +152,7 @@ class Recommender:
                     recommendations = self.make_collaborative_item_item_recommendations(target)
                 except ValueError:
                     recommendations = self.make_top_included_recommendations(target)
-                if len(recommendations) < 5: # if there are not enough artist tracks to recommend or if the tracks have a strage avg duration
+                if len(recommendations) < 5: # if there are not enough artist tracks to recommend
                     recommendations = self.make_some_padding(target, recommendations)
 
             elif choice == 12:
@@ -221,6 +215,12 @@ class Recommender:
                     pass
                 if len(recommendations) < 5:
                     recommendations = self.make_some_padding(target, recommendations=recommendations)
+                    
+            elif choice == 20:
+                try:
+                    recommendations = self.make_slim_bpr_recommendations(target)
+                except:
+                    pass
 
             # doing testing things if test mode enabled
             if test:
@@ -239,12 +239,12 @@ class Recommender:
         :param recommendations: actual recommended tracks
         :return: the full list of tracks recommended to the target playlist
         """
-        methods = [7, 2] # equal to choice parameter
+        methods = [3, 2] # equal to choice parameter
         i = 0
         while len(recommendations) < 5:
             if methods[i] == 7:
                 try:
-                    recommendations = self.make_tf_idf_titles_recommendations(playlist, recommendations=recommendations)
+                    recommendations = self.make_top_tag_recommendations(playlist, recommendations=recommendations)
                 except ValueError:
                     pass
             elif methods[i] == 2:
@@ -343,15 +343,11 @@ class Recommender:
         :param knn: Number of items to recommend
         :return: Recommendations
         """
-        neighborhood_number = 0
         active_tracks = self.db.get_playlist_tracks(active_playlist) # get already included tracks
-
-        while len(target_tracks) < 75:
-            neighborhood_number += 1
-            target_tracks = self.db.get_target_tracks()
-            neighborhood = self.db.compute_collaborative_playlists_similarity(active_playlist, knn=neighborhood_number)
-            neighborhood_tracks = [track for playlist in neighborhood for track in self.db.get_playlist_tracks(playlist)]
-            target_tracks = target_tracks.intersection(neighborhood_tracks).difference(active_tracks)
+        
+        target_tracks = self.db.get_target_tracks()
+        neighborhood_tracks = self.db.compute_collaborative_playlists_similarity(active_playlist, tracks_knn=75)
+        target_tracks = target_tracks.intersection(neighborhood_tracks).difference(active_tracks)
         
         knn -= len(recommendations)
         already_included = active_tracks
@@ -928,13 +924,12 @@ class Recommender:
         return recommendations + [recommendation for recommendation, value in possible_recommendations[0:knn]]
 
 
-    def combined_top_tag_tfidf_recommendations(self, playlist, knn=50):
+    def combined_top_tag_tfidf_recommendations(self, playlist):
         """
         This function filter knn tracks from the global target tracks with the
          top tag and then apply tf idf recommendations on the filtered list
 
         :param playlist: Target playlist
-        :param knn: magnitude of the filter
         :return: Recommendations
         """
         neighborhood = self.db.compute_collaborative_playlists_similarity(playlist, knn=150)
@@ -1076,7 +1071,7 @@ class Recommender:
 
         train_list = self.db.get_train_list()
         # Get number of available interactions
-        numPositiveIteractions = int(len(train_list) * 0.05)
+        numPositiveIteractions = int(len(train_list))
 
         # Uniform user sampling without replacement
         for _ in xrange(numPositiveIteractions):
@@ -1105,6 +1100,8 @@ class Recommender:
             x_ij = x_i - x_j
 
             gradient = 1 / (1 + math.exp(x_ij))
+            
+            logging.debug("gradient %i" % gradient)
 
             # Update
             [self.db.set_item_similarities(positive_item_id, track, learning_rate * gradient) for track in playlist_tracks]
@@ -1250,3 +1247,9 @@ class Recommender:
             return possible_recommendations[0:knn]
         recommendations = sorted(possible_recommendations, key=itemgetter(1), reverse=True)[0:knn]
         return [recommendation for recommendation, value in recommendations]
+
+    def make_slim_bpr_recommendations(self, active_playlist):
+        # run some epoch_iteration
+        for i in xrange(1,3):
+            logging.debug("epoch %i/2" % i)
+            self.epoch_iteration()

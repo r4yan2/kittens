@@ -267,7 +267,7 @@ class Database:
             self.max_track = max(tracks)
             return self.min_track, self.max_track
 
-    def compute_collaborative_playlists_similarity(self, playlist, knn=50, coefficient="jaccard", values="None"):
+    def compute_collaborative_playlists_similarity(self, playlist, knn=50, tracks_knn=None, coefficient="jaccard", values="None"):
         """
         This method computes the similarities between playlists based on the included tracks.
         Various coefficient can be used (jaccard, map, cosine, pearson)
@@ -350,10 +350,18 @@ class Database:
                 similarities.append([playlist_b, pearson])
 
         similarities.sort(key=itemgetter(1), reverse=True)
-        if values == "None":
-            return  [playlist for playlist, value in similarities[0:knn]]
-        elif values == "all":
-            return similarities[0:knn]
+        if tracks_knn == None:
+            if values == "None":
+                return  [playlist for playlist, value in similarities[0:knn]]
+            elif values == "all":
+                return similarities[0:knn]
+        else:
+            tracks = []
+            iterator = 0
+            while len(tracks) < tracks_knn:
+                tracks += self.get_playlist_tracks(similarities[iterator][0])
+                iterator += 1
+            return tracks 
 
     def get_user_based_collaborative_filtering(self, active_playlist, knn=20, coefficient="jaccard"):
         """
