@@ -6,6 +6,7 @@ import gc
 from operator import itemgetter
 import time
 import sys
+import helper
 
 def compute_item_item_similarities(db, q_in, q_out, number):
     gc.collect()
@@ -30,7 +31,7 @@ def compute_item_item_similarities(db, q_in, q_out, number):
         # MSE numerator = disjoint element from A and B
         # MSE denominator = A union B
 
-        similarities = [[i,j,(len(i_playlists.intersection(j_playlists)) / float(len(i_playlists.union(j_playlists)))) * (1.0 - (len(i_playlists.union(j_playlists).difference(i_playlists.intersection(j_playlists)))/float(len(i_playlists.union(j_playlists)))))] for j in tracks for j_playlists in [set(db.get_track_playlists(j))] if j_playlists != []]
+        similarities = [[i,j,helper.jaccard(i_playlists, j_playlists)] for j in tracks for j_playlists in [db.get_track_playlists(j)] if j_playlists != []]
 
         q_out.put(sorted(similarities, key=itemgetter(2), reverse=True)[0:150])
         print "worker", number, "OUT", i
