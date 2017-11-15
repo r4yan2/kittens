@@ -246,18 +246,25 @@ class Database:
         similarities = []
         for playlist_b in playlists:
             created_at = self.get_created_at_playlist(playlist_b)
-            if not math.fabs(created_at_active - created_at) < (60 * 60 * 24 * 365 * 2):
+            if not math.fabs(created_at_active - created_at) < (60 * 60 * 24 * 365 * 3):
                 continue
 
             tracks_playlist_b = set(self.get_playlist_tracks(playlist_b))
             tracks_playlist_b_length = len(tracks_playlist_b)
+            
+            matched = tracks_playlist.intersection(tracks_playlist_b)
+            matched_len = len(matched)
+            not_matched = tracks_playlist.union(tracks_playlist_b).difference(matched)
+            not_matched_len = len(not_matched)
+            
+            MSE = - not_matched_len / float(len(tracks_playlist.union(tracks_playlist_b)))
 
             if coefficient == "jaccard":
-                numerator = len(tracks_playlist.intersection(tracks_playlist_b))
+                numerator = matched_len
                 denominator = len(tracks_playlist.union(tracks_playlist_b))
                 jacard = numerator / float(denominator)
                 MSD = 1.0 - (len(tracks_playlist.union(tracks_playlist_b).difference(tracks_playlist.intersection(tracks_playlist_b)))/float(len(tracks_playlist.union(tracks_playlist_b))))
-                similarities.append([playlist_b, jacard * MSD])
+                similarities.append([playlist_b, jacard * MSD, MSE])
 
             elif coefficient == "map":
                 # MAP@k it may be useful if only we know how to use it
@@ -272,7 +279,7 @@ class Database:
                 similarities.append([playlist_b,map_score])
 
             elif coefficient == "cosine":
-                num_cosine_sim = sum([float(track in tracks_playlist) for track in tracks_playlist_b])
+                num_cosine_sim = matched_len
 
                 den_cosine_sim = math.sqrt(len(tracks_playlist)) * math.sqrt(
                     len(tracks_playlist_b))
@@ -300,8 +307,8 @@ class Database:
 
                 similarities.append([playlist_b, pearson])
 
-        similarities.sort(key=itemgetter(1), reverse=True)
-        return  [playlist for playlist, value in similarities[0:knn]]
+        similarities.sort(key=itemgetter(1,2), reverse=True)
+        return  [playlist for playlist, _, _ in similarities[0:knn]]
 
     def get_user_based_collaborative_filtering(self, active_playlist, knn=50):
         """
@@ -317,11 +324,11 @@ class Database:
         active_tracks_counter = Counter(active_tracks)
         already_scanned_user = set()
         playlists = self.get_playlists()
-        created_at_active = self.get_created_at_playlist(playlist)
+        created_at_active = self.get_created_at_playlist(active_playlist)
 
         neighborhood = []
         for playlist in playlists:
-            created_at = self.get_created_at_playlist(playlist_b)
+            created_at = self.get_created_at_playlist(playlist)
             if not math.fabs(created_at_active - created_at) < (60 * 60 * 24 * 365):
                 continue
             user = self.get_playlist_user(playlist)
@@ -350,10 +357,33 @@ class Database:
         neighborhood.sort(key=itemgetter(1), reverse=True)
         return [track for tracks, value in neighborhood[0:knn] for track in tracks]
 
+    def get_knn_track_similarities(self, active_track, knn=50):
+        """
+        Getter for the most similar track to the passed one
+        
+        :param active_track: active_track
+        :param knn: cardinality of the neighborhood
+        :return: list of similar tracks
+        """
+        similarities_list = []
+        try:
+            similarities_map = self.similarities_map
+        except AttributeError: # similarities_map need to be initialized
+            self.get_item_similarities(0,0)
+            similarities_map = self.similarities_map
+        for (track_a, track_b) in similarities_map.iterkeys():
+            if active_track == track_a:
+                similarities_list.append([track_b, similarities_map[(active_track, track_b)]])
+            elif active_track == track_b:
+                similarities_list.append([track_a, similarities_map[(track_a, active_track)]])
+        return sorted(similarities_list, key=itemgetter(1), reverse=True)[0:knn]
+            
+        
+
     def get_item_similarities(self, i, j):
         """
-        This method maps the similarities between the tracks in the dataset
-        and returns the similarity between tracks i and j
+        This method parse the item similairities csv and returns the similarity
+         between tracks i and j
 
         :param i: track i int
         :param j: track j int
@@ -369,15 +399,51 @@ class Database:
         except AttributeError:
             similarities = list(helper.read("item-item-similarities1", ","))
             self.similarities_map = {}
-            for (i,j, value) in similarities:
-                i = int(i)
-                j = int(j)
+            for (x,y, value) in similarities:
+                x = int(x)
+                y = int(y)
                 value = float(value)
-                self.similarities_map[(i,j)] = value
+                self.similarities_map[(x,y)] = value
             try:
                 return self.similarities_map[(i,j)]
             except KeyError:
                 return self.similarities_map[(j,i)]
+            
+    def get_item_similarities_alt(self, i, j):
+        """
+        This method parse the item similairities csv and returns the similarity
+         between tracks i and j
+
+        :param i: track i int
+        :param j: track j int
+        :return: similarity between i and j float
+        """
+        try:
+            return self.similarities_map[i][j]
+        except KeyError:
+            try:
+                return self.similarities_map[j][i]
+            except KeyError:
+                return 0.0
+        except AttributeError:
+            similarities = list(helper.read("item-item-similarities1", ","))
+            self.similarities_map = {}
+            for (x, y, value) in similarities:
+                x = int(x)
+                y = int(y)
+                value = float(value)
+                try:
+                    self.similarities_map[x][y] = value
+                except KeyError:
+                    self.similarities_map[x] = {}
+                    self.similarities_map[x][y] = value
+            try:
+                return self.similarities_map[i][j]
+            except KeyError:
+                try:
+                    return self.similarities_map[j][i]
+                except KeyError:
+                    return 0.0
 
     def get_train_list(self):
         """
@@ -585,7 +651,7 @@ class Database:
         N = len(self.get_playlists())
         n = float(len(playlist_tags_included))
         try:
-            idf = math.log((N - n + 0.5) / (n + 0.5), 10)
+            idf = 0.5 + math.log((N - n + 0.5) / (n + 0.5), 10)
         except ValueError:
             idf = 0
         except ZeroDivisionError:
@@ -725,9 +791,9 @@ class Database:
             self.tracks_map = self.compute_tracks_map()
             return self.tracks_map
 
-    def get_average_playlist_length(self):
+    def get_average_playlist_tags_count(self):
         """
-        get the average of the length of the playlists of the dataset
+        get the average tag count of playlists of the dataset
         :return: average
         """
         try:
@@ -736,19 +802,19 @@ class Database:
             playlist_tracks_map = self.get_playlist_tracks_map()
             tracks_list = playlist_tracks_map.values()
             ravanello = [len([tag for track in tracks for tag in self.get_track_tags(track)]) for tracks in tracks_list]
-            self.average_playlist_length =  sum(ravanello) / float(len(ravanello))
+            self.average_playlist_length =  helper.mean(ravanello)
             return self.average_playlist_length
 
-    def get_average_tags_length(self):
+    def get_average_track_tags_count(self):
         """
+        get the average tag count per track of the dataset
         """
         try:
             return self.average_tags_length
         except AttributeError:
             track_map = self.get_tracks_map()
-            tags_list = [lst[4] for lst in track_map.values()]
-            carota = [len(tags) for tags in tags_list]
-            self.average_tags_length = sum(carota) / float(len(carota))
+            tags_list_len = [len(lst[4]) for lst in track_map.itervalues()]
+            self.average_tags_length = helper.mean(tags_list_len)
             return self.average_tags_length
 
 
@@ -764,7 +830,7 @@ class Database:
             track_id = int(track[0])
             artist_id = int(track[1])
             duration = int(track[2])
-            if duration == None:
+            if (duration > 0 and duration < 30000):
                 continue
             try:
                 playcount = float(track[3]) # yes, PLAYCOUNT is memorized as a floating point
@@ -781,7 +847,7 @@ class Database:
                 iterator -= 1
             tags = eval(track[5]) # evaluation of the tags list
 
-            tags_extended = [artist_id * 10000] + [album * 1000000000 if album > 0 else iterator] + tags
+            tags_extended = [artist_id + 276615] + [album + 847203 if album > 0 else iterator] + [playcount + 1064529] + tags
 
             result[track_id]= [artist_id, duration, playcount, album, tags_extended]
         return result
