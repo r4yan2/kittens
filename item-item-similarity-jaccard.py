@@ -4,6 +4,8 @@ from collections import Counter
 import csv
 import gc
 from operator import itemgetter
+import time
+import sys
 
 def compute_item_item_similarities(db, q_in, q_out, number):
     gc.collect()
@@ -12,6 +14,7 @@ def compute_item_item_similarities(db, q_in, q_out, number):
         (identifier, i) = q_in.get()
         print "worker", number, "IN", i
         if i == -1:
+            time.sleep(30)
             break
         playlists = db.get_playlists()
         i_playlists = set(db.get_track_playlists(i))
@@ -29,13 +32,13 @@ def compute_item_item_similarities(db, q_in, q_out, number):
 
         similarities = [[i,j,(len(i_playlists.intersection(j_playlists)) / float(len(i_playlists.union(j_playlists)))) * (1.0 - (len(i_playlists.union(j_playlists).difference(i_playlists.intersection(j_playlists)))/float(len(i_playlists.union(j_playlists)))))] for j in tracks for j_playlists in [set(db.get_track_playlists(j))] if j_playlists != []]
 
-        q_out.put(sorted(similarities, key=itemgetter(2), reverse=True)[0:75])
+        q_out.put(sorted(similarities, key=itemgetter(2), reverse=True)[0:150])
         print "worker", number, "OUT", i
 
 fp = open('data/item-item-similarities1.csv', 'w', 0)
 writer = csv.writer(fp, delimiter=',', quoting=csv.QUOTE_NONE)
 
-core=4
+core=int(sys.argv[1])
 
 db = Database(1)
 
@@ -57,10 +60,12 @@ for p in proc:
     p.daemon = True
     p.start()
 
-for i in xrange(len(target_tracks)):
+works = len(target_tracks)
+
+for i in xrange(works):
     r = q_out.get()
     writer.writerows(r)
-print "finished working"
+    print works - i + 1, "remaining works"
 [p.join() for p in proc]
 
 fp.close()

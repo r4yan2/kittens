@@ -66,6 +66,7 @@ case $mode in
         script=$(whiptail --menu "Which script do you want to run?" 20 80 5 \
         0 "Compute test set (x3)" \
         1 "Compute neighborhood" \
+        2 "Compute item-item similarity via jaccard" \
         3>&2 2>&1 1>&3)
 
         # if user has selected "Cancel" then exit
@@ -76,6 +77,9 @@ case $mode in
           ;;
           1)
             /usr/bin/pypy neighborhood_generator.py
+          ;;
+          2)
+            /usr/bin/pypy item-item-similarity-jaccard.py $(($cpu - 1))
           ;;
         esac
     ;;
