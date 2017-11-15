@@ -129,6 +129,30 @@ def pearsonr(x, y):
 
     return  numerator / denominator
 
+def jaccard(I, J):
+    """
+    Compute the jaccard similarity improved y multiplication with the mse
+
+    :param I: set
+    :param J: set
+    :return: similarity value
+    """
+    intersection = float(len(I.intersection(J)))
+    union = float(len(I.union(J)))
+    disjoint = float(len(I.union(J).difference(I.intersection(J))))
+    jaccard_coefficient = intersection / union
+    mse = 1.0 - disjoint / union
+    return jaccard_coefficient * mse
+
+def parseIntList(lst):
+    """
+    Manual parsing for some fields of the csv, help to avoid uses of eval function
+
+    :param lst: string to parse
+    :return: parsed integer list
+    """
+    return [int(num) for num in lst[1:-1].split(',') if num != 'None' and num != '']
+
 def LevenshteinDistance(s, s_len, t, t_len):
     """
     Compute the LevenshteinDistance in recursive way(slow)
