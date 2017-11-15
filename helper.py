@@ -1,5 +1,6 @@
 import csv
 import math
+from operator import mul
 
 
 def write(filename, content, delimiter_char=','):
@@ -78,6 +79,9 @@ def multiply_lists(lst1, lst2):
 
     return [a * b for a, b in zip(lst1, lst2)]
 
+def product(lst):
+    return reduce(mul, lst, 1)
+
 def divide_lists(lst1, lst2):
     """
     Element wise division
@@ -89,6 +93,8 @@ def divide_lists(lst1, lst2):
     """
     return [a / b for a, b in zip(lst1, lst2)]
 
+def mean(numbers):
+    return float(sum(numbers)) / max(len(numbers), 1)
 
 def square_sum (x):
     """
