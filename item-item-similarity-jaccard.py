@@ -13,17 +13,12 @@ def compute_item_item_similarities(db, q_in, q_out, number):
     tracks = set(db.get_tracks()).difference(db.get_target_tracks())
     while True:
         (identifier, i) = q_in.get()
-        print "worker", number, "IN", i
         if i == -1:
             time.sleep(30)
             break
         playlists = db.get_playlists()
         i_playlists = set(db.get_track_playlists(i))
         if i_playlists == []:
-            continue
-
-        duration = db.get_track_duration(i)
-        if not (duration > 30000 or duration < 0):
             continue
         
         # numerator jaccard = A intersection B
@@ -34,7 +29,6 @@ def compute_item_item_similarities(db, q_in, q_out, number):
         similarities = [[i,j,helper.jaccard(i_playlists, j_playlists)] for j in tracks for j_playlists in [db.get_track_playlists(j)] if j_playlists != []]
 
         q_out.put(sorted(similarities, key=itemgetter(2), reverse=True)[0:150])
-        print "worker", number, "OUT", i
 
 fp = open('data/item-item-similarities1.csv', 'w', 0)
 writer = csv.writer(fp, delimiter=',', quoting=csv.QUOTE_NONE)
@@ -66,7 +60,6 @@ works = len(target_tracks)
 for i in xrange(works):
     r = q_out.get()
     writer.writerows(r)
-    print works - i + 1, "remaining works"
 [p.join() for p in proc]
 
 fp.close()
