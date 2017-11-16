@@ -1053,6 +1053,7 @@ class Recommender:
         train_list = self.db.get_train_list()
         # Get number of available interactions
         numPositiveIteractions = int(len(train_list))
+        learnings=[]
 
         # Uniform user sampling without replacement
         for _ in xrange(numPositiveIteractions):
@@ -1082,14 +1083,14 @@ class Recommender:
 
             gradient = 1 / (1 + math.exp(x_ij))
             
-            logging.debug("gradient %i" % gradient)
-
+            learnings.append(learning_rate*gradient)
             # Update
-            [self.db.set_item_similarities(positive_item_id, track, learning_rate * gradient) for track in playlist_tracks]
-            self.db.null_item_similarities(positive_item_id, positive_item_id)
+            [self.db.set_item_similarities_alt(positive_item_id, track, learning_rate * gradient) for track in playlist_tracks]
+            self.db.null_item_similarities_alt(positive_item_id, positive_item_id)
 
-            [self.db.set_item_similarities(negative_item_id, track, -learning_rate * gradient) for track in playlist_tracks]
-            self.db.null_item_similarities(negative_item_id, negative_item_id)
+            [self.db.set_item_similarities_alt(negative_item_id, track, -learning_rate * gradient) for track in playlist_tracks]
+            self.db.null_item_similarities_alt(negative_item_id, negative_item_id)
+        logging.debug("learning rate avg on epoch %f" % helper.mean(learnings))
 
 
     def make_collaborative_item_item_recommendations(self, active_playlist, target_tracks=[], recommendations=[], knn=5, ensemble=0):

@@ -519,6 +519,20 @@ class Database:
                 self.similarities_map[(j,i)] = value + update
             except KeyError:
                 pass
+    
+    def set_item_similarities_alt(self, i, j, update):
+        """
+        """
+
+        try:
+            value = self.similarities_map[i][j]
+            self.similarities_map[i][j] = value + update
+        except KeyError:
+            try:
+                value = self.similarities_map[j][i]
+                self.similarities_map[j][i] = value + update
+            except KeyError:
+                pass
 
 
     def null_item_similarities(self, i, j):
@@ -531,6 +545,19 @@ class Database:
             try:
                 value = self.similarities_map[(j,i)]
                 self.similarities_map[(j,i)] = 0
+            except KeyError:
+                pass
+            
+    def null_item_similarities_alt(self, i, j):
+        """
+        """
+        try:
+            value = self.similarities_map[i][j]
+            self.similarities_map[i][j] = 0
+        except KeyError:
+            try:
+                value = self.similarities_map[j][i]
+                self.similarities_map[j][i] = 0
             except KeyError:
                 pass
 
