@@ -384,7 +384,7 @@ class Database:
         neighborhood = []
         for playlist in playlists:
             created_at = self.get_created_at_playlist(playlist)
-            if not math.fabs(created_at_active - created_at) < (60 * 60 * 24 * 365):
+            if not math.fabs(created_at_active - created_at) < (60 * 60 * 24 * 365 * 3):
                 continue
             user = self.get_playlist_user(playlist)
             if user in already_scanned_user:
