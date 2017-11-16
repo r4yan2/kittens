@@ -81,6 +81,13 @@ class Recommender:
 
         # Retrieve the db from the list of arguments
         self.db = db
+        
+        if choice == 20:
+            # do some epoch pre-processing on data
+            for i in xrange(1,3):
+                logging.debug("epoch %i/2" % i)
+                self.epoch_iteration()
+            choice = 11
 
         # main loop for the worker
         while True:
@@ -219,12 +226,6 @@ class Recommender:
                 if len(recommendations) < 5:
                     recommendations = self.make_some_padding(target, recommendations=recommendations)
                     
-            elif choice == 20:
-                try:
-                    recommendations = self.make_slim_bpr_recommendations(target)
-                except:
-                    pass
-
             # doing testing things if test mode enabled
             if test:
                 test_result = self.check_recommendations(target, recommendations)
@@ -1224,9 +1225,3 @@ class Recommender:
             return possible_recommendations[0:knn]
         recommendations = sorted(possible_recommendations, key=itemgetter(1), reverse=True)[0:knn]
         return [recommendation for recommendation, value in recommendations]
-
-    def make_slim_bpr_recommendations(self, active_playlist):
-        # run some epoch_iteration
-        for i in xrange(1,3):
-            logging.debug("epoch %i/2" % i)
-            self.epoch_iteration()

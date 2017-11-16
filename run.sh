@@ -106,6 +106,7 @@ case $mode in
         17 "Bad revised" \
         18 "Bad revised jaccard version" \
         19 "Playlist Based CF" \
+        20 "collaborative item-item with epoch pre-processing" \
         3>&2 2>&1 1>&3)
 
         # if user has selected "Cancel" then exit
