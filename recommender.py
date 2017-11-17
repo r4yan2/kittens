@@ -84,8 +84,8 @@ class Recommender:
         
         if choice == 20:
             # do some epoch pre-processing on data
-            for i in xrange(1,3):
-                logging.debug("epoch %i/2" % i)
+            for i in xrange(1,101):
+                logging.debug("epoch %i/100" % i)
                 self.epoch_iteration()
             choice = 11
 
@@ -1048,12 +1048,12 @@ class Recommender:
         except ValueError: #playlist have no title
             return filtered[0:5]
 
-    def epoch_iteration(self, learning_rate=0.01):
+    def epoch_iteration(self, learning_rate=0.0005):
 
-        train_list = self.db.get_train_list()
         # Get number of available interactions
-        numPositiveIteractions = int(len(train_list))
+        numPositiveIteractions = self.db.get_num_interactions()
         learnings=[]
+        self.db.init_item_similarities_epoch()
 
         # Uniform user sampling without replacement
         for _ in xrange(numPositiveIteractions):
@@ -1075,8 +1075,8 @@ class Recommender:
                 check = negative_item_id in playlist_tracks
 
             # Prediction
-            x_i = sum([self.db.get_item_similarities_alt(positive_item_id, track) for track in playlist_tracks])
-            x_j = sum([self.db.get_item_similarities_alt(negative_item_id, track) for track in playlist_tracks])
+            x_i = sum([self.db.get_item_similarities_epoch(positive_item_id, track) for track in playlist_tracks])
+            x_j = sum([self.db.get_item_similarities_epoch(negative_item_id, track) for track in playlist_tracks])
 
             # Gradient
             x_ij = x_i - x_j
@@ -1085,11 +1085,9 @@ class Recommender:
             
             learnings.append(learning_rate*gradient)
             # Update
-            [self.db.set_item_similarities_alt(positive_item_id, track, learning_rate * gradient) for track in playlist_tracks]
-            self.db.null_item_similarities_alt(positive_item_id, positive_item_id)
+            [self.db.set_item_similarities_epoch(positive_item_id, track, learning_rate * gradient) for track in playlist_tracks]
 
-            [self.db.set_item_similarities_alt(negative_item_id, track, -learning_rate * gradient) for track in playlist_tracks]
-            self.db.null_item_similarities_alt(negative_item_id, negative_item_id)
+            [self.db.set_item_similarities_epoch(negative_item_id, track, -learning_rate * gradient) for track in playlist_tracks]
         logging.debug("learning rate avg on epoch %f" % helper.mean(learnings))
 
 

@@ -10,7 +10,7 @@ import helper
 
 def compute_item_item_similarities(db, q_in, q_out, number):
     gc.collect()
-    tracks = set(db.get_tracks()).difference(db.get_target_tracks())
+    tracks = sorted(db.get_tracks())
     while True:
         (identifier, i) = q_in.get()
         if i == -1:
@@ -26,9 +26,14 @@ def compute_item_item_similarities(db, q_in, q_out, number):
         # MSE numerator = disjoint element from A and B
         # MSE denominator = A union B
 
-        similarities = [[i,j,helper.jaccard(i_playlists, j_playlists)] for j in tracks for j_playlists in [db.get_track_playlists(j)] if j_playlists != []]
+        similarities = [[i,j,helper.jaccard(i_playlists, j_playlists)] for j in tracks for j_playlists in [db.get_track_playlists(j)] if j_playlists != [] and i < j]
 
-        q_out.put(sorted(similarities, key=itemgetter(2), reverse=True)[0:150])
+        similarities = [[i,j,v] for i,j,v in similarities if v > 0]
+
+        if similarities == []:
+            continue
+
+        q_out.put(sorted(similarities, key=itemgetter(2), reverse=True))
 
 fp = open('data/item-item-similarities1.csv', 'w', 0)
 writer = csv.writer(fp, delimiter=',', quoting=csv.QUOTE_NONE)
@@ -40,7 +45,7 @@ db = Database(1)
 manager = Manager()
 ns = manager.Namespace()
 ns.db = db
-target_tracks = db.get_target_tracks()
+target_tracks = sorted(db.get_tracks())
 
 # Queue(s) for the process, one for input data to the process, the other for the output data to the main process
 q_in = Queue()

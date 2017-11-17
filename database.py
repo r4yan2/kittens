@@ -52,7 +52,7 @@ class Database:
         :param test: integer which indicate the specific test istance
         :return: None
         """
-        test_set = list(helper.read("test_set" + str(test)))
+        test_set = helper.read("test_set" + str(test))
 
         self.test_set = [[int(playlist), int(track)] for playlist, track in test_set]
         self.target_playlists = set([playlist for playlist, track in self.test_set])
@@ -117,7 +117,7 @@ class Database:
         try:
             return self.user_set
         except AttributeError:
-            self.user_set = set([int(u) for (u,i,r) in list(helper.read("urm", ','))])
+            self.user_set = set([int(u) for (u,i,r) in helper.read("urm", ',')])
             return self.user_set
 
     def get_user_tracks(self, user):
@@ -131,7 +131,7 @@ class Database:
             return self.user_tracks[user]
         except AttributeError:
             self.user_tracks = defaultdict(lambda: [], {})
-            for (u,i,r) in list(helper.read("urm", ',')):
+            for (u,i,r) in helper.read("urm", ','):
                 self.user_tracks[int(u)].append(int(i))
             return self.user_tracks[user]
 
@@ -456,7 +456,7 @@ class Database:
             except KeyError:
                 return 0.0
         except AttributeError:
-            similarities = list(helper.read("item-item-similarities1", ","))
+            similarities = helper.read("item-item-similarities1", ",")
             self.similarities_map = {}
             for (x,y, value) in similarities:
                 x = int(x)
@@ -468,7 +468,28 @@ class Database:
             except KeyError:
                 return 0.0
                 return self.similarities_map[(j,i)]
-            
+
+    def get_num_interactions(self):
+        """
+        """
+        return self.num_interactions
+    
+    def init_item_similarities_epoch(self):
+        """
+        Init the similarities map used later for the epoch iteration method
+        """
+        self.similarities_map = defaultdict(lambda: defaultdict(lambda: 0.0),{})
+        
+    def get_item_similarities_epoch(self, i, j):
+        """
+        """
+        if i < j:
+            return self.similarities_map[i][j]
+        elif i > j:
+            return self.similarities_map[j][i]
+        else:
+            return 0.0
+             
     def get_item_similarities_alt(self, i, j):
         """
         This method parse the item similairities csv and returns the similarity
@@ -486,17 +507,22 @@ class Database:
             except KeyError:
                 return 0.0
         except AttributeError:
-            similarities = list(helper.read("item-item-similarities1", ","))
+            similarities = helper.read("item-item-similarities1", ",")
             self.similarities_map = {}
+            old_x = 0
             for (x, y, value) in similarities:
                 x = int(x)
                 y = int(y)
                 value = float(value)
-                try:
-                    self.similarities_map[x][y] = value
-                except KeyError:
+                if old_x != x:
+                    limit = 399
                     self.similarities_map[x] = {}
                     self.similarities_map[x][y] = value
+                    old_x = x
+                elif limit > 0:
+                    self.similarities_map[x][y] = value
+                    limit -= 1
+
             try:
                 return self.similarities_map[i][j]
             except KeyError:
@@ -520,20 +546,16 @@ class Database:
             except KeyError:
                 pass
     
-    def set_item_similarities_alt(self, i, j, update):
+    def set_item_similarities_epoch(self, i, j, update):
         """
         """
-
-        try:
+        
+        if i < j:
             value = self.similarities_map[i][j]
             self.similarities_map[i][j] = value + update
-        except KeyError:
-            try:
-                value = self.similarities_map[j][i]
-                self.similarities_map[j][i] = value + update
-            except KeyError:
-                pass
-
+        elif i > j:
+            value = self.similarities_map[j][i]
+            self.similarities_map[j][i] = value + update
 
     def null_item_similarities(self, i, j):
         """
@@ -591,11 +613,14 @@ class Database:
         :return: None
         """
         if test == None:
-            train_list = list(helper.read("train_final"))
-            self.train_list = [[int(element[0]), int(element[1])] for element in train_list[1:]]
-        else:
-            train_list = list(helper.read("train_set"+str(test)))
+            train_list = helper.read("train_final")
+            train_list.next()
             self.train_list = [[int(element[0]), int(element[1])] for element in train_list]
+            self.num_interactions = len(self.train_list)
+        else:
+            train_list = helper.read("train_set"+str(test))
+            self.train_list = [[int(element[0]), int(element[1])] for element in train_list]
+            self.num_interactions = len(self.train_list)
 
     def get_tag_playlists_map(self):
         """
@@ -788,9 +813,10 @@ class Database:
 
         except AttributeError:
 
-            playlist_list = list(helper.read("playlists_final"))
+            playlist_list = helper.read("playlists_final")
             result = {}
-            for playlist in playlist_list[1:]:
+            playlist_list.next()
+            for playlist in playlist_list:
                 created_at = int(playlist[0])
                 playlist_id = int(playlist[1])
                 title = helper.parseIntList(playlist[2])
@@ -836,8 +862,9 @@ class Database:
         return the list from the csv of the target_playlist, with the first row removed
         :return:
         """
-        target_playlists = list(helper.read("target_playlists"))
-        self.target_playlists = [int(elem[0]) for elem in target_playlists[1:]]
+        target_playlists = helper.read("target_playlists")
+        target_playlists.next()
+        self.target_playlists = [int(elem[0]) for elem in target_playlists]
 
     def get_target_tracks(self):
         """
@@ -849,7 +876,9 @@ class Database:
             return self.target_tracks
         except:
             # the set cast is just for commodity
-            self.target_tracks = set([int(track[0]) for track in list(helper.read("target_tracks"))[1:]])
+            target_tracks = helper.read("target_tracks")
+            target_tracks.next()
+            self.target_tracks = set([int(track[0]) for track in target_tracks])
             return self.target_tracks
 
     def get_tracks_map(self):
@@ -895,10 +924,11 @@ class Database:
         parse tracks_final.csv dividing all field into the corresponding part of the list
         :return:
         """
-        tracks = list(helper.read("tracks_final"))
+        tracks = helper.read("tracks_final")
+        tracks.next()
         result = {}
         iterator = -10
-        for track in tracks[1:]:
+        for track in tracks:
             track_id = int(track[0])
             artist_id = int(track[1])
             duration = int(track[2])
