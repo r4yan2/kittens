@@ -19,13 +19,21 @@ class Database:
         connection.row_factory = lambda cursor, row: row[0]
         cursor = connection.cursor()
         self.cursor = cursor
+        self.test = test
 
         if test > 0:
             self.load_test_set(test)
             self.load_train_list(test)
-            self.test = test
         else:
             self.load_train_list()
+
+    def clean(self):
+        """
+        Invoke some pragmas to shrink, clean and reoder the database
+        """
+        self.cursor.execute("vacuum")
+        self.cursor.execute("PRAGMA optimize")
+        self.cursor.execute("PRAGMA shrink_memory")
 
     def get_target_playlists_tracks_set(self):
         """
@@ -41,6 +49,12 @@ class Database:
             target_tracks = self.get_target_tracks()
             self.target_playlists_tracks_set = target_playlists_tracks_set
             return self.target_playlists_tracks_set
+   
+    def get_prediction_from_similarities_epoch(self, i, playlist_tracks):
+        """
+        """
+        values = self.cursor.execute('select value from similarities_epoch where i=%i and j in (%s)' % (i, ", ".join([str(track) for track in playlist_tracks]))).fetchall()
+        return sum(values)
 
     def get_test_set(self):
         """
@@ -74,7 +88,7 @@ class Database:
             return self.playlists
         except AttributeError:
             playlists = self.get_train_list()
-            self.playlists = [playlist for playlist, track in playlists]
+            self.playlists = list(set([playlist for playlist, track in playlists]))
             return self.playlists
 
     def compute_test_set(self):
@@ -854,8 +868,8 @@ class Database:
         :return:
         """
         if self.test == 1:
-            return self.cursor.execute("select playlist_id from test_set1").fetchall()
-        return self.cursor.execute("select * from target_playlists").fetchall()
+            return self.cursor.execute("select distinct playlist_id from test_set1").fetchall()
+        return self.cursor.execute("select distinct playlist_id from target_playlists").fetchall()
 
 
     def compute_target_playlists(self):
@@ -874,8 +888,8 @@ class Database:
         :return:
         """
         if self.test == 1:
-            return self.cursor.execute("select track_id from test_set1").fetchall()
-        return self.cursor.execute("select track_id from target_tracks").fetchall()
+            return self.cursor.execute("select distinct track_id from test_set1").fetchall()
+        return self.cursor.execute("select distinct track_id from target_tracks").fetchall()
 
     def get_tracks_map(self):
         """
@@ -1043,7 +1057,7 @@ class Database:
             return self.tracks_set
         except AttributeError:
             train = self.get_train_list()
-            self.tracks_set = [track for playlist, track in train]
+            self.tracks_set = list(set([track for playlist, track in train]))
             return self.tracks_set
 
     def get_num_tracks(self):

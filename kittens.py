@@ -1,11 +1,12 @@
 from recommender import Recommender
-import helper
 from database import Database
+import helper
 from multiprocessing import Process, Queue
 import sys
 from operator import itemgetter
 import logging
 from collections import Counter
+import sqlite3
 
 #sys.setcheckinterval(sys.maxint)
 
@@ -13,17 +14,15 @@ from collections import Counter
 logging.basicConfig(filename='log/kittens.log', level=logging.DEBUG, filemode='w')
 
 # take input from command line sys.argv[0] is the program name
-if eval(sys.argv[1]) == 0:
+if int(sys.argv[1]) == 0:
     test = True
-    instance = sys.argv[4]
+    instance = int(sys.argv[4])
 else:
     test = False
     instance = 0
 
-choice = eval(sys.argv[2])
-core = eval(sys.argv[3])
-
-db=Database(instance)
+choice = int(sys.argv[2])
+core = int(sys.argv[3])
 
 # Initializing the recommender instance
 recommender_system = Recommender()
@@ -34,7 +33,7 @@ to_write = []
 # This list store the result from the worker process (identifier, playlist, [recommendation])
 results = []
 
-target_playlists = db.get_target_playlists()
+target_playlists = set([int(p) for p, t in helper.read("test_set1")])
 
 logging.debug("len of target playlist %i" % len(target_playlists))
 
@@ -46,7 +45,7 @@ q_out = Queue()
 [q_in.put((-1, -1)) for _ in xrange(core)]
 
 # Starting the process
-proc = [Process(target=recommender_system.run, args=(choice, q_in, q_out, test, i))
+proc = [Process(target=recommender_system.run, args=(choice, q_in, q_out, instance, i))
         for i in xrange(core)]
 for p in proc:
     p.daemon = True

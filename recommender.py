@@ -80,7 +80,7 @@ class Recommender:
         """
 
         # Retrieve the db from the list of arguments
-        self.db = Database(1)
+        self.db = Database(test)
 
         if choice == 20:
             # do some epoch pre-processing on data
@@ -89,9 +89,10 @@ class Recommender:
             self.db.init_item_similarities_epoch()
             playlists = self.db.get_playlists()
             tracks = self.db.get_tracks()
-            for i in xrange(1,6):
-                logging.debug("epoch %i/5" % i)
-                self.epoch_iteration(numPositiveIteractions, playlists, tracks)
+            for i in xrange(1,11):
+                logging.debug("epoch %i/10" % i)
+                self.epoch_iteration(numPositiveIteractions, playlists, tracks, learning_rate=0.005)
+                self.db.clean()
             choice = 11
 
         # main loop for the worker
@@ -1053,7 +1054,7 @@ class Recommender:
         except ValueError: #playlist have no title
             return filtered[0:5]
 
-    def epoch_iteration(self, numPositiveIteractions, playlists, tracks, learning_rate=0.0005):
+    def epoch_iteration(self, numPositiveIteractions, playlists, tracks, learning_rate=0.001):
 
         learnings=[]
         # Uniform user sampling without replacement
@@ -1090,7 +1091,7 @@ class Recommender:
 
             [self.db.set_item_similarities_epoch(negative_item_id, track, x_j[playlist_tracks.index(track)] - learning_rate * gradient) for track in playlist_tracks]
         logging.debug("learning rate avg on epoch %f" % helper.mean(learnings))
-
+        
 
     def make_collaborative_item_item_recommendations(self, active_playlist, target_tracks=[], recommendations=[], knn=5, ensemble=0):
         """
@@ -1119,7 +1120,7 @@ class Recommender:
             duration = self.db.get_track_duration(i)
             if i in playlist_tracks_set or not (duration > 30000 or duration < 0):
                 continue
-            prediction = sum([self.db.get_item_similarities_alt(i,j) for j in playlist_tracks_set])
+            prediction = self.db.get_prediction_from_similarities_epoch(i, playlist_tracks_set)
             predictions.append([i, prediction])
 
         recommendations = sorted(predictions, key=itemgetter(1), reverse=True)[0:knn]
