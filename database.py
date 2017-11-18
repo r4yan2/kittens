@@ -15,7 +15,7 @@ class Database:
         :param test: istance
         :return: the initialized object
         """
-        connection = sqlite3.connect("data/db")
+        connection = sqlite3.connect("/dev/shm/db")
         connection.row_factory = lambda cursor, row: row[0]
         cursor = connection.cursor()
         self.cursor = cursor
@@ -23,6 +23,7 @@ class Database:
         if test > 0:
             self.load_test_set(test)
             self.load_train_list(test)
+            self.test = test
         else:
             self.load_train_list()
 
@@ -605,7 +606,8 @@ class Database:
         :param active_playlist: the playlist for which return the tracks
         :return: a set of tracks
         """
-        return self.cursor.execute("select track_id from test_set1 where  playlist_id = (?) ", (active_playlist,))
+        if self.test == 1:
+            return self.cursor.execute("select track_id from test_set1 where  playlist_id = (?) ", (active_playlist,)).fetchall()
 
     def load_train_list(self, test=None):
         """
@@ -855,6 +857,8 @@ class Database:
         if the target_playlists does not exists it create the list from the corresponding csv
         :return:
         """
+        if self.test == 1:
+            return self.cursor.execute("select playlist_id from test_set1").fetchall()
         return self.cursor.execute("select * from target_playlists").fetchall()
 
 
@@ -873,6 +877,8 @@ class Database:
         if the target_tracks does not exists it create the list from the corresponding csv
         :return:
         """
+        if self.test == 1:
+            return self.cursor.execute("select track_id from test_set1").fetchall()
         return self.cursor.execute("select track_id from target_tracks").fetchall()
 
     def get_tracks_map(self):
