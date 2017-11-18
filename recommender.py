@@ -9,6 +9,7 @@ from operator import itemgetter
 import logging
 import helper
 from collections import Counter
+from database import Database
 
 class Recommender:
     def __init__(self, db=None):
@@ -49,19 +50,19 @@ class Recommender:
         try:
             map_score = sum(p_to_k) / min(test_set_length, is_relevant_length)
         except ZeroDivisionError:
-            map_score = 0
+            logging.log("Qualquadra non cosa")
 
         # Precision
         try:
             precision = sum(is_relevant)/is_relevant_length
         except ZeroDivisionError:
-            precision = 0
+            logging.log("Qualquadra non cosa")
 
         # Recall
         try:
             recall = sum(is_relevant)/test_set_length
         except ZeroDivisionError:
-            recall = 0
+            logging.log("Qualquadra non cosa")
 
         # return the triple
         return [map_score, precision, recall]
@@ -79,13 +80,18 @@ class Recommender:
         """
 
         # Retrieve the db from the list of arguments
-        self.db = Database(test)
+        self.db = Database(1)
 
         if choice == 20:
             # do some epoch pre-processing on data
-            for i in xrange(1,101):
-                logging.debug("epoch %i/100" % i)
-                self.epoch_iteration()
+
+            numPositiveIteractions = int(self.db.get_num_interactions() * 0.1)
+            self.db.init_item_similarities_epoch()
+            playlists = self.db.get_playlists()
+            tracks = self.db.get_tracks()
+            for i in xrange(1,6):
+                logging.debug("epoch %i/5" % i)
+                self.epoch_iteration(numPositiveIteractions, playlists, tracks)
             choice = 11
 
         # main loop for the worker
@@ -1047,46 +1053,42 @@ class Recommender:
         except ValueError: #playlist have no title
             return filtered[0:5]
 
-    def epoch_iteration(self, learning_rate=0.0005):
+    def epoch_iteration(self, numPositiveIteractions, playlists, tracks, learning_rate=0.0005):
 
-        # Get number of available interactions
-        numPositiveIteractions = self.db.get_num_interactions()
         learnings=[]
-        self.db.init_item_similarities_epoch()
-
         # Uniform user sampling without replacement
         for _ in xrange(numPositiveIteractions):
 
             # Sample
             check = True
             while check:
-                v_min, v_max = self.db.get_min_max_playlists()
-                playlist = random.randint(v_min, v_max)
+
+                playlist = random.choice(playlists)
                 playlist_tracks = self.db.get_playlist_tracks(playlist)
                 len_playlist_tracks = len(playlist_tracks)
-                check = not len_playlist_tracks > 10
+                check = not len_playlist_tracks >= 10
 
-            positive_item_id = playlist_tracks[random.randint(0, len_playlist_tracks-1)]
-            check = True
-            while check:
-                v_min, v_max = self.db.get_min_max_tracks()
-                negative_item_id = random.randint(v_min, v_max)
-                check = negative_item_id in playlist_tracks
+            positive_item_id = random.choice(playlist_tracks)
+
+            negative_item_id = random.choice(tracks)
+            while negative_item_id in playlist_tracks:
+                negative_item_id = random.choice(tracks)
+
 
             # Prediction
-            x_i = sum([self.db.get_item_similarities_epoch(positive_item_id, track) for track in playlist_tracks])
-            x_j = sum([self.db.get_item_similarities_epoch(negative_item_id, track) for track in playlist_tracks])
+            x_i = [self.db.get_item_similarities_epoch(positive_item_id, track) for track in playlist_tracks]
+            x_j = [self.db.get_item_similarities_epoch(negative_item_id, track) for track in playlist_tracks]
 
             # Gradient
-            x_ij = x_i - x_j
+            x_ij = sum(x_i) - sum(x_j)
 
             gradient = 1 / (1 + math.exp(x_ij))
 
             learnings.append(learning_rate*gradient)
             # Update
-            [self.db.set_item_similarities_epoch(positive_item_id, track, learning_rate * gradient) for track in playlist_tracks]
+            [self.db.set_item_similarities_epoch(positive_item_id, track, x_i[playlist_tracks.index(track)] + learning_rate * gradient) for track in playlist_tracks]
 
-            [self.db.set_item_similarities_epoch(negative_item_id, track, -learning_rate * gradient) for track in playlist_tracks]
+            [self.db.set_item_similarities_epoch(negative_item_id, track, x_j[playlist_tracks.index(track)] - learning_rate * gradient) for track in playlist_tracks]
         logging.debug("learning rate avg on epoch %f" % helper.mean(learnings))
 
 

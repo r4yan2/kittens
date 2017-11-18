@@ -71,11 +71,11 @@ class Database:
         :return: set of playlists
         """
         try:
-            return self.playlists_set
+            return self.playlists
         except AttributeError:
             playlists = self.get_train_list()
-            self.playlists_set = set([playlist for playlist, track in playlists])
-            return self.playlists_set
+            self.playlists = [playlist for playlist, track in playlists]
+            return self.playlists
 
     def compute_test_set(self):
         """
@@ -442,8 +442,6 @@ class Database:
                 similarities_list.append([track_a, similarities_map[(track_a, active_track)]])
         return sorted(similarities_list, key=itemgetter(1), reverse=True)[0:knn]
 
-
-
     def get_item_similarities(self, i, j):
         """
         This method parse the item similairities csv and returns the similarity
@@ -484,15 +482,17 @@ class Database:
         """
         Init the similarities map used later for the epoch iteration method
         """
-        self.similarities_map = defaultdict(lambda: defaultdict(lambda: 0.0),{})
+        self.cursor.execute("drop table if exists similarities_epoch")
+        self.cursor.execute("CREATE TABLE 'similarities_epoch' ('i' INTEGER, 'j' INTEGER, 'value' FLOAT, PRIMARY KEY(i,j))")
 
     def get_item_similarities_epoch(self, i, j):
         """
         """
-        if i < j:
-            return self.similarities_map[i][j]
-        elif i > j:
-            return self.similarities_map[j][i]
+        if i != j:
+            try:
+                return self.cursor.execute("select value from similarities_epoch where i=(?) and j=(?)", (i,j)).next()
+            except:
+                return 0.0
         else:
             return 0.0
 
@@ -556,12 +556,8 @@ class Database:
         """
         """
 
-        if i < j:
-            value = self.similarities_map[i][j]
-            self.similarities_map[i][j] = value + update
-        elif i > j:
-            value = self.similarities_map[j][i]
-            self.similarities_map[j][i] = value + update
+        if i != j:
+            self.cursor.execute("INSERT OR REPLACE INTO similarities_epoch (i, j, value) VALUES ((?), (?), (?))", (i, j , update))
 
     def null_item_similarities(self, i, j):
         """
@@ -1047,7 +1043,7 @@ class Database:
             return self.tracks_set
         except AttributeError:
             train = self.get_train_list()
-            self.tracks_set = set([track for playlist, track in train])
+            self.tracks_set = [track for playlist, track in train]
             return self.tracks_set
 
     def get_num_tracks(self):
