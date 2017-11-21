@@ -9,6 +9,7 @@ from operator import itemgetter
 import logging
 import helper
 from collections import Counter
+import numpy
 
 class Recommender:
     def __init__(self, db=None):
@@ -19,6 +20,7 @@ class Recommender:
         :param db: Defaulted to None, only for terminal debugging
         :return: the allocated object
         """
+        
         if db:
             self.db = db
 
@@ -84,8 +86,8 @@ class Recommender:
         
         if choice == 20:
             # do some epoch pre-processing on data
-            for i in xrange(1,101):
-                logging.debug("epoch %i/100" % i)
+            for i in range(1,3):
+                logging.debug("epoch %i/2" % i)
                 self.epoch_iteration()
             choice = 11
 
@@ -539,12 +541,12 @@ class Recommender:
 
 
         possible_recommendations.sort(key=itemgetter(1), reverse=True)
-        if ensamble:
+        if ensemble:
             return possible_recommendations[0:knn]
         recs = recommendations + [recommendation for recommendation, value in possible_recommendations[0:knn]]
         return recs
     
-    def make_knn_bayes_recommendations(self, playlist, recommendations=[], knn=5, ensamble=0):
+    def make_knn_bayes_recommendations(self, playlist, recommendations=[], knn=5, ensemble=0):
         """
         This method tries to implement a machine learning approach using statistic predictions for a specific track
         The main goal is, considering the tags of a track and that of a playlist, and computing the conditional probabilities
@@ -577,10 +579,9 @@ class Recommender:
             knn = 50
             neighborhood = self.db.get_knn_item_similarities(track, knn)
             
-            
-            probability = prior_probability / likelihood
+            # TODO fix
 
-            possible_recommendations.append([track, probability])
+            #possible_recommendations.append([track, probability])
 
 
         possible_recommendations.sort(key=itemgetter(1), reverse=True)
@@ -611,9 +612,10 @@ class Recommender:
             owner_playlists = [playlist for playlist in playlists if math.fabs(self.db.get_created_at_playlist(playlist) - active_playlist_creation) < (60 * 60 * 24 * 180)]
             owner_playlists_tracks = [track for playlist in owner_playlists for track in self.db.get_playlist_tracks(playlist)]
             target_tracks = self.db.get_target_tracks()
+            predictions = []
             for track in target_tracks:
                 duration = self.db.get_track_duration(track)
-                if track in playlist_tracks_set or not (duration > 30000 or duration < 0):
+                if track in playlist_tracks or not (duration > 30000 or duration < 0):
                     continue
                 prediction = sum([self.db.get_item_similarities_alt(track,j) for j in owner_playlists_tracks])
                 predictions.append([track, prediction])
@@ -623,15 +625,15 @@ class Recommender:
 
         # case: playlist have no tracks
         elif playlist_tracks == []:
-            recommendations = self.make_tf_idf_titles_recommendations(playlist)
+            recommendations = self.make_tf_idf_titles_recommendations(active_playlist)
 
         else: # playlist is complete of title and tracks
             try:
-                recommendations = self.make_tf_idf_recommendations(playlist)
+                recommendations = self.make_tf_idf_recommendations(active_playlist)
             except ValueError:
-                recommendations = self.make_top_included_recommendations(playlist)
+                recommendations = self.make_top_included_recommendations(active_playlist)
             if len(recommendations) < 5:
-                recommendations = self.make_some_padding(playlist, recommendations=recommendations)
+                recommendations = self.make_some_padding(active_playlist, recommendations=recommendations)
         return recommendations
 
     def make_neighborhood_similarity(self, playlist, recommendations=[], knn=5):
@@ -1048,7 +1050,7 @@ class Recommender:
         except ValueError: #playlist have no title
             return filtered[0:5]
 
-    def epoch_iteration(self, learning_rate=0.0005):
+    def epoch_iteration(self, learning_rate=0.005):
 
         # Get number of available interactions
         numPositiveIteractions = self.db.get_num_interactions()
@@ -1056,7 +1058,7 @@ class Recommender:
         self.db.init_item_similarities_epoch()
 
         # Uniform user sampling without replacement
-        for _ in xrange(numPositiveIteractions):
+        for _ in range(numPositiveIteractions):
 
             # Sample
             check = True
@@ -1074,20 +1076,25 @@ class Recommender:
                 negative_item_id = random.randint(v_min, v_max)
                 check = negative_item_id in playlist_tracks
 
+            np_playlist_tracks = numpy.array(playlist_tracks)
+
             # Prediction
-            x_i = sum([self.db.get_item_similarities_epoch(positive_item_id, track) for track in playlist_tracks])
-            x_j = sum([self.db.get_item_similarities_epoch(negative_item_id, track) for track in playlist_tracks])
+            x_i = numpy.sum(self.db.get_item_similarities_epoch(positive_item_id, np_playlist_tracks))
+            x_j = numpy.sum(self.db.get_item_similarities_epoch(negative_item_id, np_playlist_tracks))
 
             # Gradient
             x_ij = x_i - x_j
 
             gradient = 1 / (1 + math.exp(x_ij))
-            
-            learnings.append(learning_rate*gradient)
-            # Update
-            [self.db.set_item_similarities_epoch(positive_item_id, track, learning_rate * gradient) for track in playlist_tracks]
 
-            [self.db.set_item_similarities_epoch(negative_item_id, track, -learning_rate * gradient) for track in playlist_tracks]
+            learnings.append(learning_rate*gradient)
+
+            # Update
+            self.db.set_item_similarities_epoch(positive_item_id, np_playlist_tracks, learning_rate * gradient)
+            self.db.null_item_similarities_epoch(positive_item_id, positive_item_id)
+
+            self.db.set_item_similarities_epoch(negative_item_id, np_playlist_tracks, -learning_rate * gradient)
+            self.db.null_item_similarities_epoch(negative_item_id, negative_item_id)
         logging.debug("learning rate avg on epoch %f" % helper.mean(learnings))
 
 
@@ -1165,10 +1172,10 @@ class Recommender:
         recommendations = sorted(possible_recommendations, key=itemgetter(1), reverse=True)[0:knn]
         if ensemble:
             return recommendations
-    	return [recommendation for recommendation, value in recommendations]
+        return [recommendation for recommendation, value in recommendations]
 
 
-    def make_bad_tf_idf_recommendations(self, playlist, target_tracks=[], recommendations=[], knn=5, ensamble=0):
+    def make_bad_tf_idf_recommendations(self, playlist, target_tracks=[], recommendations=[], knn=5, ensemble=0):
         """
         Bad because of the slowlyness. It's similar to the normal tf idf but takes
         into account every track on the target playlist as single set of tags
@@ -1220,7 +1227,7 @@ class Recommender:
                 value = sum(similarities)
                 possible_recommendations.append([track, value])
         possible_recommendations.sort(key=itemgetter(1), reverse=True)
-        if ensamble:
+        if ensemble:
             return possible_recommendations[0:knn]
         recommendations = sorted(possible_recommendations, key=itemgetter(1), reverse=True)[0:knn]
         return [recommendation for recommendation, value in recommendations]

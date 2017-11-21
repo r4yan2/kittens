@@ -4,6 +4,8 @@ import helper
 import random
 import logging
 from operator import itemgetter
+import scipy.sparse as sps
+import numpy
 
 class Database:
     def __init__(self, test):
@@ -478,17 +480,15 @@ class Database:
         """
         Init the similarities map used later for the epoch iteration method
         """
-        self.similarities_map = defaultdict(lambda: defaultdict(lambda: 0.0),{})
+        v_min, v_max = self.get_min_max_tracks()
+        tracks = numpy.array(self.get_tracks())
+        self.similarities = sps.dok_matrix((v_max + 1, v_max + 1), dtype=numpy.float32)
+        # self.similarities[numpy.arange(0, v_max), numpy.arange(0, v_max)] = 0.0
         
-    def get_item_similarities_epoch(self, i, j):
+    def get_item_similarities_epoch(self, i, playlist_tracks):
         """
         """
-        if i < j:
-            return self.similarities_map[i][j]
-        elif i > j:
-            return self.similarities_map[j][i]
-        else:
-            return 0.0
+        return self.similarities[i, playlist_tracks]
              
     def get_item_similarities_alt(self, i, j):
         """
@@ -546,16 +546,13 @@ class Database:
             except KeyError:
                 pass
     
-    def set_item_similarities_epoch(self, i, j, update):
+    def set_item_similarities_epoch(self, i, playlist_tracks, update):
         """
         """
-        
-        if i < j:
-            value = self.similarities_map[i][j]
-            self.similarities_map[i][j] = value + update
-        elif i > j:
-            value = self.similarities_map[j][i]
-            self.similarities_map[j][i] = value + update
+        self.similarities[i, playlist_tracks] += numpy.asarray([update for _ in playlist_tracks])
+
+    def null_item_similarities_epoch(self, i, j):
+        self.similarities[i, j] = 0
 
     def null_item_similarities(self, i, j):
         """
@@ -1054,7 +1051,7 @@ class Database:
             return self.tracks_set
         except AttributeError:
             train = self.get_train_list()
-            self.tracks_set = set([track for playlist, track in train])
+            self.tracks_set = list(set([track for playlist, track in train]))
             return self.tracks_set
 
     def get_num_tracks(self):
