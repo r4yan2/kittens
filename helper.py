@@ -52,7 +52,7 @@ def read(what, delimiter='\t'):
     :param what: The file to read
     :return: the reader object to parse
     """
-    return csv.reader(open('data/'+what+'.csv', 'rb'), delimiter=delimiter)
+    return csv.reader(open('data/'+what+'.csv'), delimiter=delimiter)
 
 def cumulative_sum(lis):
     """
