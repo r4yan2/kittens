@@ -6,7 +6,6 @@ import sys
 from operator import itemgetter
 import logging
 from collections import Counter
-import sqlite3
 
 #sys.setcheckinterval(sys.maxint)
 
@@ -16,13 +15,13 @@ logging.basicConfig(filename='log/kittens.log', level=logging.DEBUG, filemode='w
 # take input from command line sys.argv[0] is the program name
 if eval(sys.argv[1]) == 0:
     test = True
-    instance = sys.argv[4]
+    instance = int(sys.argv[4])
 else:
     test = False
     instance = 0
 
-choice = eval(sys.argv[2])
-core = eval(sys.argv[3])
+choice = int(sys.argv[2])
+core = int(sys.argv[3])
 
 # Initializing the recommender instance
 recommender_system = Recommender()
