@@ -85,10 +85,15 @@ class Recommender:
         self.db = db
         
         if choice == 20:
+            # Get number of available interactions
+            numPositiveInteractions = int(0.25 * self.db.get_num_interactions())
+            self.db.init_item_similarities_epoch()
+
             # do some epoch pre-processing on data
-            for i in range(1,3):
-                logging.debug("epoch %i/2" % i)
-                self.epoch_iteration()
+            for i in range(1,11):
+                logging.debug("epoch %i/10" % i)
+                self.epoch_iteration(numPositiveInteractions)
+
             choice = 11
 
         # main loop for the worker
@@ -1050,30 +1055,28 @@ class Recommender:
         except ValueError: #playlist have no title
             return filtered[0:5]
 
-    def epoch_iteration(self, learning_rate=0.005):
+    def epoch_iteration(self, numPositiveInteractions, learning_rate=0.005):
 
-        # Get number of available interactions
-        numPositiveIteractions = self.db.get_num_interactions()
         learnings=[]
-        self.db.init_item_similarities_epoch()
-
         # Uniform user sampling without replacement
-        for _ in range(numPositiveIteractions):
+
+        playlists = self.db.get_playlists()
+        tracks = self.db.get_tracks()
+        for _ in range(numPositiveInteractions):
 
             # Sample
             check = True
             while check:
-                v_min, v_max = self.db.get_min_max_playlists()
-                playlist = random.randint(v_min, v_max)
+                playlist = random.choice(playlists)
                 playlist_tracks = self.db.get_playlist_tracks(playlist)
                 len_playlist_tracks = len(playlist_tracks)
                 check = not len_playlist_tracks > 10
 
-            positive_item_id = playlist_tracks[random.randint(0, len_playlist_tracks-1)]
+            positive_item_id = random.choice(playlist_tracks)
             check = True
             while check:
-                v_min, v_max = self.db.get_min_max_tracks()
-                negative_item_id = random.randint(v_min, v_max)
+
+                negative_item_id = random.choice(tracks)
                 check = negative_item_id in playlist_tracks
 
             np_playlist_tracks = numpy.array(playlist_tracks)
@@ -1125,7 +1128,7 @@ class Recommender:
             duration = self.db.get_track_duration(i)
             if i in playlist_tracks_set or not (duration > 30000 or duration < 0):
                 continue
-            prediction = sum([self.db.get_item_similarities_alt(i,j) for j in playlist_tracks_set])
+            prediction = sum([self.db.get_item_similarities_epoch(i,j) for j in playlist_tracks_set])
             predictions.append([i, prediction])
 
         recommendations = sorted(predictions, key=itemgetter(1), reverse=True)[0:knn]
