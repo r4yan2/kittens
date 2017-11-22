@@ -492,9 +492,11 @@ class Database:
         """
 
         value = self.similarities[i, playlist_tracks]
-        mask = value == 0
-        to_randomize = mask.multiply(playlist_tracks)
-        self.similarities[i, to_randomize.data] = [numpy.random.random() for _ in range(to_randomize.count_nonzero())]
+        mask = value != 0
+        inv_mask = numpy.bitwise_not(mask.toarray())
+        tracks_mask = inv_mask * playlist_tracks
+        to_randomize = tracks_mask[tracks_mask > 0]
+        self.similarities[i, to_randomize] = [numpy.random.random() for _ in range(to_randomize.size)]
         return self.similarities[i, playlist_tracks]
 
     def get_item_similarities_alt(self, i, j):
