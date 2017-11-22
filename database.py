@@ -437,8 +437,12 @@ class Database:
             elif active_track == track_b:
                 similarities_list.append([track_a, similarities_map[(track_a, active_track)]])
         return sorted(similarities_list, key=itemgetter(1), reverse=True)[0:knn]
-            
-        
+    
+    def get_item_similarities_map(self):
+        return self.similarities
+    
+    def get_URM(self):
+        return self.URM    
 
     def get_item_similarities(self, i, j):
         """
@@ -625,7 +629,11 @@ class Database:
         else:
             train_list = helper.read("train_set"+str(test))
             self.train_list = [[int(element[0]), int(element[1])] for element in train_list]
-            self.num_interactions = len(self.train_list)
+            playlists = [playlist for playlist, _ in self.train_list]
+            tracks = [track for _, track in self.train_list]
+            values = [1 for _, _ in self.train_list]
+            self.URM = sps.csr_matrix((values, (playlists, tracks)), dtype=numpy.float32)
+            self.num_interactions = len(values)
 
     def get_tag_playlists_map(self):
         """

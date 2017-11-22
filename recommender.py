@@ -36,6 +36,7 @@ class Recommender:
         :raise ValueError: in case the recommendations provided have more/less then 5 items
         :return: the triple with the test results
         """
+        logging.debug("testing %s recommendations for playlist %i" % (recommendations, playlist))
         test_set = self.db.get_playlist_relevant_tracks(playlist)
         test_set_length = len(test_set)
         if len(recommendations) != 5:
@@ -86,14 +87,14 @@ class Recommender:
         
         if choice == 20:
             # Get number of available interactions
-            numPositiveInteractions = int(0.25 * self.db.get_num_interactions())
+            numPositiveInteractions = int(self.db.get_num_interactions())
             self.db.init_item_similarities_epoch()
-
+            """
             # do some epoch pre-processing on data
-            for i in range(1,11):
-                logging.debug("epoch %i/10" % i)
+            for i in range(1,2):
+                logging.debug("epoch %i/1" % i)
                 self.epoch_iteration(numPositiveInteractions)
-
+            """
             choice = 11
 
         # main loop for the worker
@@ -1060,9 +1061,10 @@ class Recommender:
         learnings=[]
         # Uniform user sampling without replacement
 
-        playlists = self.db.get_playlists()
+        #playlists = self.db.get_playlists()
+        playlists = list(self.db.get_target_playlists())
         tracks = self.db.get_tracks()
-        for _ in range(numPositiveInteractions):
+        for _ in range(100):
 
             # Sample
             check = True
@@ -1082,8 +1084,8 @@ class Recommender:
             np_playlist_tracks = numpy.array(playlist_tracks)
 
             # Prediction
-            x_i = numpy.sum(self.db.get_item_similarities_epoch(positive_item_id, np_playlist_tracks))
-            x_j = numpy.sum(self.db.get_item_similarities_epoch(negative_item_id, np_playlist_tracks))
+            x_i = self.db.get_item_similarities_epoch(positive_item_id, np_playlist_tracks).sum()
+            x_j = self.db.get_item_similarities_epoch(negative_item_id, np_playlist_tracks).sum()
 
             # Gradient
             x_ij = x_i - x_j
@@ -1115,27 +1117,26 @@ class Recommender:
         """
 
         if target_tracks == []:
-            target_tracks = self.db.get_target_tracks()
+            target_tracks = list(self.db.get_target_tracks())
 
         knn -= len(recommendations)
-        playlist_tracks_set = self.db.get_playlist_tracks(active_playlist)
-        if playlist_tracks_set == []:
-            raise ValueError("playlist is empty")
 
         predictions = []
-
-        for i in target_tracks:
-            duration = self.db.get_track_duration(i)
-            if i in playlist_tracks_set or not (duration > 30000 or duration < 0):
-                continue
-            prediction = sum([self.db.get_item_similarities_epoch(i,j) for j in playlist_tracks_set])
-            predictions.append([i, prediction])
-
-        recommendations = sorted(predictions, key=itemgetter(1), reverse=True)[0:knn]
-        if ensemble:
-            return recommendations
-
-        return [recommendation for recommendation, value in recommendations]
+        
+        URM = self.db.get_URM()
+        playlist_tracks = URM[active_playlist]
+        scores = playlist_tracks.dot(self.db.get_item_similarities_map()).toarray().ravel()
+    
+        # remove seen
+        seen = URM.indices[URM.indptr[active_playlist]:URM.indptr[active_playlist + 1]]
+        scores[seen] = -numpy.inf
+        
+        # considering only target tracks
+        scores[target_tracks] += 10000
+        
+        ranking = scores.argsort()[::-1][:knn]
+        
+        return ranking
 
     def make_bad_tf_idf_recommendations_jaccard(self, playlist, target_tracks=[], recommendations=[], knn=5, ensemble=0):
         """
