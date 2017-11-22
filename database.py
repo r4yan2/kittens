@@ -70,7 +70,7 @@ class Database:
             return self.playlists_set
         except AttributeError:
             playlists = self.get_train_list()
-            self.playlists_set = set([playlist for playlist, track in playlists])
+            self.playlists_set = list(set([playlist for playlist, track in playlists]))
             return self.playlists_set
 
     def compute_test_set(self):
@@ -475,21 +475,28 @@ class Database:
         """
         """
         return self.num_interactions
-    
+
     def init_item_similarities_epoch(self):
         """
         Init the similarities map used later for the epoch iteration method
         """
         v_min, v_max = self.get_min_max_tracks()
         tracks = numpy.array(self.get_tracks())
-        self.similarities = sps.dok_matrix((v_max + 1, v_max + 1), dtype=numpy.float32)
-        # self.similarities[numpy.arange(0, v_max), numpy.arange(0, v_max)] = 0.0
-        
+        self.similarities = sps.lil_matrix((v_max + 1, v_max + 1), dtype=numpy.float32)
+
+    def convert_item_similarities_epoch(self):
+        self.similarities.to_csr()
+
     def get_item_similarities_epoch(self, i, playlist_tracks):
         """
         """
+
+        value = self.similarities[i, playlist_tracks]
+        mask = value == 0
+        to_randomize = mask.multiply(playlist_tracks)
+        self.similarities[i, to_randomize.data] = [numpy.random.random() for _ in range(to_randomize.count_nonzero())]
         return self.similarities[i, playlist_tracks]
-             
+
     def get_item_similarities_alt(self, i, j):
         """
         This method parse the item similairities csv and returns the similarity
@@ -611,8 +618,7 @@ class Database:
         """
         if test == None:
             train_list = helper.read("train_final")
-            train_list.next()
-            self.train_list = [[int(element[0]), int(element[1])] for element in train_list]
+            self.train_list = [[int(element[0]), int(element[1])] for element in train_list if train_list.line_num != 1]
             self.num_interactions = len(self.train_list)
         else:
             train_list = helper.read("train_set"+str(test))
@@ -812,8 +818,9 @@ class Database:
 
             playlist_list = helper.read("playlists_final")
             result = {}
-            playlist_list.next()
             for playlist in playlist_list:
+                if playlist_list.line_num == 1:
+                    continue
                 created_at = int(playlist[0])
                 playlist_id = int(playlist[1])
                 title = helper.parseIntList(playlist[2])
@@ -860,8 +867,7 @@ class Database:
         :return:
         """
         target_playlists = helper.read("target_playlists")
-        target_playlists.next()
-        self.target_playlists = [int(elem[0]) for elem in target_playlists]
+        self.target_playlists = [int(elem[0]) for elem in target_playlists if target_playlists.line_num != 1]
 
     def get_target_tracks(self):
         """
@@ -874,8 +880,7 @@ class Database:
         except:
             # the set cast is just for commodity
             target_tracks = helper.read("target_tracks")
-            target_tracks.next()
-            self.target_tracks = set([int(track[0]) for track in target_tracks])
+            self.target_tracks = set([int(track[0]) for track in target_tracks if target_tracks.line_num != 1])
             return self.target_tracks
 
     def get_tracks_map(self):
@@ -922,10 +927,11 @@ class Database:
         :return:
         """
         tracks = helper.read("tracks_final")
-        tracks.next()
         result = {}
         iterator = -10
         for track in tracks:
+            if tracks.line_num == 1:
+                continue
             track_id = int(track[0])
             artist_id = int(track[1])
             duration = int(track[2])
