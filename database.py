@@ -512,7 +512,7 @@ class Database:
             try:
                 return self.cursor.execute("select value from similarities_epoch where i=(?) and j=(?)", (i,j)).next()
             except:
-                return 0.0
+                return random.random()
         else:
             return 0.0
 

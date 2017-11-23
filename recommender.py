@@ -85,7 +85,7 @@ class Recommender:
         if choice == 20:
             # do some epoch pre-processing on data
 
-            numPositiveIteractions = int(self.db.get_num_interactions() * 0.1)
+            numPositiveIteractions = int(self.db.get_num_interactions() * 0.5)
             self.db.init_item_similarities_epoch()
             playlists = self.db.get_playlists()
             tracks = list(self.db.get_tracks())
