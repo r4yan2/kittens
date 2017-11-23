@@ -416,6 +416,12 @@ class Database:
             neighborhood.append([tracks, similarity])
         neighborhood.sort(key=itemgetter(1), reverse=True)
         return [track for tracks, value in neighborhood[0:knn] for track in tracks]
+    
+    def end_epoch_shrink():
+        for item_id in self.get_tracks():
+            minimum = a[item_id].toarray().ravel()[::-1][:knn].min()
+            mask = a[item_id] > minimum
+            a[item_id] = mask.multiply(a[item_id])
 
     def get_knn_track_similarities(self, active_track, knn=50):
         """
