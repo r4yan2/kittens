@@ -88,7 +88,7 @@ class Recommender:
             numPositiveIteractions = int(self.db.get_num_interactions() * 0.1)
             self.db.init_item_similarities_epoch()
             playlists = self.db.get_playlists()
-            tracks = self.db.get_tracks()
+            tracks = list(self.db.get_tracks())
             for i in xrange(1,11):
                 logging.debug("epoch %i/10" % i)
                 self.epoch_iteration(numPositiveIteractions, playlists, tracks, learning_rate=0.005)

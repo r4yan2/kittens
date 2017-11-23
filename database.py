@@ -27,10 +27,16 @@ class Database:
         else:
             self.load_train_list()
 
-    def clean(self):
+    def shrink_and_clean_db(self, knn=150):
         """
         Invoke some pragmas to shrink, clean and reoder the database
         """
+        tracks = self.get_tracks()
+        for i in tracks:
+            keep = set(self.cursor.execute("select j from similarities_epoch where i=(?) ordered by value desc limit (?)", (i, knn)).fetchall())
+            remove = tracks.difference(keep)
+            self.cursor.execute('delete from similarities_epoch where i=%i and j in (%s)' % (i, ", ".join([str(track) for track in remove])))
+                
         self.cursor.execute("vacuum")
         self.cursor.execute("PRAGMA optimize")
         self.cursor.execute("PRAGMA shrink_memory")
@@ -1057,7 +1063,7 @@ class Database:
             return self.tracks_set
         except AttributeError:
             train = self.get_train_list()
-            self.tracks_set = list(set([track for playlist, track in train]))
+            self.tracks_set = set([track for playlist, track in train])
             return self.tracks_set
 
     def get_num_tracks(self):
