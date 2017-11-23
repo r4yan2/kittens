@@ -91,7 +91,7 @@ class Recommender:
             tracks = list(self.db.get_tracks())
             for i in xrange(1,11):
                 logging.debug("epoch %i/10" % i)
-                self.epoch_iteration(numPositiveIteractions, playlists, tracks, learning_rate=0.005)
+                self.epoch_iteration(numPositiveIteractions, playlists, tracks, learning_rate=0.05)
                 self.db.clean()
             choice = 11
 
@@ -1054,7 +1054,7 @@ class Recommender:
         except ValueError: #playlist have no title
             return filtered[0:5]
 
-    def epoch_iteration(self, numPositiveIteractions, playlists, tracks, learning_rate=0.001):
+    def epoch_iteration(self, numPositiveIteractions, playlists, tracks, learning_rate=0.05):
 
         learnings=[]
         # Uniform user sampling without replacement
