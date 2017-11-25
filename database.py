@@ -515,7 +515,7 @@ class Database:
                 y = int(y)
                 value = float(value)
                 if old_x != x:
-                    limit = 399
+                    limit = 150
                     self.similarities_map[x] = {}
                     self.similarities_map[x][y] = value
                     old_x = x
