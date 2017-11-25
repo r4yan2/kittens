@@ -86,6 +86,7 @@ for i in xrange(target_playlists_length):
         
         logging.debug("running map5 average %f" % avg)
         logging.debug("map@5 distribution %s" % Counter(sorted(run_map5)).items())
+        helper.write("map5distr"+str(choice), map_playlist_mean)
         r=r[0]
     results.append(r)
     logging.debug("results length so far: %i" % len(results))
