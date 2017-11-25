@@ -229,7 +229,7 @@ class Recommender:
             # doing testing things if test mode enabled
             if test:
                 test_result = self.check_recommendations(target, recommendations)
-                q_out.put([test_result, number, target])
+                q_out.put([test_result, number, target, len(db.get_playlist_tracks(target))])
 
             else:
                 # else put the result into the out queue

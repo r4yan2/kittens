@@ -64,6 +64,7 @@ target_playlists_length = len(target_playlists)
 # placeholder for a running map@5
 run_map5 = []
 run_map5_n = 0
+map_playlist = []
 for i in xrange(target_playlists_length):
     r = q_out.get()
     percentage = (i*100)/(target_playlists_length-1)
@@ -74,15 +75,18 @@ for i in xrange(target_playlists_length):
         completion = percentage
     if test: # if the test istance is enabled more logging is done
         logging.debug("worker number %i reporting result %s for playlist %i" % (r[1],r[0],r[2]))
-        r = r[0]
-        (map5, precision, recall) = r
+        
+        (map5, precision, recall) = r[0]
+        map_playlist.append([map5, r[3]])
 
         # calculate a running map@5 value
         run_map5.append(map5)
         run_map5_n += 1
         avg = sum(run_map5)/run_map5_n
+        
         logging.debug("running map5 average %f" % avg)
         logging.debug("map@5 distribution %s" % Counter(sorted(run_map5)).items())
+        r=r[0]
     results.append(r)
     logging.debug("results length so far: %i" % len(results))
 
@@ -103,6 +107,25 @@ if test:
 
     to_write = [["MAP@5", avg_map5], ["Precision", avg_precision], ["Recall", avg_recall]]
     logging.debug("map@5 distribution %s" % Counter(map5_res).items())
+    map_playlist.sort(key=itemgetter(1))
+    logging.debug("map@5/playlists_length distribution %s" % map_playlist)
+
+    old_value = map_playlist[0][1]
+    cnt = 0.0
+    res = 0.0
+    map_playlist_mean = []
+    for map5, value in map_playlist:
+        if value != old_value:
+            map_playlist_mean.append([res/cnt, old_value])
+            res = map5
+            cnt = 1.0
+            old_value = value
+        else:
+            res += map5
+            cnt += 1.0
+    
+    logging.debug("avg map@5 per playlist length %s" % map_playlist_mean)
+         
     logging.debug(to_write)
     helper.write("test_result"+str(instance), to_write, '\t')
 else:
