@@ -48,11 +48,11 @@ q_in = Queue()
 q_out = Queue()
 [q_in.put((i, x)) for i, x in enumerate(target_playlists)]
 # When a process see the -1 know that is the end of the processing
-[q_in.put((-1, -1)) for _ in xrange(core)]
+[q_in.put((-1, -1)) for _ in range(core)]
 
 # Starting the process
 proc = [Process(target=recommender_system.run, args=(choice, ns.db, q_in, q_out, test, i))
-        for i in xrange(core)]
+        for i in range(core)]
 for p in proc:
     p.daemon = True
     p.start()
@@ -64,8 +64,7 @@ target_playlists_length = len(target_playlists)
 # placeholder for a running map@5
 run_map5 = []
 run_map5_n = 0
-map_playlist = []
-for i in xrange(target_playlists_length):
+for i in range(target_playlists_length):
     r = q_out.get()
     percentage = (i*100)/(target_playlists_length-1)
     if percentage > completion:
