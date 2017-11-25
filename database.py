@@ -417,11 +417,11 @@ class Database:
         neighborhood.sort(key=itemgetter(1), reverse=True)
         return [track for tracks, value in neighborhood[0:knn] for track in tracks]
     
-    def end_epoch_shrink():
+    def end_epoch_shrink(self, knn):
         for item_id in self.get_tracks():
-            minimum = a[item_id].toarray().ravel()[::-1][:knn].min()
-            mask = a[item_id] > minimum
-            a[item_id] = mask.multiply(a[item_id])
+            minimum = self.similarities[item_id].toarray().ravel()[::-1][:knn].min()
+            mask = self.similarities[item_id] > minimum
+            self.similarities[item_id] = mask.multiply(self.similarities[item_id])
 
     def get_knn_track_similarities(self, active_track, knn=50):
         """
@@ -497,17 +497,19 @@ class Database:
     def convert_item_similarities_epoch(self):
         self.similarities.to_csr()
 
-    def get_item_similarities_epoch(self, i, playlist_tracks):
+    def get_item_similarities_epoch(self, epoch, i, playlist_tracks):
         """
         """
 
         value = self.similarities[i, playlist_tracks]
-        mask = value != 0
-        inv_mask = numpy.bitwise_not(mask.toarray())
-        tracks_mask = inv_mask * playlist_tracks
-        to_randomize = tracks_mask[tracks_mask > 0]
-        self.similarities[i, to_randomize] = [numpy.random.random() for _ in range(to_randomize.size)]
+        if epoch == 1:
+            mask = value != 0
+            inv_mask = numpy.bitwise_not(mask.toarray())
+            tracks_mask = inv_mask * playlist_tracks
+            to_randomize = tracks_mask[tracks_mask > 0]
+            self.similarities[i, to_randomize] = [numpy.random.random() for _ in range(to_randomize.size)]
         return self.similarities[i, playlist_tracks]
+        
 
     def get_item_similarities_alt(self, i, j):
         """

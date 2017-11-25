@@ -89,12 +89,12 @@ class Recommender:
             # Get number of available interactions
             numPositiveInteractions = int(self.db.get_num_interactions())
             self.db.init_item_similarities_epoch()
-            """
+            
             # do some epoch pre-processing on data
-            for i in range(1,2):
-                logging.debug("epoch %i/1" % i)
-                self.epoch_iteration(numPositiveInteractions)
-            """
+            for i in range(1,10):
+                logging.debug("epoch %i/9" % i)
+                self.epoch_iteration(numPositiveInteractions, i)
+                self.db.end_epoch_shrink(100)
             choice = 11
 
         # main loop for the worker
@@ -1056,7 +1056,7 @@ class Recommender:
         except ValueError: #playlist have no title
             return filtered[0:5]
 
-    def epoch_iteration(self, numPositiveInteractions, learning_rate=0.005):
+    def epoch_iteration(self, numPositiveInteractions, epoch, learning_rate=0.005):
 
         learnings=[]
         # Uniform user sampling without replacement
@@ -1064,7 +1064,7 @@ class Recommender:
         #playlists = self.db.get_playlists()
         playlists = list(self.db.get_target_playlists())
         tracks = self.db.get_tracks()
-        for _ in range(100):
+        for _ in range(numPositiveInteractions):
 
             # Sample
             check = True
@@ -1084,8 +1084,8 @@ class Recommender:
             np_playlist_tracks = numpy.array(playlist_tracks)
 
             # Prediction
-            x_i = self.db.get_item_similarities_epoch(positive_item_id, np_playlist_tracks).sum()
-            x_j = self.db.get_item_similarities_epoch(negative_item_id, np_playlist_tracks).sum()
+            x_i = self.db.get_item_similarities_epoch(epoch, positive_item_id, np_playlist_tracks).sum()
+            x_j = self.db.get_item_similarities_epoch(epoch, negative_item_id, np_playlist_tracks).sum()
 
             # Gradient
             x_ij = x_i - x_j
