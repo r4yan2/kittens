@@ -418,10 +418,9 @@ class Database:
         return [track for tracks, value in neighborhood[0:knn] for track in tracks]
     
     def end_epoch_shrink(self, knn):
-        for item_id in self.get_tracks():
-            minimum = self.similarities[item_id].toarray().ravel()[::-1][:knn].min()
-            mask = self.similarities[item_id] > minimum
-            self.similarities[item_id] = mask.multiply(self.similarities[item_id])
+        n_items = self.similarities.shape[0]
+        
+        self.similarities[numpy.arange(0, n_items), self.similarities[(numpy.item_idarange(0, n_items))].toarray().ravel().argsort()[::-1][knn:]] = 0.0
 
     def get_knn_track_similarities(self, active_track, knn=50):
         """
