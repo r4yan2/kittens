@@ -17,10 +17,14 @@ def write(filename, content, delimiter_char=','):
     if filename == "result":
         header = ["playlist_id", "track_ids"]
         writer.writerow(header)
-    if len(content) > 1:
-        writer.writerows(content)
-    else:
-        writer.writerow(content)
+    try:
+        if len(content) > 1:
+            writer.writerows(content)
+        else:
+            writer.writerow(content)
+    except Exception as e:
+        logging.debug("%s" % (e))
+        fp.write(content)
     fp.close()
 
 def diff_list(a, b):
@@ -138,10 +142,18 @@ def jaccard(I, J):
     :return: similarity value
     """
     intersection = float(len(I.intersection(J)))
+    if not intersection:
+        return 0.0
     union = float(len(I.union(J)))
+    if not union:
+        return 0.0
     disjoint = float(len(I.union(J).difference(I.intersection(J))))
+    if disjoint == union:
+        return 0.0
+    
     jaccard_coefficient = intersection / union
     mse = 1.0 - disjoint / union
+    
     return jaccard_coefficient * mse
 
 def parseIntList(lst):
