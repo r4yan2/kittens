@@ -267,7 +267,7 @@ class Database:
             self.max_track = max(tracks)
             return self.min_track, self.max_track
 
-    def compute_collaborative_playlists_similarity(self, playlist, knn=50, tracks_knn=None, coefficient="jaccard", values="None"):
+    def compute_collaborative_playlists_similarity(self, playlist, knn=50, tracks_knn=None, coefficient="jaccard", values="None", target_tracks="include"):
         """
         This method computes the similarities between playlists based on the included tracks.
         Various coefficient can be used (jaccard, map, cosine, pearson)
@@ -302,11 +302,8 @@ class Database:
             MSE = not_matched_len / float(len(tracks_playlist.union(tracks_playlist_b)))
 
             if coefficient == "jaccard":
-                numerator = matched_len
-                denominator = len(tracks_playlist.union(tracks_playlist_b))
-                jaccard = numerator / float(denominator)
-                MSD = 1.0 - (len(tracks_playlist.union(tracks_playlist_b).difference(tracks_playlist.intersection(tracks_playlist_b)))/float(len(tracks_playlist.union(tracks_playlist_b))))
-                similarities.append([playlist_b, jaccard * MSD])
+                jaccard = helper.jaccard(tracks_playlist, tracks_playlist_b)
+                similarities.append([playlist_b, jaccard])
 
             elif coefficient == "map":
                 # MAP@k it may be useful if only we know how to use it
@@ -356,12 +353,32 @@ class Database:
             elif values == "all":
                 return similarities[0:knn]
         else:
-            tracks = []
+            tracks = set()
             iterator = 0
-            while len(tracks) < tracks_knn:
-                tracks += self.get_playlist_tracks(similarities[iterator][0])
-                iterator += 1
-            return tracks 
+            if target_tracks != "include":
+                while len(tracks) < tracks_knn:
+                    tracks += self.get_playlist_tracks(similarities[iterator][0])
+                    iterator += 1
+
+            else:
+                target_tracks = self.get_target_tracks()
+                while len(tracks) < tracks_knn:
+                    tracks.update(target_tracks.intersection(self.get_playlist_tracks(similarities[iterator][0])).difference(tracks_playlist))
+                    iterator += 1
+            return tracks
+
+    def get_taxonomy_value(self, i, j):
+        """
+        """
+        coeff = 1.0
+        tracks_map = self.get_tracks_map()
+        artist_i = tracks_map[i][0]
+        artist_j = tracks_map[j][0]
+        album_i = tracks_map[i][3]
+        album_j = tracks_map[j][3]
+        taxonomy = int(artist_i == artist_j or album_i == album_j)
+        value = 1 + coeff * taxonomy
+        return value
 
     def get_user_based_collaborative_filtering(self, active_playlist, knn=20, coefficient="jaccard"):
         """
@@ -427,7 +444,7 @@ class Database:
         try:
             similarities_map = self.similarities_map
         except AttributeError: # similarities_map need to be initialized
-            self.get_item_similarities(0,0)
+            self.get_item_similarities_alt(0,0)
             similarities_map = self.similarities_map
         for (track_a, track_b) in similarities_map.iterkeys():
             if active_track == track_a:
@@ -515,7 +532,7 @@ class Database:
                 y = int(y)
                 value = float(value)
                 if old_x != x:
-                    limit = 150
+                    limit = 250
                     self.similarities_map[x] = {}
                     self.similarities_map[x][y] = value
                     old_x = x
