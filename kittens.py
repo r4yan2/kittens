@@ -67,6 +67,8 @@ run_map5_n = 0
 map_playlist = []
 for i in xrange(target_playlists_length):
     r = q_out.get()
+    if r == -1:
+        continue
     percentage = (i*100)/(target_playlists_length-1)
     if percentage > completion:
         # write percentage in a feasible way for dialog/whiptail
@@ -86,7 +88,6 @@ for i in xrange(target_playlists_length):
         
         logging.debug("running map5 average %f" % avg)
         logging.debug("map@5 distribution %s" % Counter(sorted(run_map5)).items())
-        helper.write("map5distr"+str(choice), map_playlist_mean)
         r=r[0]
     results.append(r)
     logging.debug("results length so far: %i" % len(results))
@@ -126,6 +127,7 @@ if test:
             cnt += 1.0
     
     logging.debug("avg map@5 per playlist length %s" % map_playlist_mean)
+    helper.write("map5distr"+str(choice), map_playlist_mean)
          
     logging.debug(to_write)
     helper.write("test_result"+str(instance), to_write, '\t')
