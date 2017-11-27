@@ -141,6 +141,8 @@ def jaccard(I, J):
     :param J: set
     :return: similarity value
     """
+    if not isinstance(I, set):
+        I = set(I)
     intersection = float(len(I.intersection(J)))
     if not intersection:
         return 0.0
@@ -150,10 +152,10 @@ def jaccard(I, J):
     disjoint = float(len(I.union(J).difference(I.intersection(J))))
     if disjoint == union:
         return 0.0
-    
+    #ratseq = [1 + math.fabs(tracks.index(i) - tracks.index(j)) for playlist in I.intersection(J) for tracks in [db.get_playlist_tracks(playlist)]]
     jaccard_coefficient = intersection / union
     mse = 1.0 - disjoint / union
-    
+
     return jaccard_coefficient * mse
 
 def parseIntList(lst):
