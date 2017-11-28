@@ -227,7 +227,7 @@ class Database:
                 num_cosine_sim_title = sum([tf_idf_playlist_a_title[playlist_a_titles.index(title)] * tf_idf_playlist_b_title[playlist_b_titles.index(title)] for title in playlist_b_titles if title in playlist_a_titles])
             elif title_flag and coefficient == "jaccard":
                 try:
-                    similarity = ( len(playlist_a_titles_set.intersection(playlist_b_titles))/float(len(playlist_a_titles_set.union(playlist_b_titles))) ) * (1.0 - (len(playlist_a_titles_set.union(playlist_b_titles).difference(playlist_a_titles_set.intersection(playlist_b_titles)))/float(len(playlist_a_titles_set.union(playlist_b_titles)))))
+                    similarity = ( len(playlist_a_titles_set.intersection(playlist_b_titles))/float(len(playlist_a_titles_set.union(playlist_b_titles))) ) * (1.0 - (len(playlist_a_titles_set.symmetric_difference(playlist_b_titles))/float(len(playlist_a_titles_set.union(playlist_b_titles)))))
                 except:
                     continue
             if track_flag and coefficient == "cosine":
@@ -296,7 +296,7 @@ class Database:
             
             matched = tracks_playlist.intersection(tracks_playlist_b)
             matched_len = len(matched)
-            not_matched = tracks_playlist.union(tracks_playlist_b).difference(matched)
+            not_matched = tracks_playlist.symmetric_difference(tracks_playlist_b)
             not_matched_len = len(not_matched)
             
             MSE = not_matched_len / float(len(tracks_playlist.union(tracks_playlist_b)))
@@ -694,6 +694,12 @@ class Database:
         user_tracks = self.get_playlist_user_tracks(playlist)
         tracks = self.get_playlist_tracks(playlist)
         return [user_tracks.count(track) for track in tracks]
+
+    def get_user_rating(self, playlist, track):
+        """
+        """
+        user_tracks = self.get_playlist_user_tracks(playlist)
+        return user_tracks.count(track)
 
     def get_average_track_inclusion(self, track):
         """

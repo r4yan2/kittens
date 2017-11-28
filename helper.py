@@ -149,10 +149,10 @@ def jaccard(I, J):
     union = float(len(I.union(J)))
     if not union:
         return 0.0
-    disjoint = float(len(I.union(J).difference(I.intersection(J))))
+    disjoint = float(len(I.symmetric_difference(J)))
     if disjoint == union:
         return 0.0
-    #ratseq = [1 + math.fabs(tracks.index(i) - tracks.index(j)) for playlist in I.intersection(J) for tracks in [db.get_playlist_tracks(playlist)]]
+    #ratseq = [math.fabs(tracks.index(i) - tracks.index(j)) for playlist in I.intersection(J) for tracks in [db.get_playlist_tracks(playlist)]]
     jaccard_coefficient = intersection / union
     mse = 1.0 - disjoint / union
 
