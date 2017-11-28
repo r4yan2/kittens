@@ -1007,12 +1007,12 @@ class Recommender:
             recommendations2 = defaultdict(lambda: 0.0, {})
 
         try:
-            recommendations3 = self.make_top_tag_recommendations(playlist, target_tracks=target_tracks, knn=knn, ensemble=1, neighborhood_enabled=False)
+            recommendations3 = self.make_top_tag_recommendations(playlist, target_tracks=target_tracks, knn=knn, ensemble=1, neighborhood_knn=75)
             normalizing3 = max(recommendations3, key=itemgetter(1))[1]
             recommendations3 = defaultdict(lambda: 0.0, {item[0]: (item[1] / float(normalizing3)) for item in recommendations3})
         except:
             recommendations3 = defaultdict(lambda: 0.0, {})
-
+        """
         try:
             recommendations7 = self.make_artists_recommendations(playlist, knn=knn, ensemble=1)
             normalizing7 = max(recommendations7, key=itemgetter(1))[1]
@@ -1026,14 +1026,13 @@ class Recommender:
             recommendations5 = defaultdict(lambda: 0.0, {item[0]: (item[1] / float(normalizing5)) for item in recommendations5})
         except:
             recommendations5 = defaultdict(lambda: 0.0, {})
+        """
 
-        a = 0.40
+        a = 0.50
         b = 0.25
-        c = 0.20
-        e = 0.05
-        g = 0.10
+        c = 0.25
 
-        possible_recommendations = [[item, a * recommendations1[item] + c * recommendations3[item] + b * recommendations2[item] +  e * recommendations5[item] + g * recommendations7[item]] for item in target_tracks]
+        possible_recommendations = [[item, a * recommendations1[item] + c * recommendations3[item] + b * recommendations2[item]] for item in target_tracks]
         possible_recommendations.sort(key=itemgetter(1), reverse=True)
 
         return [item for item, value in possible_recommendations[0:5]]
@@ -1141,8 +1140,8 @@ class Recommender:
             duration = self.db.get_track_duration(i)
             if i in playlist_tracks_set or not (duration > 30000 or duration < 0):
                 continue
-            prediction = sum([self.db.get_item_similarities_alt(i,j) * self.db.get_taxonomy_value(i,j) for j in playlist_tracks_set])
-            #prediction = sum([self.db.get_item_similarities_alt(i,j) * self.db.get_taxonomy_value(i,j) * (1/math.sqrt(1+self.db.get_average_track_inclusion(i))) for j in playlist_tracks_set])
+            #prediction = sum([self.db.get_item_similarities_alt(i,j) * self.db.get_taxonomy_value(i,j) for j in playlist_tracks_set])
+            prediction = sum([self.db.get_item_similarities_alt(i,j) * self.db.get_taxonomy_value(i,j) * (1/(1+math.log10(1+self.db.get_average_track_inclusion(i)))) * (self.db.get_user_rating(active_playlist, j))**0.75 for j in playlist_tracks_set])
             predictions.append([i, prediction])
 
         recommendations = sorted(predictions, key=itemgetter(1), reverse=True)[0:knn]
