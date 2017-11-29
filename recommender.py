@@ -38,7 +38,7 @@ class Recommender:
         test_set_length = len(test_set)
         if len(recommendations) != 5:
             raise ValueError('Recommendations list have less than 5 recommendations')
-        
+
         is_relevant = [float(item in test_set) for item in recommendations]
         is_relevant_length = len(is_relevant)
 
@@ -84,7 +84,7 @@ class Recommender:
 
         # Retrieve the db from the list of arguments
         self.db = db
-        
+
         if choice == 20:
             # do some epoch pre-processing on data
             for i in xrange(1,101):
@@ -234,7 +234,7 @@ class Recommender:
                     logging.debug("cannot use tf_idf for %i because of %s" % (target, e))
                     #q_out.put(-1)
 
-            padding = False
+            padding = True
             if len(recommendations) < 5:
                 if padding:
                     recommendations = self.make_some_padding(target, recommendations=recommendations)
@@ -262,7 +262,10 @@ class Recommender:
         i = 0
         while len(recommendations) < 5:
             if methods[i] == 3:
-                recommendations = self.make_top_tag_recommendations(playlist, recommendations=recommendations)
+                try:
+                    recommendations = self.make_top_tag_recommendations(playlist, recommendations=recommendations)
+                except ValueError:
+                    pass
             elif methods[i] == 2:
                 recommendations = self.make_top_included_recommendations(playlist, recommendations=recommendations)
             i = (i + 1) % len(methods)
@@ -566,7 +569,7 @@ class Recommender:
             return possible_recommendations[0:knn]
         recs = recommendations + [recommendation for recommendation, value in possible_recommendations[0:knn]]
         return recs
-    
+
     def make_knn_bayes_recommendations(self, playlist, recommendations=[], knn=5, ensemble=0):
         """
         This method tries to implement a machine learning approach using statistic predictions for a specific track
@@ -596,11 +599,11 @@ class Recommender:
 
         for track in target_tracks:
             # bayesian probability non-optimized
-            
+
             knn = 50
             neighborhood = self.db.get_knn_item_similarities(track, knn)
-            
-            
+
+
             probability = prior_probability / likelihood
 
             possible_recommendations.append([track, probability])
@@ -656,6 +659,7 @@ class Recommender:
             if len(recommendations) < 5:
                 recommendations = self.make_some_padding(playlist, recommendations=recommendations)
         return recommendations
+
 
     def make_neighborhood_similarity(self, playlist, recommendations=[], knn=5):
         """
@@ -1019,7 +1023,7 @@ class Recommender:
             recommendations7 = defaultdict(lambda: 0.0, {item[0]: (item[1] / float(normalizing7)) for item in recommendations7})
         except:
             recommendations7 = defaultdict(lambda: 0.0, {})
-            
+
         try:
             recommendations5 = self.make_tf_idf_titles_recommendations(playlist, knn=knn, ensemble=1)
             normalizing5 = max(recommendations5, key=itemgetter(1))[1]
@@ -1105,7 +1109,7 @@ class Recommender:
             x_ij = x_i - x_j
 
             gradient = 1 / (1 + math.exp(x_ij))
-            
+
             learnings.append(learning_rate*gradient)
             # Update
             [self.db.set_item_similarities_epoch(positive_item_id, track, learning_rate * gradient) for track in playlist_tracks]

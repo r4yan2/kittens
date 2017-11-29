@@ -6,7 +6,7 @@ import logging
 from operator import itemgetter
 
 class Database:
-    def __init__(self, test):
+    def __init__(self, test, individual=None):
         """
         if we are in test execution train_set, test_set are loaded transparently,
         otherwise the normal dataset are loaded
@@ -14,6 +14,8 @@ class Database:
         :param test: istance
         :return: the initialized object
         """
+        if individual:
+            self.individual = individual
 
         if test > 0:
             self.load_test_set(test)
@@ -293,12 +295,12 @@ class Database:
 
             tracks_playlist_b = set(self.get_playlist_tracks(playlist_b))
             tracks_playlist_b_length = len(tracks_playlist_b)
-            
+
             matched = tracks_playlist.intersection(tracks_playlist_b)
             matched_len = len(matched)
             not_matched = tracks_playlist.symmetric_difference(tracks_playlist_b)
             not_matched_len = len(not_matched)
-            
+
             MSE = not_matched_len / float(len(tracks_playlist.union(tracks_playlist_b)))
 
             if coefficient == "jaccard":
@@ -435,7 +437,7 @@ class Database:
     def get_knn_track_similarities(self, active_track, knn=50):
         """
         Getter for the most similar track to the passed one
-        
+
         :param active_track: active_track
         :param knn: cardinality of the neighborhood
         :return: list of similar tracks
@@ -452,8 +454,8 @@ class Database:
             elif active_track == track_b:
                 similarities_list.append([track_a, similarities_map[(track_a, active_track)]])
         return sorted(similarities_list, key=itemgetter(1), reverse=True)[0:knn]
-            
-        
+
+
 
     def get_item_similarities(self, i, j):
         """
@@ -490,13 +492,13 @@ class Database:
         """
         """
         return self.num_interactions
-    
+
     def init_item_similarities_epoch(self):
         """
         Init the similarities map used later for the epoch iteration method
         """
         self.similarities_map = defaultdict(lambda: defaultdict(lambda: 0.0),{})
-        
+
     def get_item_similarities_epoch(self, i, j):
         """
         """
@@ -506,7 +508,7 @@ class Database:
             return self.similarities_map[j][i]
         else:
             return 0.0
-             
+
     def get_item_similarities_alt(self, i, j):
         """
         This method parse the item similairities csv and returns the similarity
@@ -562,11 +564,11 @@ class Database:
                 self.similarities_map[(j,i)] = value + update
             except KeyError:
                 pass
-    
+
     def set_item_similarities_epoch(self, i, j, update):
         """
         """
-        
+
         if i < j:
             value = self.similarities_map[i][j]
             self.similarities_map[i][j] = value + update
@@ -586,7 +588,7 @@ class Database:
                 self.similarities_map[(j,i)] = 0
             except KeyError:
                 pass
-            
+
     def null_item_similarities_alt(self, i, j):
         """
         """
@@ -660,6 +662,20 @@ class Database:
                 for tag in tags_set:
                     self.tag_playlists_map[tag].append(playlist)
             return self.tag_playlists_map
+
+
+    def genetic(self, active_tag):
+        """
+        """
+        try:
+            return self.encoding[active_tag]
+        except AttributeError:
+            fp = open("data/tag_encoding", "rb")
+            self.tag_encoding = [int(elem) for elem in fp.readline().split(",")]
+            self.encoding = {tag: individual for individual, tag in zip(self.individual, self.tag_encoding)}
+            return self.encoding[active_tag]
+
+
 
     def get_favourite_user_track(self, track):
         """
@@ -966,10 +982,14 @@ class Database:
                 album = iterator
                 iterator -= 1
             tags = helper.parseIntList(track[5]) # evaluation of the tags list
-
+            try:
+                if self.individual:
+                    tags = [tag for tag in tags if self.genetic(tag)]
+            except:
+                pass
             tags_extended = [artist_id + 276615] + [album + 847203 if album > 0 else iterator] + [playcount + 1064529] + tags
 
-            result[track_id]= [artist_id, duration, playcount, album, tags_extended]
+            result[track_id]= [artist_id, duration, playcount, album, tags]
         return result
 
     def get_playlist_user_tracks(self, playlist):
