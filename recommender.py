@@ -385,6 +385,8 @@ class Recommender:
         track_playlists_map = self.db.get_track_playlists_map()
 
         for track in target_tracks: # make the actual recommendation
+            if track in recommendations:
+                continue
             tags = self.db.get_track_tags(track)
             """
             try:
@@ -434,8 +436,8 @@ class Recommender:
         if target_tracks == []:
             target_tracks = self.db.get_target_tracks().difference(recommendations).difference(playlist_tracks)
             if neighborhood_knn:
-                #target_tracks = target_tracks.intersection(self.db.compute_collaborative_playlists_similarity(active_playlist, tracks_knn=neighborhood_knn))
-                target_tracks = self.make_collaborative_item_item_recommendations(active_playlist, knn=100)
+                target_tracks = target_tracks.intersection(self.db.compute_collaborative_playlists_similarity(active_playlist, tracks_knn=neighborhood_knn))
+                #target_tracks = self.make_collaborative_item_item_recommendations(active_playlist, knn=100)
         knn = knn - len(recommendations)
 
         possible_recommendations = []
@@ -444,10 +446,11 @@ class Recommender:
         playlist_features_set = list(set(playlist_features))
         if len(playlist_features) == 0:
             raise ValueError("playlist have no features!")
+#ADAGRAD
 
         if tf_idf == "bm25":
             average = self.db.get_average_playlist_tags_count()
-            k = 1.9
+            k = 1.2
             b = 0.75
             tf_idf_playlist = [self.db.get_tag_idf(tag) * ((playlist_features.count(tag) * (k + 1)) / (playlist_features.count(tag) + k * (1 - b + b * (len(playlist_features) / average)))) for tag in playlist_features_set]
         elif tf_idf == "normal":
@@ -542,7 +545,7 @@ class Recommender:
         len_playlist_tags_set = len(playlist_tags_set)
         likelihood_map = defaultdict(lambda: 0.0, {})
 
-        p_in_playlist = len_playlist_tracks/self.db.get_num_tracks()
+        p_in_playlist = len_playlist_tracks / self.db.get_num_tracks()
         playlist_tags_total = float(sum(playlist_tags_counter.values()))
 
         '''
@@ -557,7 +560,7 @@ class Recommender:
 
             # avg probability
             try:
-                probability = helper.product([playlist_tags_counter[tag]/len_playlist_tracks for tag in tags]) * p_in_playlist / helper.product([playlist_tags_counter[tag]/ playlist_tags_total for tag in tags])
+                probability = helper.product([playlist_tags_counter[tag]/len_playlist_tracks * self.db.get_tag_idf(tag) for tag in tags]) * p_in_playlist / helper.product([playlist_tags_counter[tag]/ playlist_tags_total for tag in tags])
             except:
                 continue
 
@@ -615,7 +618,7 @@ class Recommender:
         recs = recommendations + [recommendation for recommendation, value in possible_recommendations[0:knn]]
         return recs
 
-    def make_hybrid_recommendations(self, active_playlist, recommendations=[], knn=5):
+    def make_hybrid_recommendations(self, active_playlist, recommendations=[], knn=5, ensemble=0):
         """
         Hybrid recommendations method which takes into account the number of tracks and titles in a playlist
 
@@ -625,8 +628,10 @@ class Recommender:
         :return: the new recommendations
         """
         playlist_tracks = self.db.get_playlist_tracks(active_playlist)
+        len_playlist_tracks = len(playlist_tracks)
         playlist_titles = self.db.get_titles_playlist(active_playlist)
         active_playlist_creation = self.db.get_created_at_playlist(active_playlist)
+
 
         # case: playlist have no tracks and no title
         if playlist_tracks == [] and playlist_titles == []:
@@ -644,20 +649,25 @@ class Recommender:
                 prediction = sum([self.db.get_item_similarities_alt(track,j) for j in owner_playlists_tracks])
                 predictions.append([track, prediction])
             predictions.sort(key=itemgetter(1), reverse=True)
+            if ensemble:
+                return predictions[0:knn]
             return [recommendation for recommendation, _ in predictions[0:knn]]
-
 
         # case: playlist have no tracks
         elif playlist_tracks == []:
-            recommendations = self.make_tf_idf_titles_recommendations(playlist)
+            recommendations = self.make_tf_idf_titles_recommendations(active_playlist)
 
-        else: # playlist is complete of title and tracks
+        elif len_playlist_tracks <= 120: # playlist is complete of title and tracks
             try:
-                recommendations = self.make_tf_idf_recommendations(playlist)
+                recommendations = self.make_tf_idf_recommendations(active_playlist)
             except ValueError:
-                recommendations = self.make_top_included_recommendations(playlist)
+                recommendations = self.make_top_tag_recommendations(active_playlist)
             if len(recommendations) < 5:
                 recommendations = self.make_some_padding(playlist, recommendations=recommendations)
+        elif len_playlist_tracks > 120:
+                recommendations = self.make_collaborative_item_item_recommendations(active_playlist)
+        if ensemble:
+            return recommendations[0:knn]
         return recommendations
 
 
@@ -740,7 +750,7 @@ class Recommender:
         recs = recommendations + [recommendation for recommendation, value in possible_recommendations[0:knn]]
         return recs
 
-    def make_playlist_based_recommendations(self, playlist, target_tracks=[], knn=5):
+    def make_playlist_based_recommendations(self, playlist, target_tracks=[], knn=5, ensemble=0):
         """
         Make Recommendations based on the similarity between playlists
 
@@ -770,6 +780,9 @@ class Recommender:
             #coefficient = neighborhood_tracks.count(track) * len(playlist_tags.intersection(track_tags)) / (float(len(playlist_tags.union(track_tags))))
 
             possible_recommendations.append([track, prediction])
+            if ensemble:
+                return possible_recommendations[0:knn]
+
         possible_recommendations.sort(key=itemgetter(1), reverse=True)
         recs = [recommendation for recommendation, value in possible_recommendations[0:knn]]
         return recs
@@ -854,7 +867,7 @@ class Recommender:
         else:
             raise ValueError("No enough confidence")
 
-        target_tracks = self.db.get_target_tracks().intersection(artist_tracks).difference(playlist_tracks)
+        target_tracks = self.db.get_target_tracks().difference(playlist_tracks)
         if len(target_tracks) == 0:
             raise ValueError("No artist songs available for selection!")
 
@@ -990,19 +1003,29 @@ class Recommender:
         :return: Recommendations
         """
         possible_recommendations = []
+        tracks_playlist = self.db.get_playlist_tracks(playlist)
+        titles_playlist = self.db.get_titles_playlist(playlist)
         target_tracks = self.db.get_target_tracks()
-        neighborhood_tracks = self.db.compute_collaborative_playlists_similarity(playlist, tracks_knn=150)
+        neighborhood_tracks = self.db.compute_collaborative_playlists_similarity(playlist, knn=100)
         target_tracks = target_tracks.intersection(neighborhood_tracks)
 
         knn = len(target_tracks)
 
+        '''
+        try:
+            recommendations0 = self.make_hybrid_recommendations(playlist, target_tracks=target_tracks, knn=knn, ensemble=1)
+            normalizing0 = max(recommendations0, key=itemgetter(1))[1]
+            recommendations0 = defaultdict(lambda: 0.0, {item[0]: (item[1] / float(normalizing0)) for item in recommendations0})
+        except:
+            recommendations0 = defaultdict(lambda: 0.0, {})
+        '''
         try:
             recommendations1 = self.make_tf_idf_recommendations(playlist, target_tracks=target_tracks, knn=knn, ensemble=1)
             normalizing1 = max(recommendations1, key=itemgetter(1))[1]
             recommendations1 = defaultdict(lambda: 0.0, {item[0]: (item[1] / float(normalizing1)) for item in recommendations1})
         except:
             recommendations1 = defaultdict(lambda: 0.0, {})
-
+        '''
         try:
             recommendations2 = self.make_collaborative_item_item_recommendations(playlist, target_tracks=target_tracks, knn=knn, ensemble=1)
             normalizing2 = max(recommendations2, key=itemgetter(1))[1]
@@ -1031,13 +1054,33 @@ class Recommender:
         except:
             recommendations5 = defaultdict(lambda: 0.0, {})
 
-        a = 0.40
-        b = 0.25
-        c = 0.20
-        e = 0.05
-        g = 0.10
+        try:
+            recommendations4 = self.make_user_based_recommendations(playlist, knn=knn, ensemble=1)
+            normalizing4 = max(recommendations4, key=itemgetter(1))[1]
+            recommendations4 = defaultdict(lambda: 0.0, {item[0]: (item[1] / float(normalizing4)) for item in recommendations4})
+        except:
+            recommendations4 = defaultdict(lambda: 0.0, {})
 
-        possible_recommendations = [[item, a * recommendations1[item] + c * recommendations3[item] + b * recommendations2[item] +  e * recommendations5[item] + g * recommendations7[item]] for item in target_tracks]
+        try:
+            recommendations8 = self.make_playlist_based_recommendations(playlist, knn=knn, ensemble=1)
+            normalizing8 = max(recommendations8, key=itemgetter(1))[1]
+            recommendations8 = defaultdict(lambda: 0.0, {item[0]: (item[1] / float(normalizing8)) for item in recommendations8})
+        except:
+            recommendations8 = defaultdict(lambda: 0.0, {})
+
+        '''
+        try:
+            recommendations6 = self.make_naive_bayes_recommendations(playlist, knn=knn, ensemble=1)
+            normalizing6 = max(recommendations6, key=itemgetter(1))[1]
+            recommendations6 = defaultdict(lambda: 0.0, {item[0]: (item[1] / float(normalizing6)) for item in recommendations6})
+        except:
+            recommendations6 = defaultdict(lambda: 0.0, {})
+
+
+
+        possible_recommendations = [[item, recommendations1[item] * recommendations6[item]] for item in target_tracks]
+        #possible_recommendations = [[item, max(recommendations1[item], recommendations2[item], recommendations3[item], recommendations4[item], recommendations5[item], recommendations6[item], recommendations7[item], recommendations8[item]) * recommendations6[item]] for item in target_tracks]
+
         possible_recommendations.sort(key=itemgetter(1), reverse=True)
 
         return [item for item, value in possible_recommendations[0:5]]

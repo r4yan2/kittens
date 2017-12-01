@@ -137,7 +137,7 @@ class Database:
                 self.user_tracks[int(u)].append(int(i))
             return self.user_tracks[user]
 
-    def compute_content_playlists_similarity(self, playlist_a, knn=75, title_flag=1, tag_flag=0, track_flag=0, coefficient="jaccard"):
+    def compute_content_playlists_similarity(self, playlist_a, knn=None, title_flag=0, tag_flag=1, track_flag=0, coefficient="jaccard"):
         """
         This method compute the neighborhood for a given playlists by using content or collaborative techniques
 
@@ -989,7 +989,7 @@ class Database:
                 pass
             tags_extended = [artist_id + 276615] + [album + 847203 if album > 0 else iterator] + [playcount + 1064529] + tags
 
-            result[track_id]= [artist_id, duration, playcount, album, tags]
+            result[track_id]= [artist_id, duration, playcount, album, tags_extended]
         return result
 
     def get_playlist_user_tracks(self, playlist):
@@ -1304,6 +1304,7 @@ class Database:
         try:
             return self.top_listened
         except AttributeError:
-            tracks = self.get_tracks()
-            self.top_listened = sorted(map(lambda x: [x[0], x[3]], tracks), key=lambda x: x[1], reverse=True)
+            tracks = self.get_tracks_map()
+            self.top_listened = [(track, tracks[track][2]) for track in tracks]
+            self.top_listened.sort(key=itemgetter(1), reverse=False)
             return self.top_listened

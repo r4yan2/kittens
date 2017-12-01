@@ -19,7 +19,8 @@ toolbox = base.Toolbox()
 toolbox.register("attr_float", random.randint, 0, 1)
 toolbox.register("individual", tools.initRepeat, creator.Individual,
                  toolbox.attr_float, n=IND_SIZE)
-toolbox.register("population", tools.initRepeat, list, toolbox.individual)
+toolbox.register("population", tools.initRepeat, list, toolbox.individual) #usare una funzione definita da noi; al posto di initRepeat in cui usiamo il 30% di uni
+# meno uni possibili, inizialmente, per avere dei geni con meno ciarpame possibile; il 30% di uni e il resto di zeri
 
 def evalOneMax(individual):
     db = Database(1, individual)
@@ -32,7 +33,7 @@ def evalOneMax(individual):
     #ns = manager.Namespace()
     #ns.db = db
     target_playlists = db.get_target_playlists()
-    core = 2
+    core = 4
 
     # Queue(s) for the process, one for input data to the process, the other for the output data to the main process
     q_in = Queue()
@@ -50,22 +51,24 @@ def evalOneMax(individual):
     works = len(target_playlists)
 
     for i in xrange(works):
+        print i * 100 / works
         r = q_out.get()
         if r == -1:
             continue
         results.append(r[0][0])
     [p.join() for p in proc]
-
-    return helper.mean(results),
+    score_map = helper.mean(results)
+    print score_map
+    return score_map,
 
 
 toolbox.register("evaluate", evalOneMax)
 toolbox.register("mate", tools.cxTwoPoint)
 toolbox.register("mutate", tools.mutFlipBit, indpb=0.05)
 toolbox.register("select", tools.selTournament, tournsize=3)
-population = toolbox.population(n=300)
+population = toolbox.population(n=50)
 
-NGEN=40
+NGEN=300
 
 for gen in range(NGEN):
     print "percentage", gen * 100 / NGEN
@@ -74,4 +77,4 @@ for gen in range(NGEN):
     for fit, ind in zip(fits, offspring):
         ind.fitness.values = fit
     population = toolbox.select(offspring, k=len(population))
-top10 = tools.selBest(population, k=10)
+top5 = tools.selBest(population, k=5)

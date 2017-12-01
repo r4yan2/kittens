@@ -22,6 +22,7 @@ else:
 
 choice = int(sys.argv[2])
 core = int(sys.argv[3])
+individual = helper.parseIntList(helper.read("top1_gen").next()[0])
 
 # Initializing the recommender instance
 recommender_system = Recommender()
@@ -51,7 +52,7 @@ q_out = Queue()
 [q_in.put((-1, -1)) for _ in xrange(core)]
 
 # Starting the process
-proc = [Process(target=recommender_system.run, args=(choice, ns.db, q_in, q_out, test, i))
+proc = [Process(target=recommender_system.run, args=(choice, db, q_in, q_out, test, i))
         for i in xrange(core)]
 for p in proc:
     p.daemon = True
@@ -77,7 +78,7 @@ for i in xrange(target_playlists_length):
         completion = percentage
     if test: # if the test istance is enabled more logging is done
         logging.debug("worker number %i reporting result %s for playlist %i" % (r[1],r[0],r[2]))
-        
+
         (map5, precision, recall) = r[0]
         map_playlist.append([map5, r[3]])
 
@@ -85,7 +86,7 @@ for i in xrange(target_playlists_length):
         run_map5.append(map5)
         run_map5_n += 1
         avg = sum(run_map5)/run_map5_n
-        
+
         logging.debug("running map5 average %f" % avg)
         logging.debug("map@5 distribution %s" % Counter(sorted(run_map5)).items())
         r=r[0]
@@ -125,10 +126,10 @@ if test:
         else:
             res += map5
             cnt += 1.0
-    
+
     logging.debug("avg map@5 per playlist length %s" % map_playlist_mean)
     helper.write("map5distr"+str(choice), map_playlist_mean)
-         
+
     logging.debug(to_write)
     helper.write("test_result"+str(instance), to_write, '\t')
 else:
