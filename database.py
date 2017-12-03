@@ -187,24 +187,24 @@ class Database:
 
         if title_flag:
             playlist_a_titles = self.get_titles_playlist(playlist_a)
-            playlist_a_titles_set = set(playlist_a_titles)
 
         if track_flag:
             playlist_a_tracks = self.get_playlist_tracks(playlist_a)
 
         if not (len(playlist_a_tags) and tag_flag or len(playlist_a_titles) and title_flag or len(playlist_a_tracks) and track_flag):
             raise ValueError("cannot generate neighborhood for", playlist_a)
-
-        if tag_flag and coefficient == "cosine":
-            tf_idf_playlist_a_tag = [(1.0 + math.log(playlist_a_tags.count(tag),10)) * self.get_tag_idf(tag) for tag in playlist_a_tags]
-
-        if title_flag and coefficient == "cosine":
-            tf_idf_playlist_a_title = [self.get_title_idf(title) for title in playlist_a_titles]
-
-        if track_flag and coefficient == "cosine":
-            tf_idf_playlist_a_track = [(1.0 + math.log(playlist_a_tracks.count(track),10)) * self.get_track_idf(track) for track in playlist_a_tracks]
-
+        
         if coefficient == "cosine":
+
+            if tag_flag:
+                tf_idf_playlist_a_tag = [(1.0 + math.log10(playlist_a_tags.count(tag))) * self.get_tag_idf(tag) for tag in playlist_a_tags]
+
+            if title_flag:
+                tf_idf_playlist_a_title = [self.get_title_idf(title) for title in playlist_a_titles]
+
+            if track_flag:
+                tf_idf_playlist_a_track = [self.get_track_idf(track) for track in playlist_a_tracks]
+
             tf_idf_playlist_a = tf_idf_playlist_a_tag + tf_idf_playlist_a_title + tf_idf_playlist_a_track
 
         neighborhood = []
@@ -220,7 +220,7 @@ class Database:
             tf_idf_playlist_b_track = []
 
             if tag_flag:
-                playlist_b_tags = list(set([tag for track in self.get_playlist_tracks(playlist_b) for tag in self.get_track_tags(track)]))
+                playlist_b_tags = [tag for track in self.get_playlist_tracks(playlist_b) for tag in self.get_track_tags(track)]
 
             if title_flag:
                 playlist_b_titles = self.get_titles_playlist(playlist_b)
@@ -230,46 +230,49 @@ class Database:
 
             if not (len(playlist_b_tags) and tag_flag or len(playlist_b_titles) and title_flag or len(playlist_b_tracks) and track_flag):
                 continue
+            
+            if coefficient == "cosine":
 
-            if tag_flag and coefficient == "cosine":
-                tf_idf_playlist_b_tag = [(1.0 + math.log(playlist_b_tags.count(tag),10)) * self.get_tag_idf(tag) for tag in playlist_b_tags]
+                if tag_flag:
+                    tf_idf_playlist_b_tag = [(1.0 + math.log10(playlist_b_tags.count(tag))) * self.get_tag_idf(tag) for tag in playlist_b_tags]
 
-            if title_flag and coefficient == "cosine":
-                tf_idf_playlist_b_title = [self.get_title_idf(title) for title in playlist_b_titles]
+                if title_flag:
+                    tf_idf_playlist_b_title = [self.get_title_idf(title) for title in playlist_b_titles]
 
-            if track_flag and coefficient == "cosine":
-                tf_idf_playlist_b_track = [self.get_track_idf(track) for track in playlist_b_tracks]
+                if track_flag:
+                    tf_idf_playlist_b_track = [self.get_track_idf(track) for track in playlist_b_tracks]
 
             tf_idf_playlist_b = tf_idf_playlist_b_tag + tf_idf_playlist_b_title + tf_idf_playlist_b_track
 
             num_cosine_sim_tag = 0
             num_cosine_sim_title = 0
             num_cosine_sim_track = 0
-
-            if tag_flag and coefficient == "cosine":
-                num_cosine_sim_tag = sum([tf_idf_playlist_a_tag[playlist_a_tags.index(tag)] * tf_idf_playlist_b_tag[playlist_b_tags.index(tag)] for tag in playlist_b_tags if tag in playlist_a_tags])
-
-            if title_flag and coefficient == "cosine":
-                num_cosine_sim_title = sum([tf_idf_playlist_a_title[playlist_a_titles.index(title)] * tf_idf_playlist_b_title[playlist_b_titles.index(title)] for title in playlist_b_titles if title in playlist_a_titles])
-            elif title_flag and coefficient == "jaccard":
-                try:
-                    similarity = ( len(playlist_a_titles_set.intersection(playlist_b_titles))/float(len(playlist_a_titles_set.union(playlist_b_titles))) ) * (1.0 - (len(playlist_a_titles_set.symmetric_difference(playlist_b_titles))/float(len(playlist_a_titles_set.union(playlist_b_titles)))))
-                except:
-                    continue
-            if track_flag and coefficient == "cosine":
-                num_cosine_sim_track = sum([tf_idf_playlist_a_track[playlist_a_tracks.index(track)] * tf_idf_playlist_b_track[playlist_b_tracks.index(track)] for track in playlist_b_tracks if track in playlist_a_tracks])
-
+            
             if coefficient == "cosine":
+                if tag_flag:
+                    num_cosine_sim_tag = sum([tf_idf_playlist_a_tag[playlist_a_tags.index(tag)] * tf_idf_playlist_b_tag[playlist_b_tags.index(tag)] for tag in playlist_b_tags if tag in playlist_a_tags])
+
+                if title_flag:
+                    num_cosine_sim_title = sum([tf_idf_playlist_a_title[playlist_a_titles.index(title)] * tf_idf_playlist_b_title[playlist_b_titles.index(title)] for title in playlist_b_titles if title in playlist_a_titles])
+                    
+                if track_flag:
+                    num_cosine_sim_track = sum([tf_idf_playlist_a_track[playlist_a_tracks.index(track)] * tf_idf_playlist_b_track[playlist_b_tracks.index(track)] for track in playlist_b_tracks if track in playlist_a_tracks])
+                    
                 num_cosine_sim = num_cosine_sim_tag + num_cosine_sim_title + num_cosine_sim_track
                 den_cosine_sim = math.sqrt(sum([i ** 2 for i in tf_idf_playlist_a])) * math.sqrt(sum([i ** 2 for i in tf_idf_playlist_b]))
-
+                
                 try:
                     similarity = num_cosine_sim / den_cosine_sim
                 except ZeroDivisionError:
                     continue
+                    
+            elif coefficient == "jaccard":
+                if title_flag:
+                    similarity = helper.jaccard(playlist_a_titles, playlist_b_titles)
+            
             neighborhood.append([playlist_b, similarity])
-        knn_neighborg = [playlist for playlist, value in sorted(neighborhood[0:knn], key=itemgetter(1), reverse=True)]
-        return knn_neighborg
+        knn_neighborgs = [playlist for playlist, value in sorted(neighborhood[0:knn], key=itemgetter(1), reverse=True)]
+        return knn_neighborgs
 
     def get_min_max_playlists(self):
         """
