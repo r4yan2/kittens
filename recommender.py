@@ -262,7 +262,10 @@ class Recommender:
         i = 0
         while len(recommendations) < 5:
             if methods[i] == 3:
-                recommendations = self.make_top_tag_recommendations(playlist, recommendations=recommendations)
+                try:
+                    recommendations = self.make_top_tag_recommendations(playlist, recommendations=recommendations)
+                except ValueError:
+                    pass
             elif methods[i] == 2:
                 recommendations = self.make_top_included_recommendations(playlist, recommendations=recommendations)
             i = (i + 1) % len(methods)
