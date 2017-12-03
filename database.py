@@ -248,6 +248,8 @@ class Database:
 
     def get_min_max_playlists(self):
         """
+        Getter for the min and max values of playlists identifier
+        :return: tuple of int
         """
         try:
             return self.min_playlist, self.max_playlist
@@ -259,6 +261,8 @@ class Database:
 
     def get_min_max_tracks(self):
         """
+        Getter for the min and max values of tracks identifier
+        :return: tuple of int
         """
         try:
             return self.min_track, self.max_track
@@ -276,8 +280,10 @@ class Database:
 
         :param playlist: active_playlist
         :param knn: cardinality of the neighborhood
+        :param tracks_knn: an alternate way of returning results, if specified return the knn best matching tracks
         :param coefficient: coefficient to use
         :param values: if None return only the playlists, if all return also the values
+        :param target_tracks: default include only target_tracks in tracks_knn
         :return: list of playlists
         """
         playlists = self.get_playlists()
@@ -370,23 +376,25 @@ class Database:
 
     def get_taxonomy_value(self, i, j):
         """
+        Get Taxonomy comparison result from 2 tracks
+        :param i: track
+        :param j: track
+        :return: taxonomy value 
         """
-        coeff = 1.0
-        tracks_map = self.get_tracks_map()
-        artist_i = tracks_map[i][0]
-        artist_j = tracks_map[j][0]
-        album_i = tracks_map[i][3]
-        album_j = tracks_map[j][3]
-        taxonomy = int(artist_i == artist_j or album_i == album_j)
-        value = 1 + coeff * taxonomy
-        return value
+
+        tags_i = self.get_track_tags(i)
+        tags_j = self.get_track_tags(j)
+        taxonomy = sum([int(feat in tags_j) for feat in tags_i]) # 1 for every tag/artist/album which match
+
+        return taxonomy
 
     def get_user_based_collaborative_filtering(self, active_playlist, knn=20, coefficient="jaccard"):
         """
         This method is created in order to provide a CF via users.
         Calculate the most K similar users to the active one by jaccard index
+        Note that the given tracks are NOT exclusively target tracks
 
-        :param playlist: active playlist
+        :param active_playlist: active playlist
         :param knn: cardinality of the neighborhood
         :param coefficient: coefficient to use
         :return: list of tracks of the knn similar users
@@ -1050,8 +1058,10 @@ class Database:
 
     def get_playlist_user(self, playlist):
         """
-
-        :return:
+        Getter for the owner of the playlist
+        
+        :param playlist: playlist
+        :return: owner(user)
         """
         playlist_final = self.get_playlist_final()
         return playlist_final[playlist][4]
@@ -1076,8 +1086,10 @@ class Database:
 
     def get_created_at_playlist(self, playlist):
         """
+        Get the created_at timestamp of a given playlist
 
-        :return:
+        :param playlist: playlist
+        :return: timestamp
         """
         playlists = self.get_playlist_final()
 
@@ -1201,9 +1213,11 @@ class Database:
 
     def get_titles_track(self, track):
         """
+        Get all the titles associated to the track
+        track -> playlists -> titles
 
-
-        :return:
+        :param track: track
+        :return: list of titles
         """
         playlists = self.get_track_playlists(track)
         titles_track = [title for playlist in playlists for title in self.get_titles_playlist(playlist)]
@@ -1217,10 +1231,12 @@ class Database:
         :param playlist: the playlist
         :return: list of titles
         """
-        #TODO SISTEMARE TUTTO
-        playlist_final = self.get_playlist_final()
-        titles = playlist_final[playlist][1]
-        return titles
+        try:
+            return self.playlists_final[playlist][1]
+        except AttributeError:
+            playlist_final = self.get_playlist_final()
+            titles = playlist_final[playlist][1]
+            return titles
 
     def get_title_idf(self, title):
         """
@@ -1276,8 +1292,7 @@ class Database:
         """
         track_playlists_map = self.get_track_playlists_map()
         return len(track_playlists_map[track])
-
-
+    
     def get_track_playcount(self, track):
         """
         gets the playcount of the given track
