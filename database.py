@@ -5,6 +5,7 @@ import random
 import logging
 from operator import itemgetter
 import sqlite3
+import time
 
 class Database:
     def __init__(self, test):
@@ -19,6 +20,13 @@ class Database:
         connection.row_factory = lambda cursor, row: row[0]
         cursor = connection.cursor()
         self.cursor = cursor
+        #connection.isolation_level = None
+        self.cursor.execute("PRAGMA journal_mode = OFF;")
+        self.cursor.execute("PRAGMA secure_delete = 0;")
+        self.cursor.execute("PRAGMA locking_mode = EXCLUSIVE;")
+        self.cursor.execute("PRAGMA synchronous = OFF;")
+        self.cursor.execute("PRAGMA read_uncommitted = 1;")
+        self.cursor.execute("begin")
         self.test = test
 
         if test > 0:
@@ -27,19 +35,23 @@ class Database:
         else:
             self.load_train_list()
 
-    def shrink_and_clean_db(self, knn=150):
+    def shrink_and_clean_db(self, knn=100):
         """
-        Invoke some pragmas to shrink, clean and reoder the database
+        Keep only knn similarities and invoke vacuum to compact the database
         """
-        tracks = self.get_tracks()
+        tracks = self.cursor.execute("select distinct i from similarities_epoch")
         for i in tracks:
-            keep = set(self.cursor.execute("select j from similarities_epoch where i=(?) ordered by value desc limit (?)", (i, knn)).fetchall())
-            remove = tracks.difference(keep)
-            self.cursor.execute('delete from similarities_epoch where i=%i and j in (%s)' % (i, ", ".join([str(track) for track in remove])))
-                
+            keep = self.cursor.execute("select j from similarities_epoch where i=(?) order by value desc limit (?)", (i, knn))
+            self.cursor.execute('delete from similarities_epoch where i=%i and j not in (%s)' % (i, ", ".join([str(track) for track in keep])))
+
+         
         self.cursor.execute("vacuum")
-        self.cursor.execute("PRAGMA optimize")
-        self.cursor.execute("PRAGMA shrink_memory")
+        for i in tracks:
+            keep = self.cursor.execute("select count(*) from similarities_epoch where i=(?)", (i,))
+            if keep > knn:
+                logging.debug("porcodio: %i" % (keep))
+        
+        logging.debug("Database cleaned succesfully")
 
     def get_target_playlists_tracks_set(self):
         """
@@ -59,7 +71,7 @@ class Database:
     def get_prediction_from_similarities_epoch(self, i, playlist_tracks):
         """
         """
-        values = self.cursor.execute('select value from similarities_epoch where i=%i and j in (%s)' % (i, ", ".join([str(track) for track in playlist_tracks]))).fetchall()
+        values = self.cursor.execute('select value from similarities_epoch where i=%i and j in (%s)' % (i, ", ".join([str(track) for track in playlist_tracks])))
         return sum(values)
 
     def get_test_set(self):
@@ -505,14 +517,14 @@ class Database:
         self.cursor.execute("drop table if exists similarities_epoch")
         self.cursor.execute("CREATE TABLE 'similarities_epoch' ('i' INTEGER, 'j' INTEGER, 'value' FLOAT, PRIMARY KEY(i,j))")
 
-    def get_item_similarities_epoch(self, i, j):
+    def get_item_similarities_epoch(self, epoch, i, j):
         """
         """
         if i != j:
             try:
                 return self.cursor.execute("select value from similarities_epoch where i=(?) and j=(?)", (i,j)).next()
             except:
-                return random.random()
+                return 0.0 if epoch else random.random()
         else:
             return 0.0
 

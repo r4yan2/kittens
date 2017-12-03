@@ -85,14 +85,28 @@ class Recommender:
         if choice == 20:
             # do some epoch pre-processing on data
 
-            numPositiveIteractions = int(self.db.get_num_interactions() * 0.5)
+            numPositiveIteractions = int(self.db.get_num_interactions()*0.1)
             self.db.init_item_similarities_epoch()
             playlists = self.db.get_playlists()
             tracks = list(self.db.get_tracks())
-            for i in xrange(1,11):
-                logging.debug("epoch %i/10" % i)
-                self.epoch_iteration(numPositiveIteractions, playlists, tracks, learning_rate=0.05)
-                self.db.clean()
+            rate = 0.05
+            old_learned = 1
+            thresh = 0.0005
+            for i in xrange(1,2):
+                logging.debug("epoch %i/1" % i)
+                start_time = time.time()
+                if i == 1:
+                    learned = self.epoch_iteration(numPositiveIteractions*20, playlists, tracks, learning_rate=rate)
+                    break
+                else:
+                    learned = self.epoch_iteration(numPositiveIteractions, playlists, tracks, learning_rate=rate)
+                if learned < old_learned - thresh:
+                    old_learned = learned
+                    rate = (95 * rate)/100.0
+                else:
+                   break
+                logging.debug("executed epoch in %i sec", (time.time() - start_time))
+                self.db.shrink_and_clean_db()
             choice = 11
 
         # main loop for the worker
@@ -1058,7 +1072,7 @@ class Recommender:
 
         learnings=[]
         # Uniform user sampling without replacement
-        for _ in xrange(numPositiveIteractions):
+        for epoch in xrange(numPositiveIteractions):
 
             # Sample
             check = True
@@ -1077,8 +1091,8 @@ class Recommender:
 
 
             # Prediction
-            x_i = [self.db.get_item_similarities_epoch(positive_item_id, track) for track in playlist_tracks]
-            x_j = [self.db.get_item_similarities_epoch(negative_item_id, track) for track in playlist_tracks]
+            x_i = [self.db.get_item_similarities_epoch(epoch, positive_item_id, track) for track in playlist_tracks]
+            x_j = [self.db.get_item_similarities_epoch(epoch, negative_item_id, track) for track in playlist_tracks]
 
             # Gradient
             x_ij = sum(x_i) - sum(x_j)
@@ -1090,7 +1104,13 @@ class Recommender:
             [self.db.set_item_similarities_epoch(positive_item_id, track, x_i[playlist_tracks.index(track)] + learning_rate * gradient) for track in playlist_tracks]
 
             [self.db.set_item_similarities_epoch(negative_item_id, track, x_j[playlist_tracks.index(track)] - learning_rate * gradient) for track in playlist_tracks]
-        logging.debug("learning rate avg on epoch %f" % helper.mean(learnings))
+            
+            if epoch % 10000 == 0:
+                logging.debug("%i steps done!" % (epoch)) 
+
+        mean_learning = helper.mean(learnings)
+        logging.debug("learning rate avg on epoch %f" % mean_learning)
+        return mean_learning
         
 
     def make_collaborative_item_item_recommendations(self, active_playlist, target_tracks=[], recommendations=[], knn=5, ensemble=0):
