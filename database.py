@@ -789,6 +789,16 @@ class Database:
         except AttributeError:
             self.max_inclusion_value = max([len(items) for items in self.get_tag_playlists_map().values()])
             return self.max_inclusion_value
+    
+    def get_num_tag(self):
+        """
+        """
+        try:
+            return self.num_tag
+        except AttributeError:
+            tracks_map = self.get_tracks_map()
+            self.num_tag = len(set([tag for values in tracks_map.itervalues() for tag in values[4]]))
+            return self.num_tag
 
     def get_track_idf(self, track):
         """
