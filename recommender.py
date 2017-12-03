@@ -390,6 +390,8 @@ class Recommender:
         track_playlists_map = self.db.get_track_playlists_map()
 
         for track in target_tracks: # make the actual recommendation
+            if track in recommendations:
+                continue
             tags = self.db.get_track_tags(track)
             """
             try:
