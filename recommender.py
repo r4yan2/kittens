@@ -454,8 +454,7 @@ class Recommender:
         if target_tracks == []:
             target_tracks = self.db.get_target_tracks().difference(recommendations).difference(playlist_tracks)
             if neighborhood_knn:
-                #target_tracks = target_tracks.intersection(self.db.compute_collaborative_playlists_similarity(active_playlist, tracks_knn=neighborhood_knn))
-                target_tracks = self.make_collaborative_item_item_recommendations(active_playlist, knn=100)
+                target_tracks = target_tracks.intersection(self.db.compute_collaborative_playlists_similarity(active_playlist, tracks_knn=neighborhood_knn))
         knn = knn - len(recommendations)
 
         possible_recommendations = []
@@ -506,7 +505,7 @@ class Recommender:
                     denominator = 1
 
                 elif coefficient == "mixed":
-                    numerator = sum([tf_idf_track[tags.index(tag)] * tf_idf_playlist[playlist_features_set.index(tag)] for tag in tags if      tag in playlist_features_set]) * 0.5 + sum(tf_idf_playlist[playlist_features_set.index(tag)] for tag in tags if tag in playlist_features_set) * 0.5
+                    numerator = sum([tf_idf_track[tags.index(tag)] * tf_idf_playlist[playlist_features_set.index(tag)] for tag in tags if tag in playlist_features_set]) * 0.5 + sum(tf_idf_playlist[playlist_features_set.index(tag)] for tag in tags if tag in playlist_features_set) * 0.5
                     denominator = math.sqrt(sum([i ** 2 for i in tf_idf_playlist])) * math.sqrt(sum([i ** 2 for i in tf_idf_track]))
 
                 try:
@@ -520,6 +519,9 @@ class Recommender:
         if ensemble:
             return possible_recommendations[0:knn]
         recs = recommendations + [recommendation for recommendation, value in possible_recommendations[0:knn]]
+        if knn <= 5:
+            logging.debug("playlist: %i generated prediction: %s" % (active_playlist, possible_recommendations[0:knn]))
+        
         return recs
 
 
@@ -1134,25 +1136,35 @@ class Recommender:
 
         if target_tracks == []:
             target_tracks = self.db.get_target_tracks()
-
+            #target_tracks = self.make_tf_idf_recommendations(active_playlist, knn=500)
         knn -= len(recommendations)
         playlist_tracks_set = self.db.get_playlist_tracks(active_playlist)
         if playlist_tracks_set == []:
             raise ValueError("playlist is empty")
 
         predictions = []
+        a = 0.15
+        b = -0.5
+        c = 0.60
 
         for i in target_tracks:
             duration = self.db.get_track_duration(i)
             if i in playlist_tracks_set or not (duration > 30000 or duration < 0):
                 continue
-            #prediction = sum([self.db.get_item_similarities_alt(i,j) * self.db.get_taxonomy_value(i,j) for j in playlist_tracks_set])
-            prediction = sum([self.db.get_item_similarities_alt(i,j) * self.db.get_taxonomy_value(i,j) * (1/(1+math.log10(1+self.db.get_average_track_inclusion(i)))) * (self.db.get_user_rating(active_playlist, j))**0.75 for j in playlist_tracks_set])
+            #prediction = [self.db.get_item_similarities_alt(i,j) for j in playlist_tracks_set]
+            
+            prediction = [self.db.get_item_similarities_alt(i,j) *
+                (1 + self.db.get_taxonomy_value(i,j) * a) *
+                ((1 + self.db.get_average_track_inclusion(i)) ** b)
+                for j in playlist_tracks_set]
+            prediction = sum(prediction) * self.db.get_target_score(active_playlist, i)
             predictions.append([i, prediction])
 
         recommendations = sorted(predictions, key=itemgetter(1), reverse=True)[0:knn]
         if ensemble:
             return recommendations
+        if knn <= 5:
+            logging.debug("playlist: %i generated prediction: %s" % (active_playlist, recommendations))
 
         return [recommendation for recommendation, value in recommendations]
 

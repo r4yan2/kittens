@@ -22,11 +22,6 @@ def compute_item_item_similarities(db, q_in, q_out, number):
             q_out.put(-1)
             continue
 
-        # numerator jaccard = A intersection B
-        # denominator jaccard = A union B
-        # MSE numerator = disjoint element from A and B
-        # MSE denominator = A union B
-
         similarities = [[i,j,helper.jaccard(i_playlists, j_playlists)] for j in tracks for j_playlists in [db.get_track_playlists(j)] if j_playlists != [] and i < j]
 
         similarities = [[i,j,v] for i,j,v in similarities if v > 0]
@@ -35,7 +30,7 @@ def compute_item_item_similarities(db, q_in, q_out, number):
             q_out.put(-1)
             continue
         else:
-            q_out.put(sorted(similarities, key=itemgetter(2), reverse=True))
+            q_out.put(sorted(similarities, key=itemgetter(2), reverse=True)[0:500])
 
 fp = open('data/item-item-similarities.csv', 'w', 0)
 writer = csv.writer(fp, delimiter=',', quoting=csv.QUOTE_NONE)

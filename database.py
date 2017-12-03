@@ -430,7 +430,6 @@ class Database:
 
         active_tracks = self.get_playlist_user_tracks(active_playlist)
         active_tracks_counter = Counter(active_tracks)
-        active_tracks_set = set(active_tracks)
         already_scanned_user = set()
         playlists = self.get_playlists()
         created_at_active = self.get_created_at_playlist(active_playlist)
@@ -446,30 +445,23 @@ class Database:
             already_scanned_user.add(user)
             tracks = self.get_playlist_user_tracks(playlist)
             tracks_counter = Counter(tracks)
-            tracks_set = set(tracks)
 
-            if coefficient == "wtf":
-                # Jaccard
+            if coefficient == "cosine":
                 numerator = sum([active_tracks_counter[track] * tracks_counter[track] for track in tracks if track in active_tracks])
-                denominator = sum([elem * elem for elem in active_tracks_counter.values()]) \
-                              + sum([elem * elem for elem in tracks_counter.values()]) - numerator
+                denominator = math.sqrt(sum([elem * elem for elem in active_tracks_counter.values()])) * math.sqrt(sum([elem * elem for elem in tracks_counter.values()]))
                 try:
-                    jaccard = numerator / float(denominator)
+                    similarity = numerator / denominator
                 except ZeroDivisionError:
                     continue
 
-                mean_square_difference = 1.0 - sum([(active_tracks_counter[track] - tracks_counter[track]) ** 2 for track in active_tracks if track in tracks])
-
-                similarity = jaccard * mean_square_difference
-
             elif coefficient == "jaccard":
-                similarity = helper.jaccard(active_tracks_set, tracks_set)
+                similarity = helper.jaccard(active_tracks, tracks)
 
             neighborhood.append([tracks, similarity])
         neighborhood.sort(key=itemgetter(1), reverse=True)
         return [track for tracks, value in neighborhood[0:knn] for track in tracks]
 
-    def get_knn_track_similarities(self, active_track, knn=50):
+    def get_knn_track_similarities(self, active_track, knn=150):
         """
         Getter for the most similar track to the passed one
         
@@ -488,9 +480,7 @@ class Database:
                 similarities_list.append([track_b, similarities_map[(active_track, track_b)]])
             elif active_track == track_b:
                 similarities_list.append([track_a, similarities_map[(track_a, active_track)]])
-        return sorted(similarities_list, key=itemgetter(1), reverse=True)[0:knn]
-            
-        
+        return sorted(similarities_list, key=itemgetter(1), reverse=True)[0:knn]    
 
     def get_item_similarities(self, i, j):
         """
@@ -667,12 +657,16 @@ class Database:
         :return: None
         """
         if test == None:
-            train_list = helper.read("train_final")
+            to_open = "train_final"
+            train_list = helper.read(to_open)
+            logging.debug("loaded %s" % (to_open))
             train_list.next()
             self.train_list = [[int(element[0]), int(element[1])] for element in train_list]
             self.num_interactions = len(self.train_list)
         else:
-            train_list = helper.read("train_set"+str(test))
+            to_open = "train_set"+str(test)
+            train_list = helper.read(to_open)
+            logging.debug("loaded %s" % (to_open))
             self.train_list = [[int(element[0]), int(element[1])] for element in train_list]
             self.num_interactions = len(self.train_list)
 
@@ -691,8 +685,7 @@ class Database:
             self.tag_playlists_map = defaultdict(lambda: [], {})
             for playlist in self.get_playlists():
                 tracks = self.get_playlist_tracks(playlist)  # get already included tracks
-                tags = [tag for track in tracks for tag in self.get_track_tags(track)]# + [item * -1 * (10 ** 10) for track in tracks for item in self.get_favourite_user_track(track)]
-                #tags = [tag for track in tracks for tag in self.get_track_tags(track)] + [item * -1 * (10**10) for item in self.get_titles_track(track)]
+                tags = [tag for track in tracks for tag in self.get_track_tags(track)]
                 tags_set = set(tags)
                 for tag in tags_set:
                     self.tag_playlists_map[tag].append(playlist)
@@ -1193,9 +1186,14 @@ class Database:
         :param track:
         :return:
         """
-        track_map = self.get_tracks_map()
         try:
-            return track_map[track][4]
+            return self.tracks_map[track][4]
+        except AttributeError:
+            track_map = self.get_tracks_map()
+            try:
+                return track_map[track][4]
+            except LookupError:
+                return []
         except LookupError:
             return []
 
