@@ -331,12 +331,12 @@ class Database:
 
             tracks_playlist_b = set(self.get_playlist_tracks(playlist_b))
             tracks_playlist_b_length = len(tracks_playlist_b)
-            
+
             matched = tracks_playlist.intersection(tracks_playlist_b)
             matched_len = len(matched)
             not_matched = tracks_playlist.symmetric_difference(tracks_playlist_b)
             not_matched_len = len(not_matched)
-            
+
             MSE = not_matched_len / float(len(tracks_playlist.union(tracks_playlist_b)))
 
             if coefficient == "jaccard":
@@ -467,7 +467,7 @@ class Database:
     def get_knn_track_similarities(self, active_track, knn=150):
         """
         Getter for the most similar track to the passed one
-        
+
         :param active_track: active_track
         :param knn: cardinality of the neighborhood
         :return: list of similar tracks
@@ -483,7 +483,7 @@ class Database:
                 similarities_list.append([track_b, similarities_map[(active_track, track_b)]])
             elif active_track == track_b:
                 similarities_list.append([track_a, similarities_map[(track_a, active_track)]])
-        return sorted(similarities_list, key=itemgetter(1), reverse=True)[0:knn]    
+        return sorted(similarities_list, key=itemgetter(1), reverse=True)[0:knn]
 
     def get_item_similarities(self, i, j):
         """
@@ -520,13 +520,13 @@ class Database:
         """
         """
         return self.num_interactions
-    
+
     def init_item_similarities_epoch(self):
         """
         Init the similarities map used later for the epoch iteration method
         """
         self.similarities_map = defaultdict(lambda: defaultdict(lambda: 0.0),{})
-        
+
     def get_item_similarities_epoch(self, i, j):
         """
         """
@@ -536,7 +536,7 @@ class Database:
             return self.similarities_map[j][i]
         else:
             return 0.0
-             
+
     def get_item_similarities_alt(self, i, j):
         """
         This method parse the item similairities csv and returns the similarity
@@ -592,11 +592,11 @@ class Database:
                 self.similarities_map[(j,i)] = value + update
             except KeyError:
                 pass
-    
+
     def set_item_similarities_epoch(self, i, j, update):
         """
         """
-        
+
         if i < j:
             value = self.similarities_map[i][j]
             self.similarities_map[i][j] = value + update
@@ -616,7 +616,7 @@ class Database:
                 self.similarities_map[(j,i)] = 0
             except KeyError:
                 pass
-            
+
     def null_item_similarities_alt(self, i, j):
         """
         """
@@ -1085,7 +1085,7 @@ class Database:
                 pass
             tags_extended = [artist_id + 276615] + [album + 847203 if album > 0 else iterator] + [playcount + 1064529] + tags
 
-            result[track_id]= [artist_id, duration, playcount, album, tags_extended]
+            result[track_id]= [artist_id, duration, playcount, album, tags]
         return result
 
     def get_playlist_user_tracks(self, playlist):
