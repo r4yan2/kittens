@@ -14,7 +14,8 @@ class Database:
         :param test: istance
         :return: the initialized object
         """
-
+        
+        self.test = test
         if test > 0:
             self.load_test_set(test)
             self.load_train_list(test)
