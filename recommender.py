@@ -467,38 +467,21 @@ class Recommender:
 
         if tf_idf == "bm25":
             average = self.db.get_average_playlist_tags_count()
-            k = 1.9
+            k = 1.2
             b = 0.75
             tf_idf_playlist = [self.db.get_tag_idf(tag) * ((playlist_features.count(tag) * (k + 1)) / (playlist_features.count(tag) + k * (1 - b + b * (len(playlist_features) / average)))) for tag in playlist_features_set]
         elif tf_idf == "normal":
             tf_idf_playlist = [(1.0 + math.log(playlist_features.count(tag), 10)) * self.db.get_tag_idf(tag) for tag in playlist_features_set]
 
         for track in target_tracks:
-            tags = self.db.get_track_tags(track)
             track_duration = self.db.get_track_duration(track)
             if (track_duration > 30000 or track_duration < 0):
-
+                
+                tags = self.db.get_track_tags(track)
                 if tf_idf == "bm25":
                     tf_idf_track = [self.db.get_tag_idf(tag) * ((k + 1) / (1 + k * (1 - b + b * (len(tags) / self.db.get_average_track_tags_count())))) for tag in tags]
                 elif tf_idf == "normal":
                     tf_idf_track = [self.db.get_tag_idf(tag) for tag in tags]
-
-                tag_mask = [float(tag in playlist_features_set) for tag in tags]
-                tag_mask_summation = sum(tag_mask)
-
-                # Precision on the track with respect to playlist: it may be useful if only we know how to use it
-                p_to_k_num = helper.multiply_lists(tag_mask, helper.cumulative_sum(tag_mask))
-                p_to_k_den = range(1,len(tag_mask)+1)
-                p_to_k = helper.divide_lists(p_to_k_num, p_to_k_den)
-                try:
-                    map_score = sum(p_to_k) / min(len(playlist_features_set), len(tag_mask))
-                    precision = tag_mask_summation/ len(playlist_features_set)
-                    recall = tag_mask_summation / len(tags)
-                except ZeroDivisionError:
-                    continue
-
-                if not (precision and recall and map_score):
-                    continue
 
                 if coefficient == "pearson":
 
