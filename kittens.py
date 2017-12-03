@@ -23,21 +23,21 @@ else:
 choice = int(sys.argv[2])
 core = int(sys.argv[3])
 
-# Initializing the recommender instance
-recommender_system = Recommender()
-
 db = Database(instance) # the database is built accordingly to the number passed, 0 no test else test mode
 
 # This list will store the result just before writing to file
 to_write = []
 
+# Initializing the recommender instance
+recommender_system = Recommender()
+
 # This list store the result from the worker process (identifier, playlist, [recommendation])
 results = []
 
 # The following lines are needed to pass the db object between all process (multiprocessing always on)
-manager = Manager()
-ns = manager.Namespace()
-ns.db = db
+#manager = Manager()
+#ns = manager.Namespace()
+#ns.db = db
 
 target_playlists = db.get_target_playlists()
 
@@ -51,7 +51,7 @@ q_out = Queue()
 [q_in.put((-1, -1)) for _ in xrange(core)]
 
 # Starting the process
-proc = [Process(target=recommender_system.run, args=(choice, ns.db, q_in, q_out, test, i))
+proc = [Process(target=recommender_system.run, args=(choice, db, q_in, q_out, test, i))
         for i in xrange(core)]
 for p in proc:
     p.daemon = True
