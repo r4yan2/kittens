@@ -780,23 +780,66 @@ class Database:
             for tag in tags_list_set:
                 self.tags_list[tag] = tags_list.count(tag)
             return self.tags_list[tag]
+        
+    def get_tag_playlists(self, tag):
+        """
+        """
+        try:
+            return self.tag_playlists_map[tag]
+        except AttributeError:
+            tag_playlist_map = self.get_tag_playlists_map()
+            playlist_tags_included = tag_playlist_map[tag]
+            return playlist_tags_included
+        
+    def get_num_playlists(self):
+        """
+        """
+        try:
+            return self.num_playlists
+        except AttributeError:
+            self.num_playlists = len(self.get_playlists())
+            return self.num_playlists
+
 
     def get_tag_idf(self, tag):
         """
         returns the idf of a specific tag with respect to the playlists which includes such tag
         :return: idf
         """
-        tag_playlist_map = self.get_tag_playlists_map()
-        playlist_tags_included = tag_playlist_map[tag]
-        N = len(self.get_playlists())
-        n = float(len(playlist_tags_included))
+        n = float(len(self.get_tag_playlists(tag)))
+        N = self.get_num_playlists()
         try:
-            idf = 0.5 + math.log((N - n + 0.5) / (n + 0.5), 10)
+            idf = 0.5 + math.log10((N - n + 0.5) / (n + 0.5))
         except ValueError:
             idf = 0
         except ZeroDivisionError:
             idf = 0
         return idf
+    
+    def get_target_score(self, playlist, track):
+        """
+        score as defined by bm-25
+        """
+        documents_number = len(self.get_playlists())
+        tag_playlist_map = self.get_tag_playlists_map()
+        average = self.get_average_playlist_tags_count()
+        playlist_features = [tag for item in self.get_playlist_tracks(playlist) for tag in self.get_track_tags(item)]
+        document_len = len(playlist_features)
+        if document_len == 0:
+            raise ValueError
+        k = 1.2
+        b = 0.75
+            
+        scores = []
+        for tag in self.get_track_tags(track):
+            document_containing_tag = len(tag_playlist_map[tag])
+            tag_count = playlist_features.count(tag)
+            tf = (tag_count * (k+1)) / (tag_count + (k * (1 - b + b * (document_len / average))))
+            idf = math.log10((documents_number - document_containing_tag + 0.5)/(document_containing_tag + 0.5))
+            scores.append(tf*idf)
+        
+        score = sum(scores)
+        return score
 
     def get_tag_idf_track(self, tag):
         """

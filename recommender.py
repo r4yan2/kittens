@@ -233,8 +233,13 @@ class Recommender:
                 except ValueError as e:
                     logging.debug("cannot use tf_idf for %i because of %s" % (target, e))
                     #q_out.put(-1)
+            elif choice == 21:
+                try:
+                    recommendations = self.tf_idf_bm25_recommendations(target)
+                except ValueError as e:
+                    pass
 
-            padding = False
+            padding = True
             if len(recommendations) < 5:
                 if padding:
                     recommendations = self.make_some_padding(target, recommendations=recommendations)
@@ -414,15 +419,28 @@ class Recommender:
         """
         filtered_tracks = self.make_collaborative_item_item_recommendations(active_playlist, knn=75)
         return self.make_top_tag_recommendations(active_playlist, target_tracks=filtered_tracks)
+    
+    def tf_idf_bm25_recommendations(self, active_playlist):
+        score = []
+        for track in self.db.get_target_tracks():
+            score.append([track, self.db.get_target_score(active_playlist, track)])
+        score.sort(key=itemgetter(1), reverse=True)
+        recommendations = [item for item, value in score[0:5]]
+        return recommendations
+            
 
     def make_tf_idf_recommendations(self, active_playlist, target_tracks=[], neighborhood_knn=0, recommendations=[], knn=5, ensemble=0, tf_idf="bm25", coefficient="cosine"):
         """
         Make Recommendations based on the tf-idf of the track tags
 
-        :param playlist: Target playlist
+        :param active_playlist: Target playlist
         :param target_tracks: Set of target in which choose the random one
         :param recommendations: Set of recommendations already included
+        :param neighborhood_knn: neighborhoood to get to filter target tracks
         :param knn: Number of items to recommend
+        :param ensemble: Specify if the output of the method will be used in an ensemble
+        :param tf_idf: Specify with tf-idf method to used
+        :param coefficient: Specify how to calculate the final score
         :return: Recommendations
         :raise ValueError: In case playlist have no tracks or tracks with no features
         """
