@@ -1,7 +1,7 @@
 import csv
 import math
 from operator import mul
-
+import logging
 
 def write(filename, content, delimiter_char=','):
     """
@@ -143,6 +143,8 @@ def jaccard(I, J):
     """
     if not isinstance(I, set):
         I = set(I)
+    if not isinstance(J, set):
+        J = set(J)
     intersection = float(len(I.intersection(J)))
     if not intersection:
         return 0.0
