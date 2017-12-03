@@ -22,8 +22,10 @@ else:
 
 choice = int(sys.argv[2])
 core = int(sys.argv[3])
+if int(sys.argv[4]):
+    individual = helper.parseFloatList(sys.argv[5])
 
-db = Database(instance) # the database is built accordingly to the number passed, 0 no test else test mode
+db = Database(instance, individual) # the database is built accordingly to the number passed, 0 no test else test mode
 
 # This list will store the result just before writing to file
 to_write = []
@@ -65,8 +67,17 @@ target_playlists_length = len(target_playlists)
 run_map5 = []
 run_map5_n = 0
 map_playlist = []
-for i in xrange(target_playlists_length):
-    r = q_out.get()
+missing = len(target_playlists)
+done = set()
+for i in xrange(missing):
+    try:
+        r = q_out.get(timeout=120)
+    except:
+        missing = list(done.symmetric_difference(target_playlists))
+        logging.debug("Missing: %s, Requesting new recommendations", (missing))
+        rec = recommender_system.make_collaborative_item_item_recommendations(missing[0])
+        check_rec = recommender_system.check_recommendations(missing[0], rec)
+        r = [check_rec, -1, missing[0], len(db.get_playlist_tracks(missing[0]))]
     if r == -1:
         continue
     percentage = (i*100)/(target_playlists_length-1)
@@ -77,7 +88,8 @@ for i in xrange(target_playlists_length):
         completion = percentage
     if test: # if the test istance is enabled more logging is done
         logging.debug("worker number %i reporting result %s for playlist %i" % (r[1],r[0],r[2]))
-        
+        done.add(r[2])
+
         (map5, precision, recall) = r[0]
         map_playlist.append([map5, r[3]])
 

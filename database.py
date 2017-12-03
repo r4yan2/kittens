@@ -6,7 +6,7 @@ import logging
 from operator import itemgetter
 
 class Database:
-    def __init__(self, test):
+    def __init__(self, test, individual=None):
         """
         if we are in test execution train_set, test_set are loaded transparently,
         otherwise the normal dataset are loaded
@@ -16,6 +16,9 @@ class Database:
         """
         
         self.test = test
+        if individual:
+            self.individual = individual
+
         if test > 0:
             self.load_test_set(test)
             self.load_train_list(test)
@@ -691,6 +694,20 @@ class Database:
                     self.tag_playlists_map[tag].append(playlist)
             return self.tag_playlists_map
 
+
+    def genetic(self, active_tag):
+        """
+        """
+        try:
+            return self.encoding[active_tag]
+        except AttributeError:
+            fp = open("data/tag_encoding", "rb")
+            self.tag_encoding = [int(elem) for elem in fp.readline().split(",")]
+            self.encoding = {tag: individual for individual, tag in zip(self.individual, self.tag_encoding)}
+            return self.encoding[active_tag]
+
+
+
     def get_favourite_user_track(self, track):
         """
         Currently I don't know what this method do
@@ -1050,6 +1067,11 @@ class Database:
                 iterator -= 1
             tags = helper.parseIntList(track[5]) # evaluation of the tags list
 
+            try:
+                if self.individual:
+                    tags = [tag for tag in tags if self.genetic(tag)]
+            except:
+                pass
             tags_extended = [artist_id + 276615] + [album + 847203 if album > 0 else iterator] + [playcount + 1064529] + tags
 
             result[track_id]= [artist_id, duration, playcount, album, tags_extended]
