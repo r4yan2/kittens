@@ -1048,6 +1048,11 @@ class Database:
         :return:
         """
         tracks = helper.read("tracks_final")
+        try:
+            whitelist_fp = open('data/whitelist', 'rb')
+            whitelist = set([int(tag) for tag in whitelist_fp.readline().split(',')])
+        except:
+            logging.debug("No whitelist file found, continuing with all tags!")
         tracks.next()
         result = {}
         iterator = -10
@@ -1066,6 +1071,12 @@ class Database:
                 album = iterator
                 iterator -= 1
             tags = helper.parseIntList(track[5]) # evaluation of the tags list
+            try:
+                tags = [tag for tag in tags if tag in whitelist]
+            except:
+                pass #no whitelist
+            
+            plays = self.get_track_playlists(track_id)
 
             try:
                 if self.individual:
