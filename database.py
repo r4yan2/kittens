@@ -109,6 +109,31 @@ class Database:
                 break
         self.train_list = helper.diff_test_set(train, self.test_set)
 
+    def compute_urm(self):
+        """
+        """
+        train = self.get_train_list()
+        urm = [[self.get_playlist_user(playlist), item] for playlist, item in train]
+        urm.sort(key=itemgetter(0,1))
+        to_write = []
+        old_user = urm[0][0]
+        old_item = urm[0][1]
+        count = 0
+        for user, item in urm:
+            if user == old_user:
+                if item == old_item:
+                    count += 1
+                else:
+                    to_write.append([old_user, old_item , count])
+                    old_item = item
+                    count = 1
+            else:
+                to_write.append([old_user, old_item, count])
+                old_user = user
+                old_item = item
+                count = 1
+        helper.write("urm", to_write, ',')
+
     def get_user_set(self):
         """
         Getter for the user set taken from the pre-built urm
