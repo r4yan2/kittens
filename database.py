@@ -14,6 +14,8 @@ class Database:
         :param test: istance
         :return: the initialized object
         """
+        
+        self.test = test
         if individual:
             self.individual = individual
 
@@ -110,6 +112,31 @@ class Database:
                 break
         self.train_list = helper.diff_test_set(train, self.test_set)
 
+    def compute_urm(self):
+        """
+        """
+        train = self.get_train_list()
+        urm = [[self.get_playlist_user(playlist), item] for playlist, item in train]
+        urm.sort(key=itemgetter(0,1))
+        to_write = []
+        old_user = urm[0][0]
+        old_item = urm[0][1]
+        count = 0
+        for user, item in urm:
+            if user == old_user:
+                if item == old_item:
+                    count += 1
+                else:
+                    to_write.append([old_user, old_item , count])
+                    old_item = item
+                    count = 1
+            else:
+                to_write.append([old_user, old_item, count])
+                old_user = user
+                old_item = item
+                count = 1
+        helper.write("urm", to_write, ',')
+
     def get_user_set(self):
         """
         Getter for the user set taken from the pre-built urm
@@ -163,24 +190,24 @@ class Database:
 
         if title_flag:
             playlist_a_titles = self.get_titles_playlist(playlist_a)
-            playlist_a_titles_set = set(playlist_a_titles)
 
         if track_flag:
             playlist_a_tracks = self.get_playlist_tracks(playlist_a)
 
         if not (len(playlist_a_tags) and tag_flag or len(playlist_a_titles) and title_flag or len(playlist_a_tracks) and track_flag):
             raise ValueError("cannot generate neighborhood for", playlist_a)
-
-        if tag_flag and coefficient == "cosine":
-            tf_idf_playlist_a_tag = [(1.0 + math.log(playlist_a_tags.count(tag),10)) * self.get_tag_idf(tag) for tag in playlist_a_tags]
-
-        if title_flag and coefficient == "cosine":
-            tf_idf_playlist_a_title = [self.get_title_idf(title) for title in playlist_a_titles]
-
-        if track_flag and coefficient == "cosine":
-            tf_idf_playlist_a_track = [(1.0 + math.log(playlist_a_tracks.count(track),10)) * self.get_track_idf(track) for track in playlist_a_tracks]
-
+        
         if coefficient == "cosine":
+
+            if tag_flag:
+                tf_idf_playlist_a_tag = [(1.0 + math.log10(playlist_a_tags.count(tag))) * self.get_tag_idf(tag) for tag in playlist_a_tags]
+
+            if title_flag:
+                tf_idf_playlist_a_title = [self.get_title_idf(title) for title in playlist_a_titles]
+
+            if track_flag:
+                tf_idf_playlist_a_track = [self.get_track_idf(track) for track in playlist_a_tracks]
+
             tf_idf_playlist_a = tf_idf_playlist_a_tag + tf_idf_playlist_a_title + tf_idf_playlist_a_track
 
         neighborhood = []
@@ -196,7 +223,7 @@ class Database:
             tf_idf_playlist_b_track = []
 
             if tag_flag:
-                playlist_b_tags = list(set([tag for track in self.get_playlist_tracks(playlist_b) for tag in self.get_track_tags(track)]))
+                playlist_b_tags = [tag for track in self.get_playlist_tracks(playlist_b) for tag in self.get_track_tags(track)]
 
             if title_flag:
                 playlist_b_titles = self.get_titles_playlist(playlist_b)
@@ -206,49 +233,54 @@ class Database:
 
             if not (len(playlist_b_tags) and tag_flag or len(playlist_b_titles) and title_flag or len(playlist_b_tracks) and track_flag):
                 continue
+            
+            if coefficient == "cosine":
 
-            if tag_flag and coefficient == "cosine":
-                tf_idf_playlist_b_tag = [(1.0 + math.log(playlist_b_tags.count(tag),10)) * self.get_tag_idf(tag) for tag in playlist_b_tags]
+                if tag_flag:
+                    tf_idf_playlist_b_tag = [(1.0 + math.log10(playlist_b_tags.count(tag))) * self.get_tag_idf(tag) for tag in playlist_b_tags]
 
-            if title_flag and coefficient == "cosine":
-                tf_idf_playlist_b_title = [self.get_title_idf(title) for title in playlist_b_titles]
+                if title_flag:
+                    tf_idf_playlist_b_title = [self.get_title_idf(title) for title in playlist_b_titles]
 
-            if track_flag and coefficient == "cosine":
-                tf_idf_playlist_b_track = [self.get_track_idf(track) for track in playlist_b_tracks]
+                if track_flag:
+                    tf_idf_playlist_b_track = [self.get_track_idf(track) for track in playlist_b_tracks]
 
             tf_idf_playlist_b = tf_idf_playlist_b_tag + tf_idf_playlist_b_title + tf_idf_playlist_b_track
 
             num_cosine_sim_tag = 0
             num_cosine_sim_title = 0
             num_cosine_sim_track = 0
-
-            if tag_flag and coefficient == "cosine":
-                num_cosine_sim_tag = sum([tf_idf_playlist_a_tag[playlist_a_tags.index(tag)] * tf_idf_playlist_b_tag[playlist_b_tags.index(tag)] for tag in playlist_b_tags if tag in playlist_a_tags])
-
-            if title_flag and coefficient == "cosine":
-                num_cosine_sim_title = sum([tf_idf_playlist_a_title[playlist_a_titles.index(title)] * tf_idf_playlist_b_title[playlist_b_titles.index(title)] for title in playlist_b_titles if title in playlist_a_titles])
-            elif title_flag and coefficient == "jaccard":
-                try:
-                    similarity = ( len(playlist_a_titles_set.intersection(playlist_b_titles))/float(len(playlist_a_titles_set.union(playlist_b_titles))) ) * (1.0 - (len(playlist_a_titles_set.symmetric_difference(playlist_b_titles))/float(len(playlist_a_titles_set.union(playlist_b_titles)))))
-                except:
-                    continue
-            if track_flag and coefficient == "cosine":
-                num_cosine_sim_track = sum([tf_idf_playlist_a_track[playlist_a_tracks.index(track)] * tf_idf_playlist_b_track[playlist_b_tracks.index(track)] for track in playlist_b_tracks if track in playlist_a_tracks])
-
+            
             if coefficient == "cosine":
+                if tag_flag:
+                    num_cosine_sim_tag = sum([tf_idf_playlist_a_tag[playlist_a_tags.index(tag)] * tf_idf_playlist_b_tag[playlist_b_tags.index(tag)] for tag in playlist_b_tags if tag in playlist_a_tags])
+
+                if title_flag:
+                    num_cosine_sim_title = sum([tf_idf_playlist_a_title[playlist_a_titles.index(title)] * tf_idf_playlist_b_title[playlist_b_titles.index(title)] for title in playlist_b_titles if title in playlist_a_titles])
+                    
+                if track_flag:
+                    num_cosine_sim_track = sum([tf_idf_playlist_a_track[playlist_a_tracks.index(track)] * tf_idf_playlist_b_track[playlist_b_tracks.index(track)] for track in playlist_b_tracks if track in playlist_a_tracks])
+                    
                 num_cosine_sim = num_cosine_sim_tag + num_cosine_sim_title + num_cosine_sim_track
                 den_cosine_sim = math.sqrt(sum([i ** 2 for i in tf_idf_playlist_a])) * math.sqrt(sum([i ** 2 for i in tf_idf_playlist_b]))
-
+                
                 try:
                     similarity = num_cosine_sim / den_cosine_sim
                 except ZeroDivisionError:
                     continue
+                    
+            elif coefficient == "jaccard":
+                if title_flag:
+                    similarity = helper.jaccard(playlist_a_titles, playlist_b_titles)
+            
             neighborhood.append([playlist_b, similarity])
-        knn_neighborg = [playlist for playlist, value in sorted(neighborhood[0:knn], key=itemgetter(1), reverse=True)]
-        return knn_neighborg
+        knn_neighborgs = [playlist for playlist, value in sorted(neighborhood[0:knn], key=itemgetter(1), reverse=True)]
+        return knn_neighborgs
 
     def get_min_max_playlists(self):
         """
+        Getter for the min and max values of playlists identifier
+        :return: tuple of int
         """
         try:
             return self.min_playlist, self.max_playlist
@@ -260,6 +292,8 @@ class Database:
 
     def get_min_max_tracks(self):
         """
+        Getter for the min and max values of tracks identifier
+        :return: tuple of int
         """
         try:
             return self.min_track, self.max_track
@@ -277,8 +311,10 @@ class Database:
 
         :param playlist: active_playlist
         :param knn: cardinality of the neighborhood
+        :param tracks_knn: an alternate way of returning results, if specified return the knn best matching tracks
         :param coefficient: coefficient to use
         :param values: if None return only the playlists, if all return also the values
+        :param target_tracks: default include only target_tracks in tracks_knn
         :return: list of playlists
         """
         playlists = self.get_playlists()
@@ -371,23 +407,25 @@ class Database:
 
     def get_taxonomy_value(self, i, j):
         """
+        Get Taxonomy comparison result from 2 tracks
+        :param i: track
+        :param j: track
+        :return: taxonomy value 
         """
-        coeff = 1.0
-        tracks_map = self.get_tracks_map()
-        artist_i = tracks_map[i][0]
-        artist_j = tracks_map[j][0]
-        album_i = tracks_map[i][3]
-        album_j = tracks_map[j][3]
-        taxonomy = int(artist_i == artist_j or album_i == album_j)
-        value = 1 + coeff * taxonomy
-        return value
+
+        tags_i = self.get_track_tags(i)
+        tags_j = self.get_track_tags(j)
+        taxonomy = sum([int(feat in tags_j) for feat in tags_i]) # 1 for every tag/artist/album which match
+
+        return taxonomy
 
     def get_user_based_collaborative_filtering(self, active_playlist, knn=20, coefficient="jaccard"):
         """
         This method is created in order to provide a CF via users.
         Calculate the most K similar users to the active one by jaccard index
+        Note that the given tracks are NOT exclusively target tracks
 
-        :param playlist: active playlist
+        :param active_playlist: active playlist
         :param knn: cardinality of the neighborhood
         :param coefficient: coefficient to use
         :return: list of tracks of the knn similar users
@@ -395,7 +433,6 @@ class Database:
 
         active_tracks = self.get_playlist_user_tracks(active_playlist)
         active_tracks_counter = Counter(active_tracks)
-        active_tracks_set = set(active_tracks)
         already_scanned_user = set()
         playlists = self.get_playlists()
         created_at_active = self.get_created_at_playlist(active_playlist)
@@ -411,30 +448,23 @@ class Database:
             already_scanned_user.add(user)
             tracks = self.get_playlist_user_tracks(playlist)
             tracks_counter = Counter(tracks)
-            tracks_set = set(tracks)
 
-            if coefficient == "wtf":
-                # Jaccard
+            if coefficient == "cosine":
                 numerator = sum([active_tracks_counter[track] * tracks_counter[track] for track in tracks if track in active_tracks])
-                denominator = sum([elem * elem for elem in active_tracks_counter.values()]) \
-                              + sum([elem * elem for elem in tracks_counter.values()]) - numerator
+                denominator = math.sqrt(sum([elem * elem for elem in active_tracks_counter.values()])) * math.sqrt(sum([elem * elem for elem in tracks_counter.values()]))
                 try:
-                    jaccard = numerator / float(denominator)
+                    similarity = numerator / denominator
                 except ZeroDivisionError:
                     continue
 
-                mean_square_difference = 1.0 - sum([(active_tracks_counter[track] - tracks_counter[track]) ** 2 for track in active_tracks if track in tracks])
-
-                similarity = jaccard * mean_square_difference
-
             elif coefficient == "jaccard":
-                similarity = helper.jaccard(active_tracks_set, tracks_set)
+                similarity = helper.jaccard(active_tracks, tracks)
 
             neighborhood.append([tracks, similarity])
         neighborhood.sort(key=itemgetter(1), reverse=True)
         return [track for tracks, value in neighborhood[0:knn] for track in tracks]
 
-    def get_knn_track_similarities(self, active_track, knn=50):
+    def get_knn_track_similarities(self, active_track, knn=150):
         """
         Getter for the most similar track to the passed one
 
@@ -454,8 +484,6 @@ class Database:
             elif active_track == track_b:
                 similarities_list.append([track_a, similarities_map[(track_a, active_track)]])
         return sorted(similarities_list, key=itemgetter(1), reverse=True)[0:knn]
-
-
 
     def get_item_similarities(self, i, j):
         """
@@ -632,12 +660,16 @@ class Database:
         :return: None
         """
         if test == None:
-            train_list = helper.read("train_final")
+            to_open = "train_final"
+            train_list = helper.read(to_open)
+            logging.debug("loaded %s" % (to_open))
             train_list.next()
             self.train_list = [[int(element[0]), int(element[1])] for element in train_list]
             self.num_interactions = len(self.train_list)
         else:
-            train_list = helper.read("train_set"+str(test))
+            to_open = "train_set"+str(test)
+            train_list = helper.read(to_open)
+            logging.debug("loaded %s" % (to_open))
             self.train_list = [[int(element[0]), int(element[1])] for element in train_list]
             self.num_interactions = len(self.train_list)
 
@@ -656,8 +688,7 @@ class Database:
             self.tag_playlists_map = defaultdict(lambda: [], {})
             for playlist in self.get_playlists():
                 tracks = self.get_playlist_tracks(playlist)  # get already included tracks
-                tags = [tag for track in tracks for tag in self.get_track_tags(track)]# + [item * -1 * (10 ** 10) for track in tracks for item in self.get_favourite_user_track(track)]
-                #tags = [tag for track in tracks for tag in self.get_track_tags(track)] + [item * -1 * (10**10) for item in self.get_titles_track(track)]
+                tags = [tag for track in tracks for tag in self.get_track_tags(track)]
                 tags_set = set(tags)
                 for tag in tags_set:
                     self.tag_playlists_map[tag].append(playlist)
@@ -768,6 +799,16 @@ class Database:
         except AttributeError:
             self.max_inclusion_value = max([len(items) for items in self.get_tag_playlists_map().values()])
             return self.max_inclusion_value
+    
+    def get_num_tag(self):
+        """
+        """
+        try:
+            return self.num_tag
+        except AttributeError:
+            tracks_map = self.get_tracks_map()
+            self.num_tag = len(set([tag for values in tracks_map.itervalues() for tag in values[4]]))
+            return self.num_tag
 
     def get_track_idf(self, track):
         """
@@ -796,23 +837,66 @@ class Database:
             for tag in tags_list_set:
                 self.tags_list[tag] = tags_list.count(tag)
             return self.tags_list[tag]
+        
+    def get_tag_playlists(self, tag):
+        """
+        """
+        try:
+            return self.tag_playlists_map[tag]
+        except AttributeError:
+            tag_playlist_map = self.get_tag_playlists_map()
+            playlist_tags_included = tag_playlist_map[tag]
+            return playlist_tags_included
+        
+    def get_num_playlists(self):
+        """
+        """
+        try:
+            return self.num_playlists
+        except AttributeError:
+            self.num_playlists = len(self.get_playlists())
+            return self.num_playlists
+
 
     def get_tag_idf(self, tag):
         """
         returns the idf of a specific tag with respect to the playlists which includes such tag
         :return: idf
         """
-        tag_playlist_map = self.get_tag_playlists_map()
-        playlist_tags_included = tag_playlist_map[tag]
-        N = len(self.get_playlists())
-        n = float(len(playlist_tags_included))
+        n = float(len(self.get_tag_playlists(tag)))
+        N = self.get_num_playlists()
         try:
-            idf = 0.5 + math.log((N - n + 0.5) / (n + 0.5), 10)
+            idf = 0.5 + math.log10((N - n + 0.5) / (n + 0.5))
         except ValueError:
             idf = 0
         except ZeroDivisionError:
             idf = 0
         return idf
+    
+    def get_target_score(self, playlist, track):
+        """
+        score as defined by bm-25
+        """
+        documents_number = len(self.get_playlists())
+        tag_playlist_map = self.get_tag_playlists_map()
+        average = self.get_average_playlist_tags_count()
+        playlist_features = [tag for item in self.get_playlist_tracks(playlist) for tag in self.get_track_tags(item)]
+        document_len = len(playlist_features)
+        if document_len == 0:
+            raise ValueError
+        k = 1.2
+        b = 0.75
+            
+        scores = []
+        for tag in self.get_track_tags(track):
+            document_containing_tag = len(tag_playlist_map[tag])
+            tag_count = playlist_features.count(tag)
+            tf = (tag_count * (k+1)) / (tag_count + (k * (1 - b + b * (document_len / average))))
+            idf = math.log10((documents_number - document_containing_tag + 0.5)/(document_containing_tag + 0.5))
+            scores.append(tf*idf)
+        
+        score = sum(scores)
+        return score
 
     def get_tag_idf_track(self, tag):
         """
@@ -982,12 +1066,22 @@ class Database:
                 album = iterator
                 iterator -= 1
             tags = helper.parseIntList(track[5]) # evaluation of the tags list
+            
+            try:
+                whitelist_fp = open('data/whitelist', 'rb')
+                whitelist = set([int(tag) for tag in whitelist_fp.readline().split(',')])
+                tags = [tag for tag in tags if tag in whitelist]
+                logging.debug("Loaded whitelist!")
+            except:
+                logging.debug("No whitelist file found, continuing with all tags!")
+            
+            tags_extended = [artist_id + 276615] + [album + 847203 if album > 0 else iterator] + tags
+            tags_extended = [tag for tag in tags_extended if tag > 0]
             try:
                 if self.individual:
-                    tags = [tag for tag in tags if self.genetic(tag)]
+                    tags_extended = [tag for tag in tags_extended if self.genetic(tag)]
             except:
                 pass
-            tags_extended = [artist_id + 276615] + [album + 847203 if album > 0 else iterator] + [playcount + 1064529] + tags
 
             result[track_id]= [artist_id, duration, playcount, album, tags_extended]
         return result
@@ -1026,8 +1120,10 @@ class Database:
 
     def get_playlist_user(self, playlist):
         """
-
-        :return:
+        Getter for the owner of the playlist
+        
+        :param playlist: playlist
+        :return: owner(user)
         """
         playlist_final = self.get_playlist_final()
         return playlist_final[playlist][4]
@@ -1052,8 +1148,10 @@ class Database:
 
     def get_created_at_playlist(self, playlist):
         """
+        Get the created_at timestamp of a given playlist
 
-        :return:
+        :param playlist: playlist
+        :return: timestamp
         """
         playlists = self.get_playlist_final()
 
@@ -1119,9 +1217,14 @@ class Database:
         :param track:
         :return:
         """
-        track_map = self.get_tracks_map()
         try:
-            return track_map[track][4]
+            return self.tracks_map[track][4]
+        except AttributeError:
+            track_map = self.get_tracks_map()
+            try:
+                return track_map[track][4]
+            except LookupError:
+                return []
         except LookupError:
             return []
 
@@ -1177,9 +1280,11 @@ class Database:
 
     def get_titles_track(self, track):
         """
+        Get all the titles associated to the track
+        track -> playlists -> titles
 
-
-        :return:
+        :param track: track
+        :return: list of titles
         """
         playlists = self.get_track_playlists(track)
         titles_track = [title for playlist in playlists for title in self.get_titles_playlist(playlist)]
@@ -1193,10 +1298,12 @@ class Database:
         :param playlist: the playlist
         :return: list of titles
         """
-        #TODO SISTEMARE TUTTO
-        playlist_final = self.get_playlist_final()
-        titles = playlist_final[playlist][1]
-        return titles
+        try:
+            return self.playlists_final[playlist][1]
+        except AttributeError:
+            playlist_final = self.get_playlist_final()
+            titles = playlist_final[playlist][1]
+            return titles
 
     def get_title_idf(self, title):
         """
@@ -1252,8 +1359,7 @@ class Database:
         """
         track_playlists_map = self.get_track_playlists_map()
         return len(track_playlists_map[track])
-
-
+    
     def get_track_playcount(self, track):
         """
         gets the playcount of the given track

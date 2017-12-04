@@ -1,7 +1,7 @@
 import csv
 import math
 from operator import mul
-
+import logging
 
 def write(filename, content, delimiter_char=','):
     """
@@ -24,7 +24,7 @@ def write(filename, content, delimiter_char=','):
             writer.writerow(content)
     except Exception as e:
         logging.debug("%s" % (e))
-        fp.write(content)
+        fp.write(','.join([str(item) for item in content]))
     fp.close()
 
 def diff_list(a, b):
@@ -143,6 +143,8 @@ def jaccard(I, J):
     """
     if not isinstance(I, set):
         I = set(I)
+    if not isinstance(J, set):
+        J = set(J)
     intersection = float(len(I.intersection(J)))
     if not intersection:
         return 0.0
@@ -166,6 +168,16 @@ def parseIntList(lst):
     :return: parsed integer list
     """
     return [int(num) for num in lst[1:-1].split(',') if num != 'None' and num != '']
+
+def parseFloatList(lst):
+    """
+    Manual parsing for some fields of the csv, help to avoid uses of eval function
+
+    :param lst: string to parse
+    :return: parsed integer list
+    """
+    return [float(num) for num in lst[1:-1].split(',') if num != 'None' and num != '']
+
 
 def LevenshteinDistance(s, s_len, t, t_len):
     """

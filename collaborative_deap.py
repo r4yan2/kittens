@@ -4,26 +4,23 @@ from deap import base
 from deap import creator
 from deap import tools
 from deap import algorithms
-from database import Database
 import helper
-from recommender import Recommender
 import subprocess
 
-IND_SIZE = 77040
+IND_SIZE = 3
 
 creator.create("FitnessMax", base.Fitness, weights=(1.0,))
 creator.create("Individual", list, fitness=creator.FitnessMax)
 
 toolbox = base.Toolbox()
 
-toolbox.register("attr_float", random.randint, 0, 1)
+toolbox.register("attr_float", random.random)
 toolbox.register("individual", tools.initRepeat, creator.Individual,
                  toolbox.attr_float, n=IND_SIZE)
-toolbox.register("population", tools.initRepeat, list, toolbox.individual) #usare una funzione definita da noi; al posto di initRepeat in cui usiamo il 30% di uni
-# meno uni possibili, inizialmente, per avere dei geni con meno ciarpame possibile; il 30% di uni e il resto di zeri
+toolbox.register("population", tools.initRepeat, list, toolbox.individual)
 
 def evalOneMax(individual):
-    kittens_args = ["0", "4", "4", "1"]
+    kittens_args = ["0", "11", "4", "1"]
     kittens_args.append('[' + ','.join([str(item) for item in individual])  + ']')
     kittens = subprocess.Popen(["pypy", "kittens.py"] + kittens_args)
     kittens.wait()
@@ -36,11 +33,11 @@ def evalOneMax(individual):
 
 toolbox.register("evaluate", evalOneMax)
 toolbox.register("mate", tools.cxTwoPoint)
-toolbox.register("mutate", tools.mutFlipBit, indpb=0.5)
+toolbox.register("mutate", tools.mutFlipBit, indpb=0.05)
 toolbox.register("select", tools.selTournament, tournsize=3)
 population = toolbox.population(n=50)
 
-NGEN=5
+NGEN=10
 
 for gen in range(NGEN):
     print "percentage", gen * 100 / NGEN
