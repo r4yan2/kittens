@@ -158,7 +158,7 @@ class Recommender:
                 try:
                     recommendations = self.combined_collaborative_top_tag(target)
                 except ValueError as e:
-                    logging.debug("cannot use tf_idf for %i because of %s" % (target, e))
+                    logging.debug("cannot use top tag for %i because of %s" % (target, e))
                     #q_out.put(-1)
 
             elif choice == 9:
@@ -171,7 +171,7 @@ class Recommender:
                 try:
                     recommendations = self.make_collaborative_item_item_recommendations(target)
                 except ValueError as e:
-                   logging.debug("cannot use tf_idf for %i because of %s" % (target, e))
+                   logging.debug("cannot use collaborative for %i because of %s" % (target, e))
                    #q_out.put(-1)
 
             elif choice == 12:
@@ -203,35 +203,35 @@ class Recommender:
                 try:
                     recommendations = self.make_user_based_recommendations(target)
                 except ValueError as e:
-                    logging.debug("cannot use tf_idf for %i because of %s" % (target, e))
+                    logging.debug("cannot use user based for %i because of %s" % (target, e))
                     #q_out.put(-1)
 
             elif choice == 16:
                 try:
                     recommendations = self.make_naive_bayes_recommendations(target)
                 except ValueError as e:
-                    logging.debug("cannot use tf_idf for %i because of %s" % (target, e))
+                    logging.debug("cannot use naive bayes for %i because of %s" % (target, e))
                     #q_out.put(-1)
 
             elif choice == 17:
                 try:
                     recommendations = self.make_bad_tf_idf_recommendations(target)
                 except ValueError as e:
-                    logging.debug("cannot use tf_idf for %i because of %s" % (target, e))
+                    logging.debug("cannot use bad tf_idf for %i because of %s" % (target, e))
                     #q_out.put(-1)
 
             elif choice == 18:
                 try:
                     recommendations = self.make_bad_tf_idf_recommendations_jaccard(target)
                 except ValueError as e:
-                    logging.debug("cannot use tf_idf for %i because of %s" % (target, e))
+                    logging.debug("cannot use bad tf_idf for %i because of %s" % (target, e))
                     #q_out.put(-1)
 
             elif choice == 19:
                 try:
                     recommendations = self.make_playlist_based_recommendations(target)
                 except ValueError as e:
-                    logging.debug("cannot use tf_idf for %i because of %s" % (target, e))
+                    logging.debug("cannot use playlist based for %i because of %s" % (target, e))
                     #q_out.put(-1)
             elif choice == 21:
                 try:
@@ -512,7 +512,7 @@ class Recommender:
                     similarity = numerator / denominator
                 except ZeroDivisionError:
                     continue
-
+                
                 possible_recommendations.append([track, similarity])
 
         possible_recommendations.sort(key=itemgetter(1), reverse=True)

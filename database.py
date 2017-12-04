@@ -195,7 +195,7 @@ class Database:
             playlist_a_tracks = self.get_playlist_tracks(playlist_a)
 
         if not (len(playlist_a_tags) and tag_flag or len(playlist_a_titles) and title_flag or len(playlist_a_tracks) and track_flag):
-            raise ValueError("cannot generate neighborhood for", playlist_a)
+            raise ValueError("cannot generate neighborhood for %s" % playlist_a)
         
         if coefficient == "cosine":
 
@@ -1048,14 +1048,17 @@ class Database:
         :return:
         """
         tracks = helper.read("tracks_final")
-        try:
-            whitelist_fp = open('data/whitelist', 'rb')
-            whitelist = set([int(tag) for tag in whitelist_fp.readline().split(',')])
-        except:
-            logging.debug("No whitelist file found, continuing with all tags!")
         tracks.next()
         result = {}
         iterator = -10
+        
+        try:
+            whitelist_fp = open('data/whitelist', 'rb')
+            whitelist = set([int(tag) for tag in whitelist_fp.readline().split(',')])
+            logging.debug("Loaded whitelist!")
+        except:
+            logging.debug("No whitelist file found, continuing with all tags!")
+            
         for track in tracks:
             track_id = int(track[0])
             artist_id = int(track[1])
@@ -1071,21 +1074,20 @@ class Database:
                 album = iterator
                 iterator -= 1
             tags = helper.parseIntList(track[5]) # evaluation of the tags list
-            try:
-                tags = [tag for tag in tags if tag in whitelist]
-            except:
-                pass #no whitelist
-            
-            plays = self.get_track_playlists(track_id)
 
+            tags_extended = [artist_id + 276615] + [album + 847203 if album > 0 else iterator] + tags
+            tags_extended = [tag for tag in tags_extended if tag > 0]
             try:
-                if self.individual:
-                    tags = [tag for tag in tags if self.genetic(tag)]
+                tags_extended = [tag for tag in tags_extended if tag in whitelist]
             except:
                 pass
-            tags_extended = [artist_id + 276615] + [album + 847203 if album > 0 else iterator] + [playcount + 1064529] + tags
+            try:
+                if self.individual:
+                    tags_extended = [tag for tag in tags_extended if self.genetic(tag)]
+            except:
+                pass
 
-            result[track_id]= [artist_id, duration, playcount, album, tags]
+            result[track_id]= [artist_id, duration, playcount, album, tags_extended]
         return result
 
     def get_playlist_user_tracks(self, playlist):

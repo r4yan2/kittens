@@ -9,7 +9,7 @@ import helper
 from recommender import Recommender
 import subprocess
 
-IND_SIZE = 31900
+IND_SIZE = 77040
 
 creator.create("FitnessMax", base.Fitness, weights=(1.0,))
 creator.create("Individual", list, fitness=creator.FitnessMax)
@@ -35,9 +35,9 @@ def evalOneMax(individual):
 
 toolbox.register("evaluate", evalOneMax)
 toolbox.register("mate", tools.cxTwoPoint)
-toolbox.register("mutate", tools.mutFlipBit, indpb=0.05)
+toolbox.register("mutate", tools.mutFlipBit, indpb=0.5)
 toolbox.register("select", tools.selTournament, tournsize=3)
-population = toolbox.population(n=20)
+population = toolbox.population(n=50)
 
 NGEN=3
 
