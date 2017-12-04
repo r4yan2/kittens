@@ -420,7 +420,7 @@ class Database:
     def end_epoch_shrink(self, knn):
         n_items = self.similarities.shape[0]
         
-        self.similarities[numpy.arange(0, n_items), self.similarities[(numpy.item_idarange(0, n_items))].toarray().ravel().argsort()[::-1][knn:]] = 0.0
+        self.similarities[numpy.arange(0, n_items), self.similarities[(numpy.arange(0, n_items))].toarray().ravel().argsort()[::-1][knn:]] = 0.0
 
     def get_knn_track_similarities(self, active_track, knn=50):
         """
