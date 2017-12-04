@@ -22,10 +22,14 @@ else:
 
 choice = int(sys.argv[2])
 core = int(sys.argv[3])
-if int(sys.argv[4]):
-    individual = helper.parseFloatList(sys.argv[5])
-
-db = Database(instance, individual) # the database is built accordingly to the number passed, 0 no test else test mode
+try:
+    if int(sys.argv[5]):
+        individual = helper.parseFloatList(sys.argv[5])
+        db = Database(instance, individual)
+    else:
+        db = Database(instance)
+except:
+    db = Database(instance)
 
 # This list will store the result just before writing to file
 to_write = []

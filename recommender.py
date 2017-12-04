@@ -512,7 +512,7 @@ class Recommender:
                     similarity = numerator / denominator
                 except ZeroDivisionError:
                     continue
-
+                
                 possible_recommendations.append([track, similarity])
 
         possible_recommendations.sort(key=itemgetter(1), reverse=True)
