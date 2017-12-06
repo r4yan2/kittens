@@ -22,8 +22,9 @@ toolbox.register("individual", tools.initRepeat, creator.Individual,
 toolbox.register("population", tools.initRepeat, list, toolbox.individual)
 
 def evalOneMax(individual):
-    kittens_args = ["0", "4", "8", "1"]
-    kittens_args.append('[' + ','.join([str(item) for item in individual])  + ']')
+    fp = open("individual", "wb+")
+    fp.write('['+','.join(str(i) for i in individual)+']')
+    kittens_args = ["0", "4", "4", "1", "1"]
     kittens = subprocess.Popen(["pypy", "kittens.py"] + kittens_args)
     kittens.wait()
     results = [elem for elem in helper.read("test_result1")]
@@ -41,8 +42,13 @@ population = toolbox.population(n=50)
 
 NGEN=3
 
+completion = 0
+
 for gen in range(NGEN):
-    print "percentage", gen * 100 / NGEN
+    percentage = gen * 100 / float(NGEN)
+    if percentage > completion:
+        print percentage
+        completion = percentage
     offspring = algorithms.varAnd(population, toolbox, cxpb=0.5, mutpb=0.1)
     fits = toolbox.map(toolbox.evaluate, offspring)
     for fit, ind in zip(fits, offspring):
