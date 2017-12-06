@@ -16,26 +16,22 @@ class Database:
         :param test: istance
         :return: the initialized object
         """
-        connection = sqlite3.connect("/dev/shm/db")
+        connection = sqlite3.connect(":memory:")
         connection.row_factory = lambda cursor, row: row[0]
         cursor = connection.cursor()
         self.cursor = cursor
         #connection.isolation_level = None
-        self.cursor.execute("PRAGMA journal_mode = OFF;")
+        #self.cursor.execute("PRAGMA journal_mode = OFF;")
         self.cursor.execute("PRAGMA secure_delete = 0;")
-        self.cursor.execute("PRAGMA locking_mode = EXCLUSIVE;")
-        self.cursor.execute("PRAGMA synchronous = OFF;")
-        self.cursor.execute("PRAGMA read_uncommitted = 1;")
+        #self.cursor.execute("PRAGMA locking_mode = EXCLUSIVE;")
+        #self.cursor.execute("PRAGMA synchronous = OFF;")
+        #self.cursor.execute("PRAGMA read_uncommitted = 1;")
         self.cursor.execute("begin")
         self.test = test
+        
+        self.load_database(test)
 
-        if test > 0:
-            self.load_test_set(test)
-            self.load_train_list(test)
-        else:
-            self.load_train_list()
-
-    def shrink_and_clean_db(self, knn=100):
+    def shrink_and_clean_db(self, knn=150):
         """
         Keep only knn similarities and invoke vacuum to compact the database
         """
@@ -44,12 +40,7 @@ class Database:
             keep = self.cursor.execute("select j from similarities_epoch where i=(?) order by value desc limit (?)", (i, knn))
             self.cursor.execute('delete from similarities_epoch where i=%i and j not in (%s)' % (i, ", ".join([str(track) for track in keep])))
 
-         
         self.cursor.execute("vacuum")
-        for i in tracks:
-            keep = self.cursor.execute("select count(*) from similarities_epoch where i=(?)", (i,))
-            if keep > knn:
-                logging.debug("porcodio: %i" % (keep))
         
         logging.debug("Database cleaned succesfully")
 
@@ -83,31 +74,17 @@ class Database:
         """
         return self.test_set
 
-    def load_test_set(self, test):
-        """
-        Loader for the test set
-
-        :param test: integer which indicate the specific test istance
-        :return: None
-        """
-        test_set = helper.read("test_set" + str(test))
-
-        self.test_set = [[int(playlist), int(track)] for playlist, track in test_set]
-        self.target_playlists = set([playlist for playlist, track in self.test_set])
-        self.target_tracks = set([track for playlist, track in self.test_set])
-
-    def get_playlists(self):
+    def get_playlists(self, iterator=True):
         """
         getter for the playlists set
 
         :return: set of playlists
         """
-        try:
-            return self.playlists
-        except AttributeError:
-            playlists = self.get_train_list()
-            self.playlists = list(set([playlist for playlist, track in playlists]))
-            return self.playlists
+        playlists = self.cursor.execute("select distinct playlist_id from train_final")
+        if iterator:
+            return playlists
+        else:
+            return playlists.fetchall()
 
     def compute_test_set(self):
         """
@@ -584,12 +561,11 @@ class Database:
             except KeyError:
                 pass
 
-    def set_item_similarities_epoch(self, i, j, update):
+    def set_item_similarities_epoch(self, update):
         """
         """
 
-        if i != j:
-            self.cursor.execute("INSERT OR REPLACE INTO similarities_epoch (i, j, value) VALUES ((?), (?), (?))", (i, j , update))
+        self.cursor.executemany("INSERT OR REPLACE INTO similarities_epoch VALUES (?, ?, ?)", update)
 
     def null_item_similarities(self, i, j):
         """
@@ -637,24 +613,52 @@ class Database:
         if self.test == 1:
             return self.cursor.execute("select track_id from test_set1 where  playlist_id = (?) ", (active_playlist,)).fetchall()
 
-    def load_train_list(self, test=None):
+    def load_database(self, test=None):
         """
-        Loader for train list when the engine start
-        If the test mode is off load train final
+        Loader for the database: if the test mode is off load default csv,
         else load the corresponding train set
 
-        :param test: specify the istance of test if enabled
+        :param test: specify the istance of test
         :return: None
         """
-        if test == None:
+
+        self.load_train_list(test)
+        self.load_tracks_map()
+        self.load_playlist_final()
+
+            
+    def load_train_list(self, test=None):
+        self.num_interactions = 0
+        self.cursor.execute("CREATE TABLE 'train_final' (\
+            `playlist_id` INTEGER,\
+            `track_id` INTEGER\
+                )")
+        if not test:
             train_list = helper.read("train_final")
             train_list.next()
-            self.train_list = [[int(element[0]), int(element[1])] for element in train_list]
-            self.num_interactions = len(self.train_list)
         else:
             train_list = helper.read("train_set"+str(test))
-            self.train_list = [[int(element[0]), int(element[1])] for element in train_list]
-            self.num_interactions = len(self.train_list)
+            
+            # load validation set if test mode is ON
+            self.cursor.execute("CREATE TABLE 'test_set' (\
+                `playlist_id` INTEGER,\
+                `track_id` INTEGER\
+                    )")
+            for playlist, track in helper.read("test_set"+str(test)):
+                playlist = int(playlist)
+                track = int(track)
+                self.cursor.execute("insert into 'test_set' values ((?),(?))", (playlist, track,))
+            self.cursor.execute("CREATE INDEX `get_relevant_tracks` ON `test_set` (`playlist_id`)")
+
+        
+        for playlist, track in train_list:
+            playlist = int(playlist)
+            track = int(track)
+            self.cursor.execute("insert into 'train_final' values ((?),(?))", (playlist, track,))
+            self.num_interactions += 1
+            
+        self.cursor.execute("CREATE INDEX `get_playlist_tracks` ON `train_final` (`playlist_id`)")
+        
 
     def get_tag_playlists_map(self):
         """
@@ -837,30 +841,33 @@ class Database:
             return idf
 
 
-    def get_playlist_final(self):
+    def load_playlist_final(self):
         """
-        the initialization of the playlist final csv
-        :return:
-        """
-        try:
-            return self.playlist_final
+        Loader of playlist_final.csv
+        :return: None
+        """        
+        self.cursor.execute("CREATE TABLE 'playlists_final' (\
+            `created_at` INTEGER,\
+            `playlist_id` INTEGER UNIQUE,\
+            `title`	TEXT,\
+            `numtracks`	INTEGER,\
+            `duration`	INTEGER,\
+            `owner`	INTEGER,\
+            PRIMARY KEY(playlist_id)\
+                )")
 
-        except AttributeError:
-
-            playlist_list = helper.read("playlists_final")
-            result = {}
-            playlist_list.next()
-            for playlist in playlist_list:
-                created_at = int(playlist[0])
-                playlist_id = int(playlist[1])
-                title = helper.parseIntList(playlist[2])
-                numtracks = int(playlist[3])
-                duration = int(playlist[4])
-                owner = int(playlist[5])
-
-                result[playlist_id]= [created_at, title, numtracks, duration, owner]
-            self.playlist_final = result
-            return self.playlist_final
+        playlist_list = helper.read("playlists_final")
+        result = {}
+        playlist_list.next()
+        for playlist in playlist_list:
+            created_at = int(playlist[0])
+            playlist_id = int(playlist[1])
+            title = playlist[2] # put the title text as is into the memory database
+            numtracks = int(playlist[3])
+            duration = int(playlist[4])
+            owner = int(playlist[5])
+            
+            self.cursor.execute("insert into 'playlists_final' values ((?),(?),(?),(?),(?),(?))", (created_at, playlist_id, title, numtracks, duration, owner,))
 
     def user_user_similarity(self, active_user, knn=75):
         """
@@ -886,7 +893,7 @@ class Database:
         :return:
         """
         if self.test == 1:
-            return self.cursor.execute("select distinct playlist_id from test_set1").fetchall()
+            return self.cursor.execute("select distinct playlist_id from test_set").fetchall()
         return self.cursor.execute("select distinct playlist_id from target_playlists").fetchall()
 
 
@@ -906,7 +913,7 @@ class Database:
         :return:
         """
         if self.test == 1:
-            return self.cursor.execute("select distinct track_id from test_set1").fetchall()
+            return self.cursor.execute("select distinct track_id from test_set").fetchall()
         return self.cursor.execute("select distinct track_id from target_tracks").fetchall()
 
     def get_tracks_map(self):
@@ -947,36 +954,45 @@ class Database:
             return self.average_tags_length
 
 
-    def compute_tracks_map(self):
+    def load_tracks_map(self):
         """
         parse tracks_final.csv dividing all field into the corresponding part of the list
         :return:
         """
+        self.cursor.execute("CREATE TABLE 'tracks_final' (\
+            `track_id`	INTEGER UNIQUE,\
+            `artist_id`	INTEGER,\
+            `duration`	INTEGER,\
+            `playcount`	INTEGER,\
+            `album`	INTEGER,\
+            `tags`	TEXT,\
+            PRIMARY KEY(track_id)\
+                )")
+                
         tracks = helper.read("tracks_final")
         tracks.next()
-        result = {}
         iterator = -10
         for track in tracks:
             track_id = int(track[0])
             artist_id = int(track[1])
             duration = int(track[2])
             try:
-                playcount = float(track[3]) # yes, PLAYCOUNT is memorized as a floating point
+                playcount = int(float(track[3])) # yes, PLAYCOUNT is memorized as a floating point
             except ValueError:
                 playcount = 0.0
             album = helper.parseIntList(track[4])
             try:
                 album = int(album[0])  # yes again, album is memorized as a list, even if no track have more than 1 album
             except:
-                album = iterator
-                iterator -= 1
+                album = 0
             tags = helper.parseIntList(track[5]) # evaluation of the tags list
 
-            tags_extended = [artist_id + 276615] + [album + 847203 if album > 0 else iterator] + [playcount + 1064529] + tags
-
-            result[track_id]= [artist_id, duration, playcount, album, tags_extended]
-        return result
-
+            tags_extended = [artist_id + 276615] + [album + 847203 if album > 0 else iterator] + tags
+            tags_extended = [tag for tag in tags_extended if tag > 0]
+            tags_extended_str = '['+','.join(str(tag) for tag in tags_extended)+']'
+            
+            
+            self.cursor.execute("insert into 'tracks_final' values ((?),(?),(?),(?),(?),(?))", (track_id, artist_id, duration, playcount, album, tags_extended_str))
     def get_playlist_user_tracks(self, playlist):
         """
         return the tracks of the user who created the given playlist
@@ -1065,18 +1081,17 @@ class Database:
         except ZeroDivisionError:
             return 0.0
 
-    def get_tracks(self):
+    def get_tracks(self, iterator=True):
         """
-        gettter for the tracks in train, so the item in URM
+        gettter for the tracks in train
 
         :return: a set of tracks
         """
-        try:
-            return self.tracks_set
-        except AttributeError:
-            train = self.get_train_list()
-            self.tracks_set = set([track for playlist, track in train])
-            return self.tracks_set
+        tracks = self.cursor.execute("select distinct track_id from train_final")
+        if iterator:
+            return tracks
+        else:
+            return tracks.fetchall()
 
     def get_num_tracks(self):
         """
@@ -1120,14 +1135,17 @@ class Database:
                 self.track_tags_map[id] = tags
             return self.track_tags_map
 
-    def get_playlist_tracks(self, target_playlist):
+    def get_playlist_tracks(self, target_playlist, iterator=True):
         """
         return all the tracks into the specified playlist
         :param playlist:
         :return:
         """
-        return self.cursor.execute("select track_id from train_set1 where playlist_id = (?)", (target_playlist,)).fetchall()
-
+        tracks = self.cursor.execute("select track_id from train_final where playlist_id = (?)", (target_playlist,))
+        if iterator:
+            return tracks
+        else:
+            return tracks.fetchall()
 
     def get_playlist_tracks_map(self):
         """

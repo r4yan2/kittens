@@ -87,8 +87,8 @@ class Recommender:
 
             numPositiveIteractions = int(self.db.get_num_interactions()*0.1)
             self.db.init_item_similarities_epoch()
-            playlists = self.db.get_playlists()
-            tracks = list(self.db.get_tracks())
+            playlists = self.db.get_playlists(iterator=False)
+            tracks = self.db.get_tracks(iterator=False)
             rate = 0.05
             old_learned = 1
             thresh = 0.0005
@@ -1079,7 +1079,7 @@ class Recommender:
             while check:
 
                 playlist = random.choice(playlists)
-                playlist_tracks = self.db.get_playlist_tracks(playlist)
+                playlist_tracks = self.db.get_playlist_tracks(playlist, iterator=False)
                 len_playlist_tracks = len(playlist_tracks)
                 check = not len_playlist_tracks >= 10
 
@@ -1088,7 +1088,6 @@ class Recommender:
             negative_item_id = random.choice(tracks)
             while negative_item_id in playlist_tracks:
                 negative_item_id = random.choice(tracks)
-
 
             # Prediction
             x_i = [self.db.get_item_similarities_epoch(epoch, positive_item_id, track) for track in playlist_tracks]
@@ -1101,9 +1100,8 @@ class Recommender:
 
             learnings.append(learning_rate*gradient)
             # Update
-            [self.db.set_item_similarities_epoch(positive_item_id, track, x_i[playlist_tracks.index(track)] + learning_rate * gradient) for track in playlist_tracks]
-
-            [self.db.set_item_similarities_epoch(negative_item_id, track, x_j[playlist_tracks.index(track)] - learning_rate * gradient) for track in playlist_tracks]
+            update = [(positive_item_id, track, x_i[playlist_tracks.index(track)] + learning_rate * gradient) for track in playlist_tracks if track != positive_item_id] + [(negative_item_id, track, x_j[playlist_tracks.index(track)] - learning_rate * gradient) for track in playlist_tracks]
+            self.db.set_item_similarities_epoch(update)
             
             if epoch % 10000 == 0:
                 logging.debug("%i steps done!" % (epoch)) 

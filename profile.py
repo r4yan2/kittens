@@ -1,10 +1,9 @@
 from database import Database
 from recommender import Recommender
 import cProfile
-db=Database(1)
-rm=Recommender(db)
-
-cProfile.run('db.compute_playlists_similarity(3042855)')
-#cProfile.run('rm.check_recommendations(3042855, recomm)')
-cProfile.run('db.compute_playlists_similarity(5935981)')
-#cProfile.run('rm.check_recommendations(5935981, recomm)')
+db = Database(1)
+rm = Recommender(db)
+db.init_item_similarities_epoch()
+playlists = db.get_playlists(iterator=False)
+tracks = db.get_tracks(iterator=False)
+cProfile.run("rm.epoch_iteration(5000, playlists, tracks)")
