@@ -100,15 +100,17 @@ def divide_lists(lst1, lst2):
 def mean(numbers):
     return float(sum(numbers)) / max(len(numbers), 1)
 
-def square_sum (x):
+def square_sum(x):
     """
     Squares each element of the list and returns the sum
 
     :param x: list of element to square
     :return: result list
     """
-    return sum([elem*elem for elem in x])
-
+    acc = 0
+    for elem in x:
+        acc += elem*elem
+    return acc
 
 def pearsonr(x, y):
     """
@@ -133,6 +135,24 @@ def pearsonr(x, y):
 
     return  numerator / denominator
 
+def set_difference_len(I,J):
+    """
+    Compute the difference between two set
+    :param I: list/set
+    :param J: list/set
+    :return: number of different elements
+    """
+    if isinstance(I,set):
+        return len(I.symmetric_difference(J))
+    elif isinstance(J, set):
+        return len(J.symmetric_difference(I))
+    else:
+        acc=0
+        for i in I+J:
+            if not (i in J and i in I):
+                acc+=1
+        return acc
+        
 def jaccard(I, J):
     """
     Compute the jaccard similarity improved y multiplication with the mse
