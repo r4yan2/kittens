@@ -274,7 +274,7 @@ class Database:
                     similarity = helper.jaccard(playlist_a_titles, playlist_b_titles)
             
             neighborhood.append([playlist_b, similarity])
-        knn_neighborgs = [playlist for playlist, value in sorted(neighborhood[0:knn], key=itemgetter(1), reverse=True)]
+        knn_neighborgs = [playlist for playlist, value in sorted(neighborhood, key=itemgetter(1), reverse=True)[0:knn] if value > 0]
         return knn_neighborgs
 
     def get_min_max_playlists(self):
