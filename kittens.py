@@ -13,6 +13,9 @@ from collections import Counter
 logging.basicConfig(filename='log/kittens.log', level=logging.DEBUG, filemode='w')
 
 # take input from command line sys.argv[0] is the program name
+if len(sys.argv) < 5:
+    print "Less than 5 arguments passed"
+    sys.exit(0)
 if eval(sys.argv[1]) == 0:
     test = True
     instance = int(sys.argv[4])
@@ -22,20 +25,23 @@ else:
 
 choice = int(sys.argv[2])
 core = int(sys.argv[3])
-try:
-    if int(sys.argv[5]):
-        individual = helper.parseFloatList(sys.argv[5])
-        db = Database(instance, individual)
-    else:
-        db = Database(instance)
-except:
+
+if len(sys.argv) > 5:
+    fp = open("individual", "rb")
+    individual = helper.parseFloatList(fp.readline())
+    fp.close()
+    db = Database(instance, individual)
+    suppress_output = True
+    logging.debug("individual parsed, kittens output suppressed\nIndividual: %s" % (individual,))
+else:
     db = Database(instance)
+    suppress_output = False
 
 # This list will store the result just before writing to file
 to_write = []
 
 # Initializing the recommender instance
-recommender_system = Recommender()
+recommender_system = Recommender(db)
 
 # This list store the result from the worker process (identifier, playlist, [recommendation])
 results = []
@@ -75,7 +81,7 @@ missing = len(target_playlists)
 done = set()
 for i in xrange(missing):
     try:
-        r = q_out.get(timeout=120)
+        r = q_out.get()
     except:
         missing = list(done.symmetric_difference(target_playlists))
         logging.debug("Missing: %s, Requesting new recommendations", (missing))
@@ -84,12 +90,13 @@ for i in xrange(missing):
         r = [check_rec, -1, missing[0], len(db.get_playlist_tracks(missing[0]))]
     if r == -1:
         continue
-    percentage = (i*100)/(target_playlists_length-1)
-    if percentage > completion:
-        # write percentage in a feasible way for dialog/whiptail
-        sys.stdout.write("%i\n" % percentage)
-        sys.stdout.flush()
-        completion = percentage
+    if not suppress_output:
+        percentage = (i*100)/(target_playlists_length-1)
+        if percentage > completion:
+            # write percentage in a feasible way for dialog/whiptail
+            sys.stdout.write("%i\n" % percentage)
+            sys.stdout.flush()
+            completion = percentage
     if test: # if the test istance is enabled more logging is done
         logging.debug("worker number %i reporting result %s for playlist %i" % (r[1],r[0],r[2]))
         done.add(r[2])

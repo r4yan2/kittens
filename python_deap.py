@@ -23,14 +23,20 @@ toolbox.register("population", tools.initRepeat, list, toolbox.individual) #usar
 # meno uni possibili, inizialmente, per avere dei geni con meno ciarpame possibile; il 30% di uni e il resto di zeri
 
 def evalOneMax(individual):
-    kittens_args = ["0", "4", "4", "1"]
-    kittens_args.append('[' + ','.join([str(item) for item in individual])  + ']')
+    fp = open("individual", "wb+")
+    fp.write('['+','.join(str(i) for i in individual)+']')
+    fp.close()
+    kittens_args = ["0", "4", "4", "1", "1"]
     kittens = subprocess.Popen(["pypy", "kittens.py"] + kittens_args)
     kittens.wait()
     results = [elem for elem in helper.read("test_result1")]
-    print results
     result = float(results[0][1])
-    print result
+    if result > best_result:
+        fp.open("best_result", "wb+")
+        fp.write("best_result:\t"+str(result))
+        fp.write('['+','.join(str(i) for i in individual)+']')
+        fp.close()
+        best_result = result
     return result,
 
 
@@ -42,8 +48,14 @@ population = toolbox.population(n=50)
 
 NGEN=5
 
+completion = 0
+best_result = 0
+
 for gen in range(NGEN):
-    print "percentage", gen * 100 / NGEN
+    percentage = gen * 100 / float(NGEN)
+    if percentage > completion:
+        print percentage
+        completion = percentage
     offspring = algorithms.varAnd(population, toolbox, cxpb=0.5, mutpb=0.1)
     fits = toolbox.map(toolbox.evaluate, offspring)
     for fit, ind in zip(fits, offspring):

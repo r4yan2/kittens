@@ -14,7 +14,7 @@ class Database:
         :param test: istance
         :return: the initialized object
         """
-        
+
         self.test = test
         if individual:
             self.individual = individual
@@ -195,8 +195,8 @@ class Database:
             playlist_a_tracks = self.get_playlist_tracks(playlist_a)
 
         if not (len(playlist_a_tags) and tag_flag or len(playlist_a_titles) and title_flag or len(playlist_a_tracks) and track_flag):
-            raise ValueError("cannot generate neighborhood for", playlist_a)
-        
+            raise ValueError("cannot generate neighborhood for %s" % playlist_a)
+
         if coefficient == "cosine":
 
             if tag_flag:
@@ -233,7 +233,7 @@ class Database:
 
             if not (len(playlist_b_tags) and tag_flag or len(playlist_b_titles) and title_flag or len(playlist_b_tracks) and track_flag):
                 continue
-            
+
             if coefficient == "cosine":
 
                 if tag_flag:
@@ -250,29 +250,29 @@ class Database:
             num_cosine_sim_tag = 0
             num_cosine_sim_title = 0
             num_cosine_sim_track = 0
-            
+
             if coefficient == "cosine":
                 if tag_flag:
                     num_cosine_sim_tag = sum([tf_idf_playlist_a_tag[playlist_a_tags.index(tag)] * tf_idf_playlist_b_tag[playlist_b_tags.index(tag)] for tag in playlist_b_tags if tag in playlist_a_tags])
 
                 if title_flag:
                     num_cosine_sim_title = sum([tf_idf_playlist_a_title[playlist_a_titles.index(title)] * tf_idf_playlist_b_title[playlist_b_titles.index(title)] for title in playlist_b_titles if title in playlist_a_titles])
-                    
+
                 if track_flag:
                     num_cosine_sim_track = sum([tf_idf_playlist_a_track[playlist_a_tracks.index(track)] * tf_idf_playlist_b_track[playlist_b_tracks.index(track)] for track in playlist_b_tracks if track in playlist_a_tracks])
-                    
+
                 num_cosine_sim = num_cosine_sim_tag + num_cosine_sim_title + num_cosine_sim_track
                 den_cosine_sim = math.sqrt(sum([i ** 2 for i in tf_idf_playlist_a])) * math.sqrt(sum([i ** 2 for i in tf_idf_playlist_b]))
-                
+
                 try:
                     similarity = num_cosine_sim / den_cosine_sim
                 except ZeroDivisionError:
                     continue
-                    
+
             elif coefficient == "jaccard":
                 if title_flag:
                     similarity = helper.jaccard(playlist_a_titles, playlist_b_titles)
-            
+
             neighborhood.append([playlist_b, similarity])
         knn_neighborgs = [playlist for playlist, value in sorted(neighborhood[0:knn], key=itemgetter(1), reverse=True)]
         return knn_neighborgs
@@ -410,7 +410,7 @@ class Database:
         Get Taxonomy comparison result from 2 tracks
         :param i: track
         :param j: track
-        :return: taxonomy value 
+        :return: taxonomy value
         """
 
         tags_i = self.get_track_tags(i)
@@ -799,7 +799,7 @@ class Database:
         except AttributeError:
             self.max_inclusion_value = max([len(items) for items in self.get_tag_playlists_map().values()])
             return self.max_inclusion_value
-    
+
     def get_num_tag(self):
         """
         """
@@ -837,7 +837,7 @@ class Database:
             for tag in tags_list_set:
                 self.tags_list[tag] = tags_list.count(tag)
             return self.tags_list[tag]
-        
+
     def get_tag_playlists(self, tag):
         """
         """
@@ -847,7 +847,7 @@ class Database:
             tag_playlist_map = self.get_tag_playlists_map()
             playlist_tags_included = tag_playlist_map[tag]
             return playlist_tags_included
-        
+
     def get_num_playlists(self):
         """
         """
@@ -872,7 +872,7 @@ class Database:
         except ZeroDivisionError:
             idf = 0
         return idf
-    
+
     def get_target_score(self, playlist, track):
         """
         score as defined by bm-25
@@ -886,7 +886,7 @@ class Database:
             raise ValueError
         k = 1.2
         b = 0.75
-            
+
         scores = []
         for tag in self.get_track_tags(track):
             document_containing_tag = len(tag_playlist_map[tag])
@@ -894,7 +894,7 @@ class Database:
             tf = (tag_count * (k+1)) / (tag_count + (k * (1 - b + b * (document_len / average))))
             idf = math.log10((documents_number - document_containing_tag + 0.5)/(document_containing_tag + 0.5))
             scores.append(tf*idf)
-        
+
         score = sum(scores)
         return score
 
@@ -1051,6 +1051,13 @@ class Database:
         tracks.next()
         result = {}
         iterator = -10
+        try:
+            whitelist_fp = open('data/whitelist', 'rb')
+            whitelist = set([int(tag) for tag in whitelist_fp.readline().split(',')])
+            logging.debug("Loaded whitelist!")
+        except:
+            logging.debug("No whitelist file found, continuing with all tags!")
+
         for track in tracks:
             track_id = int(track[0])
             artist_id = int(track[1])
@@ -1066,23 +1073,18 @@ class Database:
                 album = iterator
                 iterator -= 1
             tags = helper.parseIntList(track[5]) # evaluation of the tags list
-            
-            try:
-                whitelist_fp = open('data/whitelist', 'rb')
-                whitelist = set([int(tag) for tag in whitelist_fp.readline().split(',')])
-                tags = [tag for tag in tags if tag in whitelist]
-                logging.debug("Loaded whitelist!")
-            except:
-                logging.debug("No whitelist file found, continuing with all tags!")
-            
+
             tags_extended = [artist_id + 276615] + [album + 847203 if album > 0 else iterator] + tags
             tags_extended = [tag for tag in tags_extended if tag > 0]
+            try:
+                tags_extended = [tag for tag in tags_extended if tag in whitelist]
+            except:
+                pass
             try:
                 if self.individual:
                     tags_extended = [tag for tag in tags_extended if self.genetic(tag)]
             except:
                 pass
-
             result[track_id]= [artist_id, duration, playcount, album, tags_extended]
         return result
 
@@ -1121,7 +1123,7 @@ class Database:
     def get_playlist_user(self, playlist):
         """
         Getter for the owner of the playlist
-        
+
         :param playlist: playlist
         :return: owner(user)
         """
@@ -1359,7 +1361,7 @@ class Database:
         """
         track_playlists_map = self.get_track_playlists_map()
         return len(track_playlists_map[track])
-    
+
     def get_track_playcount(self, track):
         """
         gets the playcount of the given track

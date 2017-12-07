@@ -158,7 +158,7 @@ class Recommender:
                 try:
                     recommendations = self.combined_collaborative_top_tag(target)
                 except ValueError as e:
-                    logging.debug("cannot use tf_idf for %i because of %s" % (target, e))
+                    logging.debug("cannot use top tag for %i because of %s" % (target, e))
                     #q_out.put(-1)
 
             elif choice == 9:
@@ -171,7 +171,7 @@ class Recommender:
                 try:
                     recommendations = self.make_collaborative_item_item_recommendations(target)
                 except ValueError as e:
-                   logging.debug("cannot use tf_idf for %i because of %s" % (target, e))
+                   logging.debug("cannot use collaborative for %i because of %s" % (target, e))
                    #q_out.put(-1)
 
             elif choice == 12:
@@ -203,35 +203,35 @@ class Recommender:
                 try:
                     recommendations = self.make_user_based_recommendations(target)
                 except ValueError as e:
-                    logging.debug("cannot use tf_idf for %i because of %s" % (target, e))
+                    logging.debug("cannot use user based for %i because of %s" % (target, e))
                     #q_out.put(-1)
 
             elif choice == 16:
                 try:
                     recommendations = self.make_naive_bayes_recommendations(target)
                 except ValueError as e:
-                    logging.debug("cannot use tf_idf for %i because of %s" % (target, e))
+                    logging.debug("cannot use naive bayes for %i because of %s" % (target, e))
                     #q_out.put(-1)
 
             elif choice == 17:
                 try:
                     recommendations = self.make_bad_tf_idf_recommendations(target)
                 except ValueError as e:
-                    logging.debug("cannot use tf_idf for %i because of %s" % (target, e))
+                    logging.debug("cannot use bad tf_idf for %i because of %s" % (target, e))
                     #q_out.put(-1)
 
             elif choice == 18:
                 try:
                     recommendations = self.make_bad_tf_idf_recommendations_jaccard(target)
                 except ValueError as e:
-                    logging.debug("cannot use tf_idf for %i because of %s" % (target, e))
+                    logging.debug("cannot use bad tf_idf for %i because of %s" % (target, e))
                     #q_out.put(-1)
 
             elif choice == 19:
                 try:
                     recommendations = self.make_playlist_based_recommendations(target)
                 except ValueError as e:
-                    logging.debug("cannot use tf_idf for %i because of %s" % (target, e))
+                    logging.debug("cannot use playlist based for %i because of %s" % (target, e))
                     #q_out.put(-1)
             elif choice == 21:
                 try:
@@ -499,7 +499,9 @@ class Recommender:
 
                     numerator = sum([tf_idf_track[tags.index(tag)] * tf_idf_playlist[playlist_features_set.index(tag)] for tag in tags if tag in playlist_features_set])
 
-                    denominator = math.sqrt(sum([i ** 2 for i in tf_idf_playlist])) * math.sqrt(sum([i ** 2 for i in tf_idf_track]))
+                    denominator = math.sqrt(helper.square_sum(tf_idf_playlist)) * math.sqrt(helper.square_sum(tf_idf_track))
+                    denominator += helper.set_difference_len(playlist_features, tags)
+                    #denominator += math.log1p(math.fabs(len(playlist_features_set) - len(tags)))
 
                 elif coefficient == "sum":
                     numerator = sum(tf_idf_playlist[playlist_features_set.index(tag)] for tag in tags if tag in playlist_features_set)
@@ -636,7 +638,7 @@ class Recommender:
         len_playlist_tags = len(playlist_tags)
         playlist_titles = self.db.get_titles_playlist(active_playlist)
         active_playlist_creation = self.db.get_created_at_playlist(active_playlist)
-
+        predictions = []
 
         # case: playlist have no tracks and no title
         if playlist_tracks == [] and playlist_titles == []:
@@ -649,7 +651,7 @@ class Recommender:
             target_tracks = self.db.get_target_tracks()
             for track in target_tracks:
                 duration = self.db.get_track_duration(track)
-                if track in playlist_tracks_set or not (duration > 30000 or duration < 0):
+                if track in playlist_tracks or not (duration > 30000 or duration < 0):
                     continue
                 prediction = sum([self.db.get_item_similarities_alt(track,j) for j in owner_playlists_tracks])
                 predictions.append([track, prediction])
@@ -660,16 +662,17 @@ class Recommender:
 
         # case: playlist have no tracks
         elif playlist_tracks == []:
-            recommendations = self.ensemble_recommendations(active_playlist, mask=[1, 0, 0, 0, 1, 1, 0, 0])
+            recommendations = self.ensemble_recommendations(active_playlist, mask=[0, 0, 0, 0, 1, 0, 1, 0])
 
-        elif len_playlist_tracks > 0 and len_playlist_tracks <=10 and len_playlist_tags <= 50:
-            recommendations = self.make_top_tag_recommendations(active_playlist)
+        elif len_playlist_tracks > 0 and len_playlist_tracks <= 50: # playlist is complete of title and tracks
+            recommendations = self.ensemble_recommendations(active_playlist, mask=[1, 1, 1, 1, 1, 1, 1, 1])
 
+        elif len_playlist_tracks > 50 and len_playlist_tracks <= 150:
+            recommendations = self.ensemble_recommendations(active_playlist, mask=[1, 0, 0, 0, 0, 0, 0, 0])
 
-        elif len_playlist_tracks > 10 and len_playlist_tags > 50: # playlist is complete of title and tracks
-            recommendations = self.ensemble_recommendations(active_playlist, mask=[1, 1, 1, 0, 0, 0, 0, 0])
-        else:
-            recommendations = self.ensemble_recommendations(active_playlist, mask=[0, 1, 1, 1, 0, 0, 0, 0])
+        elif len_playlist_tracks > 150:
+            recommendations = self.ensemble_recommendations(active_playlist, mask=[1, 1, 1, 1, 1, 1, 1, 1])
+
         if ensemble:
             return recommendations[0:knn]
         return recommendations
@@ -1083,12 +1086,12 @@ class Recommender:
                                             (recommendations3[item] if coefficient[2] else 0) +
                                             (recommendations4[item] if coefficient[3] else 0) +
                                             (recommendations5[item] if coefficient[4] else 0) +
-                                            (recommendations6[item] if coefficient[5] else 0) +
                                             (recommendations7[item] if coefficient[6] else 0) +
+                                            (recommendations6[item] if coefficient[5] else 0) +
                                             (recommendations8[item] if coefficient[7] else 0)]
                                             for item in target_tracks]
 
-        possible_recommendations = [[item, a * recommendations1[item] + c * recommendations3[item] + b * recommendations2[item]] for item in target_tracks]
+        #possible_recommendations = [[item, a * recommendations1[item] + c * recommendations3[item] + b * recommendations2[item]] for item in target_tracks]
         possible_recommendations.sort(key=itemgetter(1), reverse=True)
 
         return [item for item, value in possible_recommendations[0:5]]
