@@ -495,10 +495,10 @@ class Recommender:
                     numerator = sum([tf_idf_track[tags.index(tag)] * tf_idf_playlist[playlist_features_unique.index(tag)] for tag in tags if tag in playlist_features_unique])
 
                     denominator = math.sqrt(helper.square_sum(tf_idf_playlist)) * math.sqrt(helper.square_sum(tf_idf_track))
-                    denominator += helper.set_difference_len(playlist_features_set, tags)
+                    denominator += helper.set_difference_len(playlist_features_set, tags) * 2.5
                     #denominator += math.log1p(math.fabs(len(playlist_features_set) - len(tags)))
 
-                elif coefficient == "sum":
+                elif coefficient == "product":
                     numerator = sum(tf_idf_playlist[playlist_features_unique.index(tag)] for tag in tags if tag in playlist_features_unique)
                     denominator = 1
 
