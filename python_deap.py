@@ -19,7 +19,8 @@ toolbox = base.Toolbox()
 toolbox.register("attr_float", random.randint, 0, 1)
 toolbox.register("individual", tools.initRepeat, creator.Individual,
                  toolbox.attr_float, n=IND_SIZE)
-toolbox.register("population", tools.initRepeat, list, toolbox.individual)
+toolbox.register("population", tools.initRepeat, list, toolbox.individual) #usare una funzione definita da noi; al posto di initRepeat in cui usiamo il 30% di uni
+# meno uni possibili, inizialmente, per avere dei geni con meno ciarpame possibile; il 30% di uni e il resto di zeri
 
 def evalOneMax(individual):
     fp = open("individual", "wb+")
@@ -45,7 +46,7 @@ toolbox.register("mutate", tools.mutFlipBit, indpb=0.5)
 toolbox.register("select", tools.selTournament, tournsize=3)
 population = toolbox.population(n=50)
 
-NGEN=3
+NGEN=5
 
 completion = 0
 best_result = 0

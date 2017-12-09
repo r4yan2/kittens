@@ -41,7 +41,7 @@ else:
 to_write = []
 
 # Initializing the recommender instance
-recommender_system = Recommender()
+recommender_system = Recommender(db)
 
 # This list store the result from the worker process (identifier, playlist, [recommendation])
 results = []
@@ -81,7 +81,7 @@ missing = len(target_playlists)
 done = set()
 for i in xrange(missing):
     try:
-        r = q_out.get(timeout=120)
+        r = q_out.get()
     except:
         missing = list(done.symmetric_difference(target_playlists))
         logging.debug("Missing: %s, Requesting new recommendations", (missing))
@@ -108,7 +108,7 @@ for i in xrange(missing):
         run_map5.append(map5)
         run_map5_n += 1
         avg = sum(run_map5)/run_map5_n
-        
+
         logging.debug("running map5 average %f" % avg)
         logging.debug("map@5 distribution %s" % Counter(sorted(run_map5)).items())
         r=r[0]
@@ -148,10 +148,10 @@ if test:
         else:
             res += map5
             cnt += 1.0
-    
+
     logging.debug("avg map@5 per playlist length %s" % map_playlist_mean)
     helper.write("map5distr"+str(choice), map_playlist_mean)
-         
+
     logging.debug(to_write)
     helper.write("test_result"+str(instance), to_write, '\t')
 else:
