@@ -75,7 +75,7 @@ class Database:
             self.playlists_set = set([playlist for playlist, track in playlists])
             return self.playlists_set
 
-    def compute_test_set(self):
+    def compute_test_set_v1(self):
         """
         Computing the test set if Testing mode is enabled:
 
@@ -85,32 +85,63 @@ class Database:
         :return: None
         """
         train = self.get_train_list()
-        playlists_length = 5000
-        tracks_length = 16097
+        playlists_length = 10000
+        tracks_length = 32195
+        test_length = 10*len(train)/100.0
         self.test_set = []
-        playlists_with_n_tracks = set([playlist for playlist in self.get_playlists() if len(self.get_playlist_tracks(playlist)) >= 10])
+        playlists_with_n_tracks = set([playlist for playlist in self.get_playlists() if len(self.get_playlist_tracks(playlist)) >= 5])
         already_selected = set()
         already_selected_playlists = set()
         already_selected_tracks = set()
         while True:
+            if test_length <= 0:
+                break
             line = random.randint(0, len(train) - 1)
             playlist = train[line][0]
             track = train[line][1]
             if line not in already_selected:
-                if len(already_selected_playlists) < playlists_length and len(already_selected_tracks) < tracks_length:
-                    self.test_set.append(train[line])
-                    already_selected_playlists.add(playlist)
-                    already_selected_tracks.add(track)
-                elif len(already_selected_playlists) >= playlists_length and len(already_selected_tracks) < tracks_length and playlist in already_selected_playlists:
-                    self.test_set.append(train[line])
-                    already_selected_tracks.add(track)
-                elif len(already_selected_playlists) < playlists_length and len(already_selected_tracks) >= tracks_length and track in already_selected_tracks:
-                    self.test_set.append(train[line])
-                    already_selected_playlists.add(playlist)
-
-            if len(already_selected_playlists) >= playlists_length and len(already_selected_tracks) >= tracks_length:
-                break
+                if train[line][0] in playlists_with_n_tracks:
+                    test_length -= 1
+                    if len(already_selected_playlists) < playlists_length and len(already_selected_tracks) < tracks_length:
+                        self.test_set.append(train[line])
+                        already_selected_playlists.add(playlist)
+                        already_selected_tracks.add(track)
+                    elif len(already_selected_playlists) >= playlists_length and len(already_selected_tracks) < tracks_length and playlist in already_selected_playlists:
+                        self.test_set.append(train[line])
+                        already_selected_tracks.add(track)
+                    elif len(already_selected_playlists) < playlists_length and len(already_selected_tracks) >= tracks_length and track in already_selected_tracks:
+                        self.test_set.append(train[line])
+                        already_selected_playlists.add(playlist)
+                    elif len(already_selected_playlists) >= playlists_length and len(already_selected_tracks) >= tracks_length and playlist in already_selected_playlists and track in already_selected_tracks:
+                        self.test_set.append(train[line])
+                            
         self.train_list = helper.diff_test_set(train, self.test_set)
+        
+    def compute_test_set_v2(self, percentage=10):
+        """
+        Computing the test set if Testing mode is enabled:
+
+        * REMOVE a number of lines from the train set and put them in the test set
+        * every line is randomly chosen to avoid over fitting of the test set
+
+        :return: None
+        """
+        train = self.get_train_list()
+        test = []
+        train_length = len(train)
+        test_length = int(train_length*percentage/100.0)
+        already_selected = set()
+        while True:
+            if test_length > 0:
+                choice = random.randint(0,train_length-1)
+                if choice not in already_selected and len(self.get_playlist_tracks(train[choice][0])) >= 8:
+                    test.append(train[choice])
+                    test_length -= 1
+                    already_selected.add(choice)
+            else:
+                break
+        self.train_list = helper.diff_test_set(train, test)
+        self.test_set = test
 
     def compute_urm(self):
         """
@@ -164,7 +195,7 @@ class Database:
                 self.user_tracks[int(u)].append(int(i))
             return self.user_tracks[user]
 
-    def compute_content_playlists_similarity(self, playlist_a, knn=75, title_flag=1, tag_flag=0, track_flag=0, coefficient="jaccard"):
+    def compute_content_playlists_similarity(self, playlist_a, knn=75, title_flag=1, tag_flag=0, track_flag=0, tracks_knn=None, coefficient="jaccard", values="None", target_tracks="include"):
         """
         This method compute the neighborhood for a given playlists by using content or collaborative techniques
 
@@ -270,12 +301,38 @@ class Database:
                     continue
                     
             elif coefficient == "jaccard":
+                similarity_title = 1
+                similarity_track = 1
+                similarity_tag = 1
                 if title_flag:
-                    similarity = helper.jaccard(playlist_a_titles, playlist_b_titles)
+                    similarity_title = helper.jaccard(playlist_a_titles, playlist_b_titles)
+                if track_flag:
+                    similarity_track = helper.jaccard(playlist_a_tracks, playlist_b_tracks)
+                if tag_flag:
+                    similarity_tag = helper.jaccard(playlist_a_tags, playlist_b_tags)
+                similarity = similarity_tag * similarity_title * similarity_track 
             
-            neighborhood.append([playlist_b, similarity])
-        knn_neighborgs = [playlist for playlist, value in sorted(neighborhood, key=itemgetter(1), reverse=True)[0:knn] if value > 0]
-        return knn_neighborgs
+            if similarity > 0:
+                neighborhood.append([playlist_b, similarity])
+    
+        if tracks_knn == None:
+            if values == "None":
+                return  [playlist for playlist, value in neighborhood[0:knn]]
+            elif values == "all":
+                return neighborhood[0:knn]
+        else:
+            tracks = set()
+            iterator = 0
+            if target_tracks != "include":
+                while len(tracks) < tracks_knn:
+                    tracks += self.get_playlist_tracks(neighborhood[iterator][0])
+                    iterator += 1
+            else:
+                target_tracks = self.get_target_tracks()
+                while len(tracks) < tracks_knn:
+                    tracks.update(target_tracks.intersection(self.get_playlist_tracks(neighborhood[iterator][0])).difference(playlist_a_tracks))
+                    iterator += 1
+            return tracks
 
     def get_min_max_playlists(self):
         """
@@ -692,6 +749,7 @@ class Database:
                 tags_set = set(tags)
                 for tag in tags_set:
                     self.tag_playlists_map[tag].append(playlist)
+            # mad things -> self.tag_playlists_map = {key: Counter(value) for key, value in self.tag_playlists_map.iteritems()}
             return self.tag_playlists_map
 
 
@@ -1317,9 +1375,9 @@ class Database:
         title_playlist_map = self.get_title_playlists_map()
         playlist_titles_included = title_playlist_map[title]
         den_idf = float(len(playlist_titles_included))
-        num_idf = len(self.get_playlists())
+        num_idf = self.get_num_playlists()
         try:
-            idf = math.log(1.0 + (num_idf / den_idf), 10)
+            idf = math.log1p(num_idf / den_idf)
         except ValueError:
             idf = 0
         except ZeroDivisionError:
