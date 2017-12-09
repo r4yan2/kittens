@@ -658,16 +658,16 @@ class Recommender:
 
         # case: playlist have no tracks
         elif playlist_tracks == []:
-            recommendations = self.ensemble_recommendations(active_playlist, mask=[0, 0, 0, 0, 1, 0, 1, 0])
+            recommendations = self.ensemble_recommendations(active_playlist, mask=[0, 0, 0, 0, 1, 0, 0, 0])
 
-        elif len_playlist_tracks > 0 and len_playlist_tracks <= 50: # playlist is complete of title and tracks
-            recommendations = self.ensemble_recommendations(active_playlist, mask=[1, 1, 1, 1, 1, 1, 1, 1])
+        elif len_playlist_tracks > 0 and len_playlist_tracks <= 30: # playlist is complete of title and tracks
+            recommendations = self.ensemble_recommendations(active_playlist, mask=[1, 1, 1, 0, 1, 1, 1, 0])
 
-        elif len_playlist_tracks > 50 and len_playlist_tracks <= 150:
-            recommendations = self.ensemble_recommendations(active_playlist, mask=[1, 0, 0, 0, 0, 0, 0, 0])
+        elif len_playlist_tracks > 30 and len_playlist_tracks <= 150:
+            recommendations = self.ensemble_recommendations(active_playlist, mask=[1, 1, 0, 0, 0, 0, 0, 0])
 
         elif len_playlist_tracks > 150:
-            recommendations = self.ensemble_recommendations(active_playlist, mask=[1, 1, 1, 1, 1, 1, 1, 1])
+            recommendations = self.ensemble_recommendations(active_playlist, mask=[1, 1, 1, 0, 1, 1, 1, 0])
 
         if ensemble:
             return recommendations[0:knn]
@@ -936,9 +936,6 @@ class Recommender:
         playlists = self.db.get_playlists()
         for playlist in playlists:
 
-            if math.fabs(self.db.get_created_at_playlist(playlist) - playlist_created_at) > (60*60*24*365*2):
-                continue
-
             titles = set(self.db.get_titles_playlist(playlist))
 
             coefficient = helper.jaccard(titles, playlist_titles)
@@ -948,11 +945,31 @@ class Recommender:
         neighborhood = [playlist for playlist, _ in similarities[0:50]]
         neighborhood_tracks = [track for playlist in neighborhood for track in self.db.get_playlist_tracks(playlist) if track in target_tracks]
 
-        possible_recommendations = Counter(neighborhood_tracks).items()
+        track_playlists_map = self.db.get_track_playlists_map()
+        for track in target_tracks.intersection(neighborhood_tracks):
+            track_duration = self.db.get_track_duration(track)
+            if track in playlist_tracks_set or (track_duration < 30000 and track_duration > 0):
+                continue
+
+                titles = self.db.get_titles_track(track)
+                titles_set = list(set(titles))
+
+                tf_idf_title = [(1.0 + math.log(titles.count(title), 10)) * self.db.get_title_idf(title) for title in titles_set]
+
+                num_cosine_sim = [tf_idf_title[titles_set.index(title)] * tf_idf_titles_playlist[playlist_titles.index(title)] for
+                                  title in titles_set if title in playlist_titles]
+
+                den_cosine_sim = math.sqrt(sum([i ** 2 for i in tf_idf_titles_playlist])) * math.sqrt(
+                    sum([i ** 2 for i in tf_idf_title]))
+                try:
+                    cosine_sim = sum(num_cosine_sim) / den_cosine_sim
+                except ZeroDivisionError:
+                    continue
+                possible_recommendations.append([track, cosine_sim])
         if possible_recommendations == []:
             raise ValueError("no recommendations")
         possible_recommendations.sort(key=itemgetter(1), reverse=True)
-        if ensemble:
+        if ensamble:
             return possible_recommendations[0:knn]
 
         return recommendations + [recommendation for recommendation, value in possible_recommendations[0:knn]]
@@ -996,7 +1013,7 @@ class Recommender:
         filtered_tracks = self.make_tf_idf_recommendations(playlist, knn=knn)
         return self.make_tf_idf_titles_recommendations(playlist, target_tracks=filtered_tracks)
 
-    def ensemble_recommendations(self, playlist, mask=[1, 1, 1, 1, 1, 1, 1, 1]):
+    def ensemble_recommendations(self, playlist, mask=[1, 1, 1, 0, 1, 1, 0, 0]):
         """
         ensemble method which linearly combine several recommendations method
          predictions into one
@@ -1008,7 +1025,14 @@ class Recommender:
         tracks_playlist = self.db.get_playlist_tracks(playlist)
         titles_playlist = self.db.get_titles_playlist(playlist)
         target_tracks = self.db.get_target_tracks()
-        neighborhood_tracks = self.db.compute_collaborative_playlists_similarity(playlist, knn=100)
+        neighborhood_tracks = set(self.db.compute_collaborative_playlists_similarity(playlist, knn=20))
+        '''
+        try:
+            neighborhood_tracks2 = self.db.compute_content_playlists_similarity(playlist, knn=150)
+        except ValueError:
+            neighborhood_tracks2 = []
+        tracks = neighborhood_tracks.union(neighborhood_tracks2)
+        '''
         target_tracks = target_tracks.intersection(neighborhood_tracks)
 
         knn = len(target_tracks)
@@ -1019,21 +1043,21 @@ class Recommender:
             try:
                 recommendations1 = self.make_tf_idf_recommendations(playlist, target_tracks=target_tracks, knn=knn, ensemble=1)
                 normalizing1 = max(recommendations1, key=itemgetter(1))[1]
-                recommendations1 = defaultdict(lambda: 0.0, {item[0]: (item[1] / float(normalizing1)) for item in recommendations1})
+                recommendations1 = defaultdict(lambda: 0.0, {item[0]: (math.lgamma(item[1]) / float(normalizing1)) for item in recommendations1})
             except:
                 recommendations1 = defaultdict(lambda: 0.0, {})
         if coefficient[1]:
             try:
                 recommendations2 = self.make_collaborative_item_item_recommendations(playlist, target_tracks=target_tracks, knn=knn, ensemble=1)
                 normalizing2 = max(recommendations2, key=itemgetter(1))[1]
-                recommendations2 = defaultdict(lambda: 0.0, {item[0]: (item[1] / float(normalizing2)) for item in recommendations2})
+                recommendations2 = defaultdict(lambda: 0.0, {item[0]: (math.lgamma(item[1]) / float(normalizing2)) for item in recommendations2})
             except:
                 recommendations2 = defaultdict(lambda: 0.0, {})
         if coefficient[2]:
             try:
                 recommendations3 = self.make_top_tag_recommendations(playlist, target_tracks=target_tracks, knn=knn, ensemble=1, neighborhood_enabled=False)
                 normalizing3 = max(recommendations3, key=itemgetter(1))[1]
-                recommendations3 = defaultdict(lambda: 0.0, {item[0]: (item[1] / float(normalizing3)) for item in recommendations3})
+                recommendations3 = defaultdict(lambda: 0.0, {item[0]: (math.lgamma(item[1]) / float(normalizing3)) for item in recommendations3})
             except:
                 recommendations3 = defaultdict(lambda: 0.0, {})
 
