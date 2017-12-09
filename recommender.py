@@ -347,7 +347,7 @@ class Recommender:
 
         return recommendations
 
-    def make_top_tag_recommendations(self, active_playlist, target_tracks=[], recommendations=[], knn=5, ensemble=0, neighborhood_knn=75):
+    def make_top_tag_recommendations(self, active_playlist, target_tracks=[], recommendations=[], knn=5, ensemble=0, neighborhood_knn=100):
         """
         This method takes into account tags. For the active playlist all tags of the tracks are computed,
         then for every recommendable track the comparison of the tags is used taking into account:
@@ -368,7 +368,7 @@ class Recommender:
             if target_tracks != []:
                 raise ValueError("target track conflict with neighborhood")
 
-            target_tracks = self.db.compute_collaborative_playlists_similarity(active_playlist, tracks_knn=neighborhood_knn)
+            target_tracks = self.db.compute_collaborative_playlists_similarity(active_playlist, coefficient="cosine", tracks_knn=neighborhood_knn)
         else:
             if target_tracks == []:
                 target_tracks = self.db.get_target_tracks()
@@ -382,7 +382,6 @@ class Recommender:
             raise ValueError("target playlist empty")
 
         top_tracks = []
-        track_playlists_map = self.db.get_track_playlists_map()
 
         for track in target_tracks: # make the actual recommendation
             if track in recommendations:
@@ -404,9 +403,10 @@ class Recommender:
 
             value_c = helper.jaccard(active_tags_set, tags)
 
-            top_tracks.append([track, value_c * value_b])
+            top_tracks.append([track, value_b, value_c])
 
-        top_tracks.sort(key=itemgetter(1), reverse=True)
+        top_tracks.sort(key=itemgetter(1,2), reverse=True)
+        logging.debug("recommended %s" % (top_tracks[0:knn]))
         if ensemble:
             return top_tracks[0:knn]
         return recommendations + [recommendation[0] for recommendation in top_tracks[0:knn]]
@@ -499,12 +499,32 @@ class Recommender:
                     #denominator += math.log1p(math.fabs(len(playlist_features_set) - len(tags)))
 
                 elif coefficient == "product":
-                    numerator = sum(tf_idf_playlist[playlist_features_unique.index(tag)] for tag in tags if tag in playlist_features_unique)
-                    denominator = 1
+                    
+                    numerator1 = [tf_idf_track[tags.index(tag)] * tf_idf_playlist[playlist_features_unique.index(tag)] for tag in tags if tag in playlist_features_unique]
+                    mean_tfidf_track = sum(tf_idf_track) / len(tf_idf_track)
+                    mean_tfidf_playlist = sum(tf_idf_playlist) / len(tf_idf_playlist)
 
-                elif coefficient == "mixed":
-                    numerator = sum([tf_idf_track[tags.index(tag)] * tf_idf_playlist[playlist_features_unique.index(tag)] for tag in tags if tag in playlist_features_unique]) * 0.5 + sum(tf_idf_playlist[playlist_features_unique.index(tag)] for tag in tags if tag in playlist_features_unique) * 0.5
-                    denominator = math.sqrt(sum([i ** 2 for i in tf_idf_playlist])) * math.sqrt(sum([i ** 2 for i in tf_idf_track]))
+                    numerator2 = [(tf_idf_track[tags.index(tag)] - mean_tfidf_track) *
+                                   (tf_idf_playlist[playlist_features_unique.index(tag)] - mean_tfidf_playlist)
+                                   for tag in tags if tag in playlist_features_unique]
+                                   
+                    numerator = 0
+                    for a,b in zip(numerator1, numerator2):
+                        numerator += a*b
+                        
+                    denominator1 = math.sqrt(helper.square_sum(tf_idf_playlist)) * math.sqrt(helper.square_sum(tf_idf_track))
+                    denominator2 = math.sqrt(sum([(i - mean_tfidf_playlist) ** 2 for i in tf_idf_playlist]) * sum([(i - mean_tfidf_track) ** 2 for i in tf_idf_track]))
+                    
+                    denominator = denominator1 * denominator2
+                        
+                    denominator += helper.set_difference_len(playlist_features_set, tags)
+
+
+                elif coefficient == "tanimoto":
+                    numerator = sum([tf_idf_track[tags.index(tag)] * tf_idf_playlist[playlist_features_unique.index(tag)] for tag in tags if tag in playlist_features_unique])
+
+                    denominator = sum(tf_idf_playlist) * sum(tf_idf_track) - numerator
+                    denominator += helper.set_difference_len(playlist_features_set, tags)
 
                 try:
                     similarity = numerator / denominator
