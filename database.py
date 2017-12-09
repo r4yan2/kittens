@@ -85,36 +85,32 @@ class Database:
         :return: None
         """
         train = self.get_train_list()
-        playlists_length = 10000
-        tracks_length = 32195
+        playlist_length = 10000
         test_length = 10*len(train)/100.0
         self.test_set = []
-        playlists_with_n_tracks = set([playlist for playlist in self.get_playlists() if len(self.get_playlist_tracks(playlist)) >= 5])
+        playlists_with_n_tracks = [playlist for playlist in self.get_playlists() if len(self.get_playlist_tracks(playlist)) >= 10]
         already_selected = set()
         already_selected_playlists = set()
-        already_selected_tracks = set()
         while True:
-            if test_length <= 0:
+            if playlist_length <= 0:
                 break
-            line = random.randint(0, len(train) - 1)
-            playlist = train[line][0]
-            track = train[line][1]
-            if line not in already_selected:
-                if train[line][0] in playlists_with_n_tracks:
-                    test_length -= 1
-                    if len(already_selected_playlists) < playlists_length and len(already_selected_tracks) < tracks_length:
-                        self.test_set.append(train[line])
-                        already_selected_playlists.add(playlist)
-                        already_selected_tracks.add(track)
-                    elif len(already_selected_playlists) >= playlists_length and len(already_selected_tracks) < tracks_length and playlist in already_selected_playlists:
-                        self.test_set.append(train[line])
-                        already_selected_tracks.add(track)
-                    elif len(already_selected_playlists) < playlists_length and len(already_selected_tracks) >= tracks_length and track in already_selected_tracks:
-                        self.test_set.append(train[line])
-                        already_selected_playlists.add(playlist)
-                    elif len(already_selected_playlists) >= playlists_length and len(already_selected_tracks) >= tracks_length and playlist in already_selected_playlists and track in already_selected_tracks:
-                        self.test_set.append(train[line])
-                            
+            playlist = random.choice(playlists_with_n_tracks)
+            if playlist not in already_selected_playlists:
+                already_selected_playlists.add(playlist)
+                playlist_length -= 1
+        for playlist in already_selected_playlists:
+            tracks = self.get_playlist_tracks(playlist)
+            already_selected_tracks = set()
+            tracks_length = 5
+            while True:
+                if tracks_length <= 0:
+                    break
+                track = random.choice(tracks)
+                if track not in already_selected_tracks:
+                    already_selected_tracks.add(track)
+                    tracks_length -= 1
+                    self.test_set.append([playlist, track])
+                 
         self.train_list = helper.diff_test_set(train, self.test_set)
         
     def compute_test_set_v2(self, percentage=10):

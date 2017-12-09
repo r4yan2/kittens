@@ -500,7 +500,7 @@ class Recommender:
                     #denominator += math.log1p(math.fabs(len(playlist_features_set) - len(tags)))
 
                 elif coefficient == "product":
-                    
+
                     numerator1 = [tf_idf_track[tags.index(tag)] * tf_idf_playlist[playlist_features_unique.index(tag)] for tag in tags if tag in playlist_features_unique]
                     mean_tfidf_track = sum(tf_idf_track) / len(tf_idf_track)
                     mean_tfidf_playlist = sum(tf_idf_playlist) / len(tf_idf_playlist)
@@ -508,16 +508,16 @@ class Recommender:
                     numerator2 = [(tf_idf_track[tags.index(tag)] - mean_tfidf_track) *
                                    (tf_idf_playlist[playlist_features_unique.index(tag)] - mean_tfidf_playlist)
                                    for tag in tags if tag in playlist_features_unique]
-                                   
+
                     numerator = 0
                     for a,b in zip(numerator1, numerator2):
                         numerator += a*b
-                        
+
                     denominator1 = math.sqrt(helper.square_sum(tf_idf_playlist)) * math.sqrt(helper.square_sum(tf_idf_track))
                     denominator2 = math.sqrt(sum([(i - mean_tfidf_playlist) ** 2 for i in tf_idf_playlist]) * sum([(i - mean_tfidf_track) ** 2 for i in tf_idf_track]))
-                    
+
                     denominator = denominator1 * denominator2
-                        
+
                     denominator += helper.set_difference_len(playlist_features_set, tags)
 
 
@@ -681,13 +681,13 @@ class Recommender:
             recommendations = self.ensemble_recommendations(active_playlist, mask=[0, 0, 0, 0, 1, 0, 0, 0])
 
         elif len_playlist_tracks > 0 and len_playlist_tracks <= 30: # playlist is complete of title and tracks
-            recommendations = self.ensemble_recommendations(active_playlist, mask=[1, 1, 1, 0, 1, 1, 1, 0])
+            recommendations = self.ensemble_recommendations(active_playlist, mask=[1, 1, 1, 1, 1, 1, 1, 1])
 
         elif len_playlist_tracks > 30 and len_playlist_tracks <= 150:
-            recommendations = self.ensemble_recommendations(active_playlist, mask=[1, 1, 0, 0, 0, 0, 0, 0])
+            recommendations = self.make_tf_idf_recommendations(active_playlist)
 
         elif len_playlist_tracks > 150:
-            recommendations = self.ensemble_recommendations(active_playlist, mask=[1, 1, 1, 0, 1, 1, 1, 0])
+            recommendations = self.ensemble_recommendations(active_playlist, mask=[1, 1, 1, 1, 1, 1, 1, 1])
 
         if ensemble:
             return recommendations[0:knn]
@@ -1033,7 +1033,7 @@ class Recommender:
         filtered_tracks = self.make_tf_idf_recommendations(playlist, knn=knn)
         return self.make_tf_idf_titles_recommendations(playlist, target_tracks=filtered_tracks)
 
-    def ensemble_recommendations(self, playlist, mask=[1, 1, 1, 0, 1, 1, 0, 0]):
+    def ensemble_recommendations(self, playlist, mask=[1, 0, 1, 0, 0, 0, 0, 0]):
         """
         ensemble method which linearly combine several recommendations method
          predictions into one
@@ -1045,7 +1045,7 @@ class Recommender:
         tracks_playlist = self.db.get_playlist_tracks(playlist)
         titles_playlist = self.db.get_titles_playlist(playlist)
         target_tracks = self.db.get_target_tracks()
-        neighborhood_tracks = set(self.db.compute_collaborative_playlists_similarity(playlist, knn=20))
+        neighborhood_tracks = set(self.db.compute_collaborative_playlists_similarity(playlist, knn=50))
         '''
         try:
             neighborhood_tracks2 = self.db.compute_content_playlists_similarity(playlist, knn=150)
@@ -1121,9 +1121,9 @@ class Recommender:
             except:
                 recommendations6 = defaultdict(lambda: 0.0, {})
 
-        possible_recommendations = [[item,  (recommendations1[item] if coefficient[0] else 0) +
+        possible_recommendations = [[item,  (0.7*recommendations1[item] if coefficient[0] else 0) +
                                             (recommendations2[item] if coefficient[1] else 0) +
-                                            (recommendations3[item] if coefficient[2] else 0) +
+                                            (0.3*recommendations3[item] if coefficient[2] else 0) +
                                             (recommendations4[item] if coefficient[3] else 0) +
                                             (recommendations5[item] if coefficient[4] else 0) +
                                             (recommendations7[item] if coefficient[6] else 0) +
