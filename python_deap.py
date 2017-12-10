@@ -9,7 +9,7 @@ import helper
 from recommender import Recommender
 import subprocess
 
-IND_SIZE = 77040
+IND_SIZE = 31900
 
 creator.create("FitnessMax", base.Fitness, weights=(1.0,))
 creator.create("Individual", list, fitness=creator.FitnessMax)
@@ -23,16 +23,17 @@ toolbox.register("population", tools.initRepeat, list, toolbox.individual) #usar
 # meno uni possibili, inizialmente, per avere dei geni con meno ciarpame possibile; il 30% di uni e il resto di zeri
 
 def evalOneMax(individual):
+    global best_result
     fp = open("individual", "wb+")
     fp.write('['+','.join(str(i) for i in individual)+']')
     fp.close()
-    kittens_args = ["0", "4", "4", "1", "1"]
+    kittens_args = ["0", "4", "4", "4", "1"]
     kittens = subprocess.Popen(["pypy", "kittens.py"] + kittens_args)
     kittens.wait()
-    results = [elem for elem in helper.read("test_result1")]
+    results = [elem for elem in helper.read("test_result4")]
     result = float(results[0][1])
     if result > best_result:
-        fp.open("best_result", "wb+")
+        fp = open("best_result", "wb+")
         fp.write("best_result:\t"+str(result))
         fp.write('['+','.join(str(i) for i in individual)+']')
         fp.close()
@@ -44,9 +45,9 @@ toolbox.register("evaluate", evalOneMax)
 toolbox.register("mate", tools.cxTwoPoint)
 toolbox.register("mutate", tools.mutFlipBit, indpb=0.5)
 toolbox.register("select", tools.selTournament, tournsize=3)
-population = toolbox.population(n=50)
+population = toolbox.population(n=5)
 
-NGEN=5
+NGEN=30
 
 completion = 0
 best_result = 0

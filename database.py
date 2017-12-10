@@ -110,9 +110,9 @@ class Database:
                     already_selected_tracks.add(track)
                     tracks_length -= 1
                     self.test_set.append([playlist, track])
-                 
+
         self.train_list = helper.diff_test_set(train, self.test_set)
-        
+
     def compute_test_set_v2(self, percentage=10):
         """
         Computing the test set if Testing mode is enabled:
@@ -306,11 +306,11 @@ class Database:
                     similarity_track = helper.jaccard(playlist_a_tracks, playlist_b_tracks)
                 if tag_flag:
                     similarity_tag = helper.jaccard(playlist_a_tags, playlist_b_tags)
-                similarity = similarity_tag * similarity_title * similarity_track 
-            
+                similarity = similarity_tag * similarity_title * similarity_track
+
             if similarity > 0:
                 neighborhood.append([playlist_b, similarity])
-    
+
         if tracks_knn == None:
             if values == "None":
                 return  [playlist for playlist, value in neighborhood[0:knn]]
@@ -556,7 +556,7 @@ class Database:
             except KeyError:
                 return 0.0
         except AttributeError:
-            similarities = helper.read("item-item-similarities1", ",")
+            similarities = helper.read("item-item-similarities"+str(self.test), ",")
             self.similarities_map = {}
             for (x,y, value) in similarities:
                 x = int(x)
@@ -607,7 +607,7 @@ class Database:
             except KeyError:
                 return 0.0
         except AttributeError:
-            similarities = helper.read("item-item-similarities1", ",")
+            similarities = helper.read("item-item-similarities"+str(self.test), ",")
             self.similarities_map = {}
             old_x = 0
             for (x, y, value) in similarities:

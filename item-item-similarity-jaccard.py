@@ -32,13 +32,13 @@ def compute_item_item_similarities(db, q_in, q_out, number):
         else:
             q_out.put(sorted(similarities, key=itemgetter(2), reverse=True)[0:500])
 
-fp = open('data/item-item-similarities.csv', 'w', 0)
+fp = open('data/item-item-similarities4.csv', 'w', 0)
 writer = csv.writer(fp, delimiter=',', quoting=csv.QUOTE_NONE)
 
 core=int(sys.argv[1])
 
-db = Database(0)
-target_tracks = sorted(db.get_tracks())
+db = Database(4)
+target_tracks = sorted(db.get_target_tracks())
 
 # Queue(s) for the process, one for input data to the process, the other for the output data to the main process
 q_in = Queue()
