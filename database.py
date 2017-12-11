@@ -6,7 +6,7 @@ import logging
 from operator import itemgetter
 
 class Database:
-    def __init__(self, test, individual=None):
+    def __init__(self, test, individual=None, tags="extended"):
         """
         if we are in test execution train_set, test_set are loaded transparently,
         otherwise the normal dataset are loaded
@@ -14,6 +14,7 @@ class Database:
         :param test: istance
         :return: the initialized object
         """
+        self.tags_mode = tags
 
         self.test = test
         if individual:
@@ -1127,19 +1128,22 @@ class Database:
                 album = iterator
                 iterator -= 1
             tags = helper.parseIntList(track[5]) # evaluation of the tags list
+            if self.tags_mode == "extended":
+                tags_extended = [artist_id + 276615] + [album + 847203 if album > 0 else iterator] + tags
+                tags_extended = [tag for tag in tags_extended if tag > 0]
+                try:
+                    tags_extended = [tag for tag in tags_extended if tag in whitelist]
+                except:
+                    pass
+                try:
+                    if self.individual:
+                        tags_extended = [tag for tag in tags_extended if self.genetic(tag)]
+                except:
+                    pass
+                result[track_id]= [artist_id, duration, playcount, album, tags_extended]
+            elif self.tags_mode == "tags":
+                result[track_id]= [artist_id, duration, playcount, album, tags]
 
-            tags_extended = [artist_id + 276615] + [album + 847203 if album > 0 else iterator] + tags
-            tags_extended = [tag for tag in tags_extended if tag > 0]
-            try:
-                tags_extended = [tag for tag in tags_extended if tag in whitelist]
-            except:
-                pass
-            try:
-                if self.individual:
-                    tags_extended = [tag for tag in tags_extended if self.genetic(tag)]
-            except:
-                pass
-            result[track_id]= [artist_id, duration, playcount, album, tags_extended]
         return result
 
     def get_playlist_user_tracks(self, playlist):
