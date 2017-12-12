@@ -455,6 +455,7 @@ class Recommender:
         playlist_features = [tag for track in playlist_tracks for tag in self.db.get_track_tags(track)]
         playlist_features_set = set(playlist_features)
         playlist_features_unique = list(playlist_features_set)
+        playlist_features_length = len(playlist_features)
 
         if len(playlist_features) == 0:
             raise ValueError("playlist have no features!")
@@ -464,7 +465,8 @@ class Recommender:
             average = self.db.get_average_playlist_tags_count()
             k = 1.2
             b = 0.75
-            tf_idf_playlist = [self.db.get_tag_idf(tag) * ((playlist_features.count(tag) * (k + 1)) / (playlist_features.count(tag) + k * (1 - b + b * (len(playlist_features) / average)))) for tag in playlist_features_unique]
+            len_over_avg = k * (1 - b + b * playlist_features_length/average)
+            tf_idf_playlist = [self.db.get_tag_idf(tag) * ((playlist_features.count(tag) * (k + 1)) / (playlist_features.count(tag) + len_over_avg)) for tag in playlist_features_unique]
         elif tf_idf == "normal":
             tf_idf_playlist = [(1.0 + math.log(playlist_features.count(tag), 10)) * self.db.get_tag_idf(tag) for tag in playlist_features_unique]
 
@@ -474,7 +476,9 @@ class Recommender:
 
                 tags = self.db.get_track_tags(track)
                 if tf_idf == "bm25":
-                    tf_idf_track = [self.db.get_tag_idf(tag) * ((k + 1) / (1 + k * (1 - b + b * (len(tags) / self.db.get_average_track_tags_count())))) for tag in tags]
+                    average_track_tags_count = self.db.get_average_track_tags_count()
+                    tf_track = (k + 1) / (1 + k * (1 - b + b * (len(tags) / average_track_tags_count))) # tags.count(tag) is always 1
+                    tf_idf_track = [self.db.get_tag_idf(tag) * tf_track for tag in tags]
                 elif tf_idf == "normal":
                     tf_idf_track = [self.db.get_tag_idf(tag) for tag in tags]
 
