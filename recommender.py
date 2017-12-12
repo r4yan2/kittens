@@ -470,81 +470,79 @@ class Recommender:
             tf_idf_playlist = [(1.0 + math.log(playlist_features.count(tag), 10)) * self.db.get_tag_idf(tag) for tag in playlist_features_unique]
 
         for track in target_tracks:
-            track_duration = self.db.get_track_duration(track)
-            if (track_duration > 30000 or track_duration < 0):
 
-                tags = self.db.get_track_tags(track)
-                if tf_idf == "bm25":
-                    average_track_tags_count = self.db.get_average_track_tags_count()
-                    tf_track = (k + 1) / (1 + k * (1 - b + b * (len(tags) / average_track_tags_count))) # tags.count(tag) is always 1
-                    tf_idf_track = [self.db.get_tag_idf(tag) * tf_track for tag in tags]
-                elif tf_idf == "normal":
-                    tf_idf_track = [self.db.get_tag_idf(tag) for tag in tags]
+            tags = self.db.get_track_tags(track)
+            if tf_idf == "bm25":
+                average_track_tags_count = self.db.get_average_track_tags_count()
+                tf_track = (k + 1) / (1 + k * (1 - b + b * (len(tags) / average_track_tags_count))) # tags.count(tag) is always 1
+                tf_idf_track = [self.db.get_tag_idf(tag) * tf_track for tag in tags]
+            elif tf_idf == "normal":
+                tf_idf_track = [self.db.get_tag_idf(tag) for tag in tags]
 
-                if coefficient == "pearson":
+            if coefficient == "pearson":
 
-                    mean_tfidf_track = sum(tf_idf_track) / len(tf_idf_track)
-                    mean_tfidf_playlist = sum(tf_idf_playlist) / len(tf_idf_playlist)
+                mean_tfidf_track = sum(tf_idf_track) / len(tf_idf_track)
+                mean_tfidf_playlist = sum(tf_idf_playlist) / len(tf_idf_playlist)
 
-                    numerator = sum([(tf_idf_track[tags.index(tag)] - mean_tfidf_track) *
-                                   (tf_idf_playlist[playlist_features_unique.index(tag)] - mean_tfidf_playlist)
-                                   for tag in tags if tag in playlist_features_unique])
+                numerator = sum([(tf_idf_track[tags.index(tag)] - mean_tfidf_track) *
+                               (tf_idf_playlist[playlist_features_unique.index(tag)] - mean_tfidf_playlist)
+                               for tag in tags if tag in playlist_features_unique])
 
-                    denominator = math.sqrt(sum([(i - mean_tfidf_playlist) ** 2 for i in tf_idf_playlist]) *
-                    sum([(i - mean_tfidf_track) ** 2 for i in tf_idf_track]))
+                denominator = math.sqrt(sum([(i - mean_tfidf_playlist) ** 2 for i in tf_idf_playlist]) *
+                sum([(i - mean_tfidf_track) ** 2 for i in tf_idf_track]))
 
-                elif coefficient == "cosine":
+            elif coefficient == "cosine":
 
-                    numerator = sum([tf_idf_track[tags.index(tag)] * tf_idf_playlist[playlist_features_unique.index(tag)] for tag in tags if tag in playlist_features_unique])
+                numerator = sum([tf_idf_track[tags.index(tag)] * tf_idf_playlist[playlist_features_unique.index(tag)] for tag in tags if tag in playlist_features_unique])
 
-                    denominator = math.sqrt(helper.square_sum(tf_idf_playlist)) * math.sqrt(helper.square_sum(tf_idf_track))
-                    if shrink:
-                        denominator += helper.set_difference_len(playlist_features_unique, tags)
+                denominator = math.sqrt(helper.square_sum(tf_idf_playlist)) * math.sqrt(helper.square_sum(tf_idf_track))
+                if shrink:
+                    denominator += helper.set_difference_len(playlist_features_unique, tags)
 
-                elif coefficient == "product":
+            elif coefficient == "product":
 
-                    numerator1 = [tf_idf_track[tags.index(tag)] * tf_idf_playlist[playlist_features_unique.index(tag)] for tag in tags if tag in playlist_features_unique]
-                    mean_tfidf_track = sum(tf_idf_track) / len(tf_idf_track)
-                    mean_tfidf_playlist = sum(tf_idf_playlist) / len(tf_idf_playlist)
+                numerator1 = [tf_idf_track[tags.index(tag)] * tf_idf_playlist[playlist_features_unique.index(tag)] for tag in tags if tag in playlist_features_unique]
+                mean_tfidf_track = sum(tf_idf_track) / len(tf_idf_track)
+                mean_tfidf_playlist = sum(tf_idf_playlist) / len(tf_idf_playlist)
 
-                    numerator2 = [(tf_idf_track[tags.index(tag)] - mean_tfidf_track) *
-                                   (tf_idf_playlist[playlist_features_unique.index(tag)] - mean_tfidf_playlist)
-                                   for tag in tags if tag in playlist_features_unique]
+                numerator2 = [(tf_idf_track[tags.index(tag)] - mean_tfidf_track) *
+                               (tf_idf_playlist[playlist_features_unique.index(tag)] - mean_tfidf_playlist)
+                               for tag in tags if tag in playlist_features_unique]
 
-                    numerator = 0
-                    for a,b in zip(numerator1, numerator2):
-                        numerator += a*b
+                numerator = 0
+                for a,b in zip(numerator1, numerator2):
+                    numerator += a*b
 
-                    denominator1 = math.sqrt(helper.square_sum(tf_idf_playlist)) * math.sqrt(helper.square_sum(tf_idf_track))
-                    denominator2 = math.sqrt(sum([(i - mean_tfidf_playlist) ** 2 for i in tf_idf_playlist]) * sum([(i - mean_tfidf_track) ** 2 for i in tf_idf_track]))
+                denominator1 = math.sqrt(helper.square_sum(tf_idf_playlist)) * math.sqrt(helper.square_sum(tf_idf_track))
+                denominator2 = math.sqrt(sum([(i - mean_tfidf_playlist) ** 2 for i in tf_idf_playlist]) * sum([(i - mean_tfidf_track) ** 2 for i in tf_idf_track]))
 
-                    denominator = denominator1 * denominator2
+                denominator = denominator1 * denominator2
 
-                    denominator += helper.set_difference_len(playlist_features_set, tags)
+                denominator += helper.set_difference_len(playlist_features_set, tags)
 
 
-                elif coefficient == "tanimoto":
-                    numerator = sum([tf_idf_track[tags.index(tag)] * tf_idf_playlist[playlist_features_unique.index(tag)] for tag in tags if tag in playlist_features_unique])
+            elif coefficient == "tanimoto":
+                numerator = sum([tf_idf_track[tags.index(tag)] * tf_idf_playlist[playlist_features_unique.index(tag)] for tag in tags if tag in playlist_features_unique])
 
-                    denominator = sum(tf_idf_playlist) * sum(tf_idf_track) - numerator
-                    denominator += helper.set_difference_len(playlist_features_set, tags)
+                denominator = sum(tf_idf_playlist) * sum(tf_idf_track) - numerator
+                denominator += helper.set_difference_len(playlist_features_set, tags)
 
-                try:
-                    similarity = numerator / denominator
-                except ZeroDivisionError:
-                    continue
-                
-                if knn <= 5:
-                    if len(possible_recommendations) < 5:
+            try:
+                similarity = numerator / denominator
+            except ZeroDivisionError:
+                continue
+            
+            if knn <= 5:
+                if len(possible_recommendations) < 5:
+                    possible_recommendations.append([track, similarity])
+                    mini = min(possible_recommendations, key=itemgetter(1))
+                else:
+                    if similarity > mini[1]:
+                        possible_recommendations.remove(mini)
                         possible_recommendations.append([track, similarity])
                         mini = min(possible_recommendations, key=itemgetter(1))
-                    else:
-                        if similarity > mini[1]:
-                            possible_recommendations.remove(mini)
-                            possible_recommendations.append([track, similarity])
-                            mini = min(possible_recommendations, key=itemgetter(1))
-                else:
-                    possible_recommendations.append([track, similarity])
+            else:
+                possible_recommendations.append([track, similarity])
                         
         if ensemble:
             return possible_recommendations[0:knn]
@@ -679,9 +677,6 @@ class Recommender:
             owner_playlists_tracks = [track for playlist in owner_playlists for track in self.db.get_playlist_tracks(playlist)]
             target_tracks = self.db.get_target_tracks()
             for track in target_tracks:
-                duration = self.db.get_track_duration(track)
-                if track in playlist_tracks or not (duration > 30000 or duration < 0):
-                    continue
                 prediction = sum([self.db.get_item_similarities_alt(track,j) for j in owner_playlists_tracks])
                 predictions.append([track, prediction])
             predictions.sort(key=itemgetter(1), reverse=True)
@@ -744,8 +739,7 @@ class Recommender:
 
         for track in target_tracks:
             tags = self.db.get_track_tags(track)
-            track_duration = self.db.get_track_duration(track)
-            if track not in playlist_tracks_set and (track_duration > 30000 or track_duration < 0) and track not in recommendations:
+            if track not in playlist_tracks_set and track not in recommendations:
 
                 tf_idf_track = [self.db.get_tag_idf(tag) for tag in tags]
 
@@ -914,9 +908,7 @@ class Recommender:
         #tf_idf_playlist = [(1.0 + math.log(playlist_features.count(tag))) * self.db.get_tag_idf(tag) for tag in playlist_features_set]
 
         for i in target_tracks:
-            duration = self.db.get_track_duration(i)
-            if (duration <= 30000 and duration >= 0):
-                continue
+
             prediction = sum([self.db.get_item_similarities_alt(i,j) for j in playlist_tracks])
             possible_recommendations.append([i, prediction])
 
@@ -968,10 +960,9 @@ class Recommender:
         similarities = []
         playlists = self.db.get_playlists()
 
-
+        
         for track in target_tracks:
-            track_duration = self.db.get_track_duration(track)
-            if track in playlist_tracks_set or (track_duration < 30000 and track_duration > 0):
+            if track in playlist_tracks_set:
                 continue
 
             titles = self.db.get_titles_track(track)
@@ -1294,8 +1285,7 @@ class Recommender:
         tracks_tags = [set(self.db.get_track_tags(track)) for track in playlist_tracks]
 
         for track in target_tracks:
-            track_duration = self.db.get_track_duration(track)
-            if track not in playlist_tracks_set and (track_duration > 30000 or track_duration < 0) and track not in recommendations:
+            if track not in playlist_tracks_set and track not in recommendations:
                 tags = set(self.db.get_track_tags(track))
                 if len(tags) == 0:
                     continue
@@ -1339,8 +1329,7 @@ class Recommender:
             raise ValueError("tracks have no feature")
 
         for track in target_tracks:
-            track_duration = self.db.get_track_duration(track)
-            if track not in playlist_tracks_set and (track_duration > 30000 or track_duration < 0) and track not in recommendations:
+            if track not in playlist_tracks_set and track not in recommendations:
                 tags = self.db.get_track_tags(track)
                 if tags == []:
                     continue

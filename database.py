@@ -1056,7 +1056,10 @@ class Database:
             # the set cast is just for commodity
             target_tracks = helper.read("target_tracks")
             target_tracks.next()
-            self.target_tracks = set([int(track[0]) for track in target_tracks])
+            self.target_tracks = (int(track[0]) for track in target_tracks)
+            if filter_duration:
+                self.target_tracks = [track for track in self.target_tracks if self.get_track_duration(track) <= 0 or self.get_track_duration(track) > 30000]
+            self.target_tracks = set(self.target_tracks)
             return self.target_tracks
 
     def get_tracks_map(self):
