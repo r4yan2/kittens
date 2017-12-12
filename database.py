@@ -753,15 +753,15 @@ class Database:
     def genetic(self, active_tag):
         """
         """
-        try:
-            return self.encoding[active_tag]
-        except AttributeError:
-            fp = open("data/tag_encoding", "rb")
-            self.tag_encoding = [int(elem) for elem in fp.readline().split(",")]
-            self.encoding = {tag: individual for individual, tag in zip(self.individual, self.tag_encoding)}
-            return self.encoding[active_tag]
-
-
+        while True:
+            try:
+                return self.encoding[active_tag]
+            except AttributeError:
+                fp = open("data/tag_encoding", "rb")
+                self.tag_encoding = [int(elem) for elem in fp.readline().split(",")]
+                self.encoding = {tag: individual for individual, tag in zip(self.individual, self.tag_encoding)}
+            except KeyError:
+                return 1.0
 
     def get_favourite_user_track(self, track):
         """
@@ -1138,8 +1138,8 @@ class Database:
                 try:
                     if self.individual:
                         tags_extended = [tag for tag in tags_extended if self.genetic(tag)]
-                except:
-                    pass
+                except Exception as e:
+                    print e
                 result[track_id]= [artist_id, duration, playcount, album, tags_extended]
             elif self.tags_mode == "tags":
                 result[track_id]= [artist_id, duration, playcount, album, tags]
