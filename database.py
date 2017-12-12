@@ -911,21 +911,22 @@ class Database:
             self.num_playlists = len(self.get_playlists())
             return self.num_playlists
 
-
     def get_tag_idf(self, tag):
         """
         returns the idf of a specific tag with respect to the playlists which includes such tag
         :return: idf
         """
-        n = float(len(self.get_tag_playlists(tag)))
-        N = self.get_num_playlists()
-        try:
-            idf = 0.5 + math.log10((N - n + 0.5) / (n + 0.5))
-        except ValueError:
-            idf = 0
-        except ZeroDivisionError:
-            idf = 0
-        return idf
+        while True:
+            try:
+                return self.idf_map[tag]
+            except AttributeError:
+                self.idf_map = {}
+            except KeyError:
+                n = float(len(self.get_tag_playlists(tag)))
+                N = self.get_num_playlists()
+                idf = 0.5 + math.log10((N - n + 0.5) / (n + 0.5))
+                self.idf_map[tag]=idf
+                return idf
 
     def get_target_score(self, playlist, track):
         """

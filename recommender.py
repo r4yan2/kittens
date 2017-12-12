@@ -424,8 +424,7 @@ class Recommender:
         recommendations = [item for item, value in score[0:5]]
         return recommendations
 
-
-    def make_tf_idf_recommendations(self, active_playlist, target_tracks=[], neighborhood_knn=0, recommendations=[], knn=5, ensemble=0, tf_idf="bm25", coefficient="cosine"):
+    def make_tf_idf_recommendations(self, active_playlist, target_tracks=[], neighborhood_knn=0, recommendations=[], knn=5, ensemble=0, tf_idf="bm25", coefficient="cosine", shrink=False):
         """
         Make Recommendations based on the tf-idf of the track tags
 
@@ -499,8 +498,8 @@ class Recommender:
                     numerator = sum([tf_idf_track[tags.index(tag)] * tf_idf_playlist[playlist_features_unique.index(tag)] for tag in tags if tag in playlist_features_unique])
 
                     denominator = math.sqrt(helper.square_sum(tf_idf_playlist)) * math.sqrt(helper.square_sum(tf_idf_track))
-                    denominator += helper.set_difference_len(playlist_features_unique, tags)
-                    #denominator += math.log1p(math.fabs(len(playlist_features_set) - len(tags)))
+                    if shrink:
+                        denominator += helper.set_difference_len(playlist_features_unique, tags)
 
                 elif coefficient == "product":
 
