@@ -533,15 +533,26 @@ class Recommender:
                     similarity = numerator / denominator
                 except ZeroDivisionError:
                     continue
-
-                possible_recommendations.append([track, similarity])
-
-        possible_recommendations.sort(key=itemgetter(1), reverse=True)
+                
+                if knn <= 5:
+                    if len(possible_recommendations) < 5:
+                        possible_recommendations.append([track, similarity])
+                        mini = min(possible_recommendations, key=itemgetter(1))
+                    else:
+                        if similarity > mini[1]:
+                            possible_recommendations.remove(mini)
+                            possible_recommendations.append([track, similarity])
+                            mini = min(possible_recommendations, key=itemgetter(1))
+                else:
+                    possible_recommendations.append([track, similarity])
+                        
         if ensemble:
             return possible_recommendations[0:knn]
-        recs = recommendations + [recommendation for recommendation, value in possible_recommendations[0:knn]]
+        else:
+            possible_recommendations.sort(key=itemgetter(1), reverse=True)
+        recs = recommendations + [recommendation for recommendation, value in possible_recommendations]
         if knn <= 5:
-            logging.debug("playlist: %i generated prediction: %s" % (active_playlist, possible_recommendations[0:knn]))
+            logging.debug("playlist: %i generated prediction: %s" % (active_playlist, possible_recommendations))
 
         return recs
 
