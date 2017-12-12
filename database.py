@@ -17,8 +17,7 @@ class Database:
         self.tags_mode = tags
 
         self.test = test
-        if individual:
-            self.individual = individual
+        self.individual = individual
 
         if test > 0:
             self.load_test_set(test)
