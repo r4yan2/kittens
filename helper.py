@@ -2,7 +2,10 @@ import csv
 import math
 from operator import mul
 import logging
-import matplotlib.pyplot as plt
+try:
+    import matplotlib.pyplot as plt
+except ImportError:
+    pass
 
 def write(filename, content, delimiter_char=','):
     """
