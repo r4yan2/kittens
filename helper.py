@@ -152,7 +152,7 @@ def set_difference_len(I,J):
             if not (i in J and i in I):
                 acc+=1
         return acc
-        
+
 def jaccard(I, J):
     """
     Compute the jaccard similarity improved y multiplication with the mse
@@ -197,6 +197,37 @@ def parseFloatList(lst):
     :return: parsed integer list
     """
     return [float(num) for num in lst[1:-1].split(',') if num != 'None' and num != '']
+
+def phi_coefficient(list1, list2, tot_tags):
+    """
+    Compute the Phi similarity coefficient between the lists taken in input
+    :param list1
+    :param list2
+    """
+    # a = proportion of 1s that the variables share in the same positions
+    # b = proportion of 1s in the first variable and 0s in second variable in the same positions
+    # c =  proportion of 0s in the first variable and 1s in second variable in the same positions
+    # d = proportion of 0s that both variables share in the same positions
+
+    a = 0
+    b = 0
+    c = 0
+    d = 0
+
+    for i in list1 + list2:
+        if i in list1 and i in list2:
+            a += 1
+        elif i in list1 and i not in list2:
+            b += 1
+        elif i not in list1 and i in list2:
+            c += 1
+    d = tot_tags - (a + b + c)
+    try:
+        phi = (a * d - b * c) / math.sqrt((a + b) * (a + c) * (b + d) * (c + d))
+    except ZeroDivisionError:
+        phi = 0
+    return phi
+
 
 
 def LevenshteinDistance(s, s_len, t, t_len):
