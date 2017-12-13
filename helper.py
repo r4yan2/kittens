@@ -2,6 +2,10 @@ import csv
 import math
 from operator import mul
 import logging
+try:
+    import matplotlib.pyplot as plt
+except ImportError:
+    pass
 
 def write(filename, content, delimiter_char=','):
     """
@@ -252,3 +256,23 @@ def LevenshteinDistance(s, s_len, t, t_len):
     return min(LevenshteinDistance(s, s_len - 1, t, t_len) + 1,
                 LevenshteinDistance(s, s_len, t, t_len - 1) + 1,
                 LevenshteinDistance(s, s_len - 1, t, t_len - 1) + cost)
+
+def plot(lst):
+    """
+    Helper function to easy plot data stored from kittens past execution
+    
+    :param lst: name or list of names of saved map5 distributions
+    """
+    if not isinstance(lst, list):
+        if not isinstance(lst, str):
+            raise ValueError("Input is not a string")
+        to_draw = [[int(length), float(value)] for value, length in read(lst, ',')]
+        plt.plot(*zip(*to_draw), label=lst)
+    else:
+        for elem in lst:
+            if not isinstance(elem, str):
+                raise ValueError("Input is not a string")
+            to_draw = [[int(length), float(value)] for value, length in read(elem, ',')]
+            plt.plot(*zip(*to_draw), label=elem)
+    plt.legend(loc='best')
+    plt.show(block=False)
