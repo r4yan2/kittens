@@ -468,12 +468,13 @@ class Recommender:
             tf_idf_playlist = [self.db.get_tag_idf(tag) * ((playlist_features.count(tag) * (k + 1)) / (playlist_features.count(tag) + len_over_avg)) for tag in playlist_features_unique]
         elif tf_idf == "normal":
             tf_idf_playlist = [(1.0 + math.log(playlist_features.count(tag), 10)) * self.db.get_tag_idf(tag) for tag in playlist_features_unique]
+            
+        average_track_tags_count = self.db.get_average_track_tags_count()
 
         for track in target_tracks:
 
             tags = self.db.get_track_tags(track)
             if tf_idf == "bm25":
-                average_track_tags_count = self.db.get_average_track_tags_count()
                 tf_track = (k + 1) / (1 + k * (1 - b + b * (len(tags) / average_track_tags_count))) # tags.count(tag) is always 1
                 tf_idf_track = [self.db.get_tag_idf(tag) * tf_track for tag in tags]
             elif tf_idf == "normal":

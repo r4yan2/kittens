@@ -6,7 +6,7 @@ import logging
 from operator import itemgetter
 
 class Database:
-    def __init__(self, test, individual=None, tags="extended"):
+    def __init__(self, test, individual=None, tags="extended", whitelist=True):
         """
         if we are in test execution train_set, test_set are loaded transparently,
         otherwise the normal dataset are loaded
@@ -15,7 +15,7 @@ class Database:
         :return: the initialized object
         """
         self.tags_mode = tags
-
+        self.whitelist = whitelist
         self.test = test
         self.individual = individual
 
@@ -878,19 +878,19 @@ class Database:
 
     def get_tag_tracks(self, tag):
         """
-        getter for the idf of the tag with respect to the
+        getter for tracks which contain the tag
         """
 
         try:
-            return self.tags_list[tag]
+            return self.tag_tracks[tag]
         except AttributeError:
-            self.tags_list = {}
+            self.tag_tracks = defaultdict(lambda: [])
             tracks_map = self.get_tracks_map()
-            tags_list = [tag for items in tracks_map.values() for tag in items[4]]
-            tags_list_set = set(tags_list)
-            for tag in tags_list_set:
-                self.tags_list[tag] = tags_list.count(tag)
-            return self.tags_list[tag]
+            for track in tracks_map:
+                tags = tracks_map[track][4]
+                for feat in tags:
+                    self.tag_tracks[feat].append(track)
+            return self.tag_tracks[tag]
 
     def get_tag_playlists(self, tag):
         """
@@ -1044,7 +1044,7 @@ class Database:
         target_playlists.next()
         self.target_playlists = [int(elem[0]) for elem in target_playlists]
 
-    def get_target_tracks(self):
+    def get_target_tracks(self, filter_duration=True):
         """
         getter for the tracks to be recommended
         if the target_tracks does not exists it create the list from the corresponding csv
@@ -1072,6 +1072,15 @@ class Database:
         except AttributeError:
             self.tracks_map = self.compute_tracks_map()
             return self.tracks_map
+    
+    def get_tags(self):
+        """
+        """
+        try:
+            return self.tags
+        except AttributeError:
+            self.tags = list(set([tag for item in self.get_tracks_map().itervalues() for tag in item[4]]))
+            return self.tags
 
     def get_average_playlist_tags_count(self):
         """
@@ -1109,12 +1118,14 @@ class Database:
         tracks.next()
         result = {}
         iterator = -10
-        try:
-            whitelist_fp = open('data/whitelist', 'rb')
-            whitelist = set([int(tag) for tag in whitelist_fp.readline().split(',')])
-            logging.debug("Loaded whitelist!")
-        except:
-            logging.debug("No whitelist file found, continuing with all tags!")
+        if self.whitelist:
+            try:
+                fp = open('data/whitelist', 'rb')
+                whitelist = set(helper.parseIntList(fp.readline()))
+                fp.close()
+                logging.debug("Loaded whitelist!\ntags: %s" % (whitelist))
+            except:
+                logging.debug("No whitelist file found, continuing with all tags!")
 
         for track in tracks:
             track_id = int(track[0])
@@ -1134,8 +1145,10 @@ class Database:
             if self.tags_mode == "extended":
                 tags_extended = [artist_id + 276615] + [album + 847203 if album > 0 else iterator] + tags
                 tags_extended = [tag for tag in tags_extended if tag > 0]
+                
                 try:
-                    tags_extended = [tag for tag in tags_extended if tag in whitelist]
+                    if self.whitelist:
+                        tags_extended = [tag for tag in tags_extended if tag in whitelist]
                 except:
                     pass
                 try:
@@ -1146,6 +1159,8 @@ class Database:
                 result[track_id]= [artist_id, duration, playcount, album, tags_extended]
             elif self.tags_mode == "tags":
                 result[track_id]= [artist_id, duration, playcount, album, tags]
+            else:
+                raise ValueError("tags_mode parameter undefined!")
 
         return result
 
