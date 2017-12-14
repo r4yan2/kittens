@@ -332,8 +332,12 @@ class Database:
             else:
                 target_tracks = self.get_target_tracks()
                 while len(tracks) < tracks_knn:
-                    tracks.update(target_tracks.intersection(self.get_playlist_tracks(neighborhood[iterator][0])).difference(playlist_a_tracks))
-                    iterator += 1
+                    try:
+                        tracks.update(target_tracks.intersection(self.get_playlist_tracks(neighborhood[iterator][0])).difference(playlist_a_tracks))
+                        iterator += 1
+                    except IndexError as e:
+                        logging.debug("Hit an Index Error when selecting tracks for %i\nIndex: %i Error:%s" % (playlist_a, iterator, e))
+                        return tracks
             return tracks
 
     def get_min_max_playlists(self):
@@ -391,31 +395,12 @@ class Database:
             tracks_playlist_b = set(self.get_playlist_tracks(playlist_b))
             tracks_playlist_b_length = len(tracks_playlist_b)
 
-            matched = tracks_playlist.intersection(tracks_playlist_b)
-            matched_len = len(matched)
-            not_matched = tracks_playlist.symmetric_difference(tracks_playlist_b)
-            not_matched_len = len(not_matched)
-
-            MSE = not_matched_len / float(len(tracks_playlist.union(tracks_playlist_b)))
-
             if coefficient == "jaccard":
                 jaccard = helper.jaccard(tracks_playlist, tracks_playlist_b)
                 similarities.append([playlist_b, jaccard])
 
-            elif coefficient == "map":
-                # MAP@k it may be useful if only we know how to use it
-                tag_mask = [float(track in tracks_playlist) for track in tracks_playlist_b]
-                p_to_k_num = helper.multiply_lists(tag_mask, helper.cumulative_sum(tag_mask))
-                p_to_k_den = range(1,len(tag_mask)+1)
-                p_to_k = helper.divide_lists(p_to_k_num, p_to_k_den)
-                try:
-                    map_score = sum(p_to_k) / len(tracks_playlist)
-                except ZeroDivisionError:
-                    continue
-                similarities.append([playlist_b,map_score])
-
             elif coefficient == "cosine":
-                num_cosine_sim = matched_len
+                num_cosine_sim = sum([float(track in tracks_playlist) for track in tracks_playlist_b])
 
                 den_cosine_sim = math.sqrt(len(tracks_playlist)) * math.sqrt(
                     len(tracks_playlist_b))
@@ -460,7 +445,11 @@ class Database:
             else:
                 target_tracks = self.get_target_tracks()
                 while len(tracks) < tracks_knn:
-                    tracks.update(target_tracks.intersection(self.get_playlist_tracks(similarities[iterator][0])).difference(tracks_playlist))
+                    try:
+                        tracks.update(target_tracks.intersection(self.get_playlist_tracks(similarities[iterator][0])).difference(tracks_playlist))
+                    except IndexError as e:
+                        logging.debug("Hit an Index Error when selecting tracks for %i\nIndex: %i Error:%s" % (playlist, iterator, e))
+                        return tracks
                     iterator += 1
             return tracks
 
