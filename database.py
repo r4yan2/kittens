@@ -11,7 +11,10 @@ class Database:
         if we are in test execution train_set, test_set are loaded transparently,
         otherwise the normal dataset are loaded
 
-        :param test: istance
+        :param test: istance, 0 for recommendations, 4-6 for test_set
+        :param individual: if set specify an individual to use (DEAP)
+        :param tags: extended mean to extend default tags with artist and album
+        :param whitelist: if whitelist have to be loaded
         :return: the initialized object
         """
         self.tags_mode = tags
@@ -195,12 +198,15 @@ class Database:
         """
         This method compute the neighborhood for a given playlists by using content or collaborative techniques
 
-        :param playlist_a: given playlist_a
-        :param knn: cardinality of the neighborhood
+        :param playlist_a: given playlist
+        :param knn: cardinality of the neighborhood ***USE tracks_knn INSTEAD***
         :param title_flag: specify if title have to be used
         :param tag_flag: specify if tag have to be used
         :param track_flag: specify if track have to be used
-        :coefficient: specify which coefficient to use
+        :param tracks_knn: specify the quantity of neighbor track to return
+        :param coefficient: specify which coefficient to use
+        :param values: if computed value of neighborhoodness have to be given back with playlists
+        :param target_tracks: consider target tracks only when selecting knn tracks (leave default)
         :return: neighborhood
         """
         playlists = self.get_playlists()
@@ -363,7 +369,7 @@ class Database:
         NB: the best is jaccard
 
         :param playlist: active_playlist
-        :param knn: cardinality of the neighborhood
+        :param knn: cardinality of the neighborhood *** USE tracks_knn INSTEAD ***
         :param tracks_knn: an alternate way of returning results, if specified return the knn best matching tracks
         :param coefficient: coefficient to use
         :param values: if None return only the playlists, if all return also the values
@@ -463,12 +469,12 @@ class Database:
         Get Taxonomy comparison result from 2 tracks
         :param i: track
         :param j: track
-        :return: taxonomy value
+        :return: taxonomy value (beware: possibility of 0)
         """
 
         tags_i = self.get_track_tags(i)
         tags_j = self.get_track_tags(j)
-        taxonomy = sum([int(feat in tags_j) for feat in tags_i]) # 1 for every tag/artist/album which match
+        taxonomy = sum(int(feat in tags_j) for feat in tags_i) # 1 for every tag/artist/album which match
 
         return taxonomy
 
@@ -571,6 +577,9 @@ class Database:
 
     def get_num_interactions(self):
         """
+        return the number of lines in train
+    
+        :return: integer
         """
         return self.num_interactions
 
@@ -615,7 +624,7 @@ class Database:
                 y = int(y)
                 value = float(value)
                 if old_x != x:
-                    limit = 250
+                    limit = 200
                     self.similarities_map[x] = {}
                     self.similarities_map[x][y] = value
                     old_x = x
@@ -751,6 +760,10 @@ class Database:
 
     def genetic(self, active_tag):
         """
+        Get the value defined by the gene in case of DEAP working
+        
+        :param active_tag: tag to be keep or discarded
+        :return: 1 if tag is in the gene 0 otherwise
         """
         while True:
             try:
@@ -804,6 +817,9 @@ class Database:
 
     def get_average_track_inclusion(self, track):
         """
+        Get the actual number of playlist which included the track
+        
+        :return: integer number
         """
         track_playlists_map = self.get_track_playlists_map()
         list_playlists = track_playlists_map[track]
@@ -856,6 +872,9 @@ class Database:
 
     def get_num_tag(self):
         """
+        Getter for the total number of tags currently loaded
+        
+        :return: number of loaded tags
         """
         try:
             return self.num_tag
@@ -866,7 +885,7 @@ class Database:
 
     def get_track_idf(self, track):
         """
-        getter for the idf of the track
+        getter for the idf of the track (BM-25 version)
 
         :param track: the track
         :result: the float idf
@@ -894,6 +913,10 @@ class Database:
 
     def get_tag_playlists(self, tag):
         """
+        Getter for the playlists which include the given tag
+        
+        :param tag: tag to which playlists need to be taken
+        :return: list of playlists
         """
         try:
             return self.tag_playlists_map[tag]
@@ -904,6 +927,9 @@ class Database:
 
     def get_num_playlists(self):
         """
+        Getter for the actual number of playlists in the database
+        
+        :return: integer number of playlists
         """
         try:
             return self.num_playlists
@@ -913,8 +939,10 @@ class Database:
 
     def get_tag_idf(self, tag):
         """
-        returns the idf of a specific tag with respect to the playlists which includes such tag
-        :return: idf
+        returns the idf of a specific tag BM-25
+        
+        :param tag: tag for which the idf is needed
+        :return: idf (float)
         """
         while True:
             try:
@@ -928,9 +956,15 @@ class Database:
                 self.idf_map[tag]=idf
                 return idf
 
-    def get_target_score(self, playlist, track):
+    def get_target_score(self, playlist, track, k=1.2, b=0.75):
         """
-        score as defined by bm-25
+        score as defined by bm-25 calculated on global basis
+        
+        :param playlist: playlist(document)
+        :param track: query for the document
+        :param k: as defined by bm-25
+        :param b: as defined by bm-25
+        :return: float score    
         """
         documents_number = len(self.get_playlists())
         tag_playlist_map = self.get_tag_playlists_map()
@@ -939,8 +973,6 @@ class Database:
         document_len = len(playlist_features)
         if document_len == 0:
             raise ValueError
-        k = 1.2
-        b = 0.75
 
         scores = []
         for tag in self.get_track_tags(track):
@@ -1008,6 +1040,12 @@ class Database:
 
     def user_user_similarity(self, active_user, knn=75):
         """
+        Get similarity value based on the user owner of the playlist
+        NOTE: NOT RECOMMENDED as abandoned
+        
+        :param active_user:
+        :param knn:
+        :return: similarities list
         """
         similarities = []
         active_user_tracks = set(self.get_user_tracks(active_user))
@@ -1209,7 +1247,7 @@ class Database:
 
     def get_owner_playlists(self):
         """
-
+        
         :return:
         """
         try:
@@ -1309,7 +1347,7 @@ class Database:
     def get_track_tags_map(self):
         """
         compute hashmap to store track -> [tag1, tag2, ...] for fast retrieval
-        :return:
+        :return: hashmap
         """
 
         try:
@@ -1326,8 +1364,9 @@ class Database:
     def get_playlist_tracks(self, target_playlist):
         """
         return all the tracks into the specified playlist
-        :param playlist:
-        :return:
+    
+        :param playlist: playlist for we need tracks
+        :return: list of tracks
         """
         try:
             return self.playlist_tracks_map[target_playlist]
@@ -1339,22 +1378,25 @@ class Database:
 
     def get_playlist_tracks_map(self):
         """
-
+        Getter for the playlist_tracks map
+        :return: hashmap
         """
         return self.playlist_tracks_map
 
-    def get_track_playlists(self, track):
+    def get_track_playlists(self, track, n=None):
         """
         return all the playlists which includes the specified track
         :param track:
         :return:
         """
         try:
-            return self.track_playlists_map[track]
+            if n:
+                return [playlist for playlist in self.track_playlists_map[track] if len(self.get_playlist_tracks(playlist)) >= n]
+            else:
+                return self.track_playlists_map[track]
         except AttributeError:
             track_playlists_map = self.get_track_playlists_map()
             return track_playlists_map[track]
-
 
     def get_titles_track(self, track):
         """
@@ -1364,10 +1406,15 @@ class Database:
         :param track: track
         :return: list of titles
         """
-        playlists = self.get_track_playlists(track)
-        titles_track = [title for playlist in playlists for title in self.get_titles_playlist(playlist)]
-
-        return titles_track
+        while True:
+            try:
+                return self.track_titles_map[track]
+            except AttributeError:
+                self.track_titles_map = {}
+            except KeyError:
+                playlists = self.get_track_playlists(track, n=10)
+                titles_track = [title for playlist in playlists for title in self.get_titles_playlist(playlist)]
+                self.track_titles_map[track] = titles_track
 
     def get_titles_playlist(self, playlist):
         """
@@ -1385,7 +1432,7 @@ class Database:
 
     def get_title_idf(self, title):
         """
-        gets the idf of a specific title
+        gets the smooth idf of a specific title
         :return:
         """
         title_playlist_map = self.get_title_playlists_map()
