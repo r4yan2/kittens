@@ -191,7 +191,7 @@ def parseIntList(lst):
     :param lst: string to parse
     :return: parsed integer list
     """
-    return [int(num) for num in lst[1:-1].split(',') if num != 'None' and num != '']
+    return [int(num) for num in lst.strip('[]\n').split(',') if num != 'None' and num != '']
 
 def parseFloatList(lst):
     """
