@@ -233,6 +233,18 @@ def phi_coefficient(list1, list2, tot_tags):
     return phi
 
 
+def hemming_distance(a, b):
+    """
+    
+    """
+    counter = 0
+    equal = 0
+    for elem in a:
+        if elem in b: 
+            equal += 1
+        else: 
+            counter += 1
+    return counter + len(b) - equal 
 
 def LevenshteinDistance(s, s_len, t, t_len):
     """
