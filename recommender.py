@@ -66,8 +66,21 @@ class Recommender:
         except ZeroDivisionError:
             recall = 0
 
-        # return the triple
-        return [map_score, precision, recall]
+        ranks = range(is_relevant_length)
+        pos_ranks = [pos for pos in ranks if is_relevant[pos]]
+        pos_ranks_length = len(pos_ranks)
+        neg_ranks = [pos for pos in ranks if not is_relevant[pos]]
+        neg_ranks_length = len(neg_ranks)
+        auc_score = 0.0
+        if neg_ranks_length == 0:
+            auc_score = 1.0
+        elif pos_ranks_length > 0:
+            for pos_pred in pos_ranks:
+                auc_score += sum([1 for elem in neg_ranks if pos_pred < elem])
+            auc_score /= (pos_ranks_length * neg_ranks_length)
+
+        # return the quartet
+        return map_score, auc_score, precision, recall
 
     def run(self, choice, db, q_in, q_out, test, number):
         """
@@ -243,8 +256,8 @@ class Recommender:
 
             # doing testing things if test mode enabled
             if test:
-                test_result = self.check_recommendations(target, recommendations)
-                q_out.put([test_result, number, target, len(db.get_playlist_tracks(target))])
+                map5, auc_score, precision, recall = self.check_recommendations(target, recommendations)
+                q_out.put([map5, auc_score, precision, recall, number, target, len(db.get_playlist_tracks(target))])
 
             else:
                 # else put the result into the out queue
