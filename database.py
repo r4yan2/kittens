@@ -1176,24 +1176,16 @@ class Database:
                 iterator -= 1
             tags = helper.parseIntList(track[5]) # evaluation of the tags list
             if self.tags_mode == "extended":
-                tags_extended = [artist_id + 276615] + [album + 847203 if album > 0 else iterator] + tags
-                tags_extended = [tag for tag in tags_extended if tag > 0]
-                
-                try:
-                    if self.whitelist:
-                        tags_extended = [tag for tag in tags_extended if tag in whitelist]
-                except:
-                    pass
-                try:
-                    if self.individual:
-                        tags_extended = [tag for tag in tags_extended if self.genetic(tag)]
-                except Exception as e:
-                    print e
-                result[track_id]= [artist_id, duration, playcount, album, tags_extended]
-            elif self.tags_mode == "tags":
-                result[track_id]= [artist_id, duration, playcount, album, tags]
-            else:
-                raise ValueError("tags_mode parameter undefined!")
+                tags = [artist_id + 276615] + [album + 847203 if album > 0 else iterator] + tags
+                tags = [tag for tag in tags if tag > 0]
+            if self.whitelist:
+                tags = [tag for tag in tags if tag in whitelist]
+            try:
+                if self.individual:
+                    tags = [tag for tag in tags if self.genetic(tag)]
+            except Exception as e:
+                print e
+            result[track_id]= [artist_id, duration, playcount, album, tags]
 
         return result
 
