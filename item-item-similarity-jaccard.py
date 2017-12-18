@@ -16,7 +16,9 @@ def compute_item_item_similarities(db, q_in, q_out, number):
         if i == -1:
             time.sleep(30)
             break
-        playlists = db.get_playlists()
+        playlists = [playlist for playlist in self.get_playlists() if len(self.get_playlist_tracks(playlist)) >= 10]
+
+
         i_playlists = set(db.get_track_playlists(i))
         if i_playlists == []:
             q_out.put(-1)

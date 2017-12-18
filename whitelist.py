@@ -8,7 +8,7 @@ tracks_map = db.get_tracks_map()
 
 tags = [tag for line in tracks_map.values() for tag in line[4]]
 tags_count = Counter(tags)
-white=[tag for tag, value in tags_count.items() if value < 85 and value > 1]
+white=[tag for tag, value in tags_count.items() if value < 100 and value > 5]
 
 print "whitelist size", len(white)
 tags_joined = ','.join([str(elem) for elem in white])

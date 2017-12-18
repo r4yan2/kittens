@@ -21,7 +21,7 @@ class Database:
         self.whitelist = whitelist
         self.test = test
         self.individual = individual
-        
+
         logging.debug("Loading database with istance %i..." % (test))
 
         if test > 0:
@@ -178,7 +178,7 @@ class Database:
         try:
             return self.user_set
         except AttributeError:
-            self.user_set = set([int(u) for (u,i,r) in helper.read("urm", ',')])
+            self.user_set = set([int(elem[0]) for elem in helper.read("urm")])
             return self.user_set
 
     def get_user_tracks(self, user):
@@ -192,8 +192,8 @@ class Database:
             return self.user_tracks[user]
         except AttributeError:
             self.user_tracks = defaultdict(lambda: [], {})
-            for (u,i,r) in helper.read("urm", ','):
-                self.user_tracks[int(u)].append(int(i))
+            for elem in helper.read("urm"):
+                self.user_tracks[int(elem[0])].append(int(elem[1]))
             return self.user_tracks[user]
 
     def compute_content_playlists_similarity(self, playlist_a, knn=75, title_flag=1, tag_flag=0, track_flag=0, tracks_knn=None, coefficient="jaccard", values="None", target_tracks="include"):
@@ -219,6 +219,7 @@ class Database:
         tf_idf_playlist_a_title = []
         tf_idf_playlist_a_track = []
 
+        tags_num = self.get_num_tag()
 
         if tag_flag:
             playlist_a_tags = list(set([tag for track in self.get_playlist_tracks(playlist_a) for tag in self.get_track_tags(track)]))
@@ -309,11 +310,11 @@ class Database:
                 similarity_track = 1
                 similarity_tag = 1
                 if title_flag:
-                    similarity_title = helper.jaccard(playlist_a_titles, playlist_b_titles)
+                    similarity_title = helper.phi_coefficient(playlist_a_titles, playlist_b_titles, tags_num)
                 if track_flag:
-                    similarity_track = helper.jaccard(playlist_a_tracks, playlist_b_tracks)
+                    similarity_track = helper.phi_coefficient(playlist_a_tracks, playlist_b_tracks, tags_num)
                 if tag_flag:
-                    similarity_tag = helper.jaccard(playlist_a_tags, playlist_b_tags)
+                    similarity_tag = helper.phi_coefficient(playlist_a_tags, playlist_b_tags, tags_num)
                 similarity = similarity_tag * similarity_title * similarity_track
 
             if similarity > 0:
@@ -394,7 +395,7 @@ class Database:
             if not math.fabs(created_at_active - created_at) < (60 * 60 * 24 * 365 * 3):
                 continue
 
-            tracks_playlist_b = set(self.get_playlist_tracks(playlist_b))
+            tracks_playlist_b = self.get_playlist_tracks(playlist_b)
             tracks_playlist_b_length = len(tracks_playlist_b)
 
             if coefficient == "jaccard":
@@ -569,7 +570,7 @@ class Database:
     def get_num_interactions(self):
         """
         return the number of lines in train
-    
+
         :return: integer
         """
         return self.num_interactions
@@ -686,9 +687,9 @@ class Database:
     def get_track_significative_titles(self, track):
         """
         Try to guess what's the most significant titles for the track if any
-        
+
         :param track: track
-        :return: titles (int list) 
+        :return: titles (int list)
         """
         titles = self.get_titles_track(track)
         counter_titles = Counter(titles).items()
@@ -770,7 +771,7 @@ class Database:
     def genetic(self, active_tag):
         """
         Get the value defined by the gene in case of DEAP working
-        
+
         :param active_tag: tag to be keep or discarded
         :return: 1 if tag is in the gene 0 otherwise
         """
@@ -830,7 +831,7 @@ class Database:
     def get_track_inclusion_value(self, track):
         """
         Get the actual number of playlist which included the track
-        
+
         :return: integer number
         """
         track_playlists_map = self.get_track_playlists_map()
@@ -885,7 +886,7 @@ class Database:
     def get_num_tag(self):
         """
         Getter for the total number of tags currently loaded
-        
+
         :return: number of loaded tags
         """
         try:
@@ -926,7 +927,7 @@ class Database:
     def get_tag_playlists(self, tag):
         """
         Getter for the playlists which include the given tag
-        
+
         :param tag: tag to which playlists need to be taken
         :return: list of playlists
         """
@@ -940,7 +941,7 @@ class Database:
     def get_num_playlists(self):
         """
         Getter for the actual number of playlists in the database
-        
+
         :return: integer number of playlists
         """
         try:
@@ -952,7 +953,7 @@ class Database:
     def get_tag_idf(self, tag):
         """
         returns the idf of a specific tag BM-25
-        
+
         :param tag: tag for which the idf is needed
         :return: idf (float)
         """
@@ -971,12 +972,12 @@ class Database:
     def get_target_score(self, playlist, track, k=1.2, b=0.75):
         """
         score as defined by bm-25 calculated on global basis
-        
+
         :param playlist: playlist(document)
         :param track: query for the document
         :param k: as defined by bm-25
         :param b: as defined by bm-25
-        :return: float score    
+        :return: float score
         """
         documents_number = len(self.get_playlists())
         tag_playlist_map = self.get_tag_playlists_map()
@@ -1054,7 +1055,7 @@ class Database:
         """
         Get similarity value based on the user owner of the playlist
         NOTE: NOT RECOMMENDED as abandoned
-        
+
         :param active_user:
         :param knn:
         :return: similarities list
@@ -1065,8 +1066,8 @@ class Database:
             user_tracks = set(self.get_user_tracks(user))
             try:
 
-                coefficient = len(active_user_tracks.intersection(user_tracks)) / (float(len(active_user_tracks.union(user_tracks))) \
-                                                                                   - len(active_user_tracks.intersection(user_tracks)))
+                coefficient = len(active_user_tracks.intersection(user_tracks)) / (float(len(active_user_tracks.union(user_tracks))))
+
             except ZeroDivisionError:
                 continue
             similarities.append([user, coefficient])
@@ -1122,7 +1123,7 @@ class Database:
         except AttributeError:
             self.tracks_map = self.compute_tracks_map()
             return self.tracks_map
-    
+
     def get_tags(self):
         """
         """
@@ -1252,7 +1253,7 @@ class Database:
 
     def get_owner_playlists(self):
         """
-        
+
         :return:
         """
         try:
@@ -1341,7 +1342,7 @@ class Database:
         while True:
             try:
                 tags = self.tracks_map[track][4]
-                return tags 
+                return tags
             except AttributeError:
                 track_map = self.get_tracks_map()
             except LookupError:
@@ -1367,7 +1368,7 @@ class Database:
     def get_playlist_tracks(self, target_playlist):
         """
         return all the tracks into the specified playlist
-    
+
         :param playlist: playlist for we need tracks
         :return: list of tracks
         """
@@ -1418,11 +1419,11 @@ class Database:
                 playlists = self.get_track_playlists(track, n=10)
                 titles_track = [title for playlist in playlists for title in self.get_titles_playlist(playlist)]
                 self.track_titles_map[track] = titles_track
-    
+
     def get_titles(self):
         """
         Getter for all the titles in the database
-        
+
         :return: list of titles (int)
         """
         playlist_final = self.get_playlist_final()

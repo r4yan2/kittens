@@ -47,11 +47,11 @@ def evalOneMax(individual):
 
 toolbox.register("evaluate", evalOneMax)
 toolbox.register("mate", tools.cxTwoPoint)
-toolbox.register("mutate", tools.mutFlipBit, indpb=0.5)
+toolbox.register("mutate", tools.mutFlipBit, indpb=0.05)
 toolbox.register("select", tools.selTournament, tournsize=3)
-population = toolbox.population(n=5)
+population = toolbox.population(n=50)
 
-NGEN=30
+NGEN=50
 
 completion = 0
 best_result = 0
@@ -61,7 +61,7 @@ for gen in range(NGEN):
     if percentage > completion:
         print percentage
         completion = percentage
-    offspring = algorithms.varAnd(population, toolbox, cxpb=0.5, mutpb=0.1)
+    offspring = algorithms.varAnd(population, toolbox, cxpb=1.0, mutpb=0.05)
     fits = toolbox.map(toolbox.evaluate, offspring)
     for fit, ind in zip(fits, offspring):
         ind.fitness.values = fit
