@@ -11,14 +11,17 @@ import subprocess
 
 IND_SIZE = 31900
 
-creator.create("FitnessMax", base.Fitness, weights=(1.0,))
+creator.create("FitnessMax", base.Fitness, weights=(1.0,1.0,))
 creator.create("Individual", list, fitness=creator.FitnessMax)
 
 toolbox = base.Toolbox()
 
-toolbox.register("attr_float", random.randint, 0, 1)
+def my_not_so_random():
+    return random.choice([0,0,0,1])
+
+toolbox.register("attr_bool", my_not_so_random)
 toolbox.register("individual", tools.initRepeat, creator.Individual,
-                 toolbox.attr_float, n=IND_SIZE)
+                 toolbox.attr_bool, n=IND_SIZE)
 toolbox.register("population", tools.initRepeat, list, toolbox.individual) #usare una funzione definita da noi; al posto di initRepeat in cui usiamo il 30% di uni
 # meno uni possibili, inizialmente, per avere dei geni con meno ciarpame possibile; il 30% di uni e il resto di zeri
 
@@ -31,14 +34,15 @@ def evalOneMax(individual):
     kittens = subprocess.Popen(["pypy", "kittens.py"] + kittens_args)
     kittens.wait()
     results = [elem for elem in helper.read("test_result4")]
-    result = float(results[0][1])
-    if result > best_result:
+    avg_map = float(results[0][1])
+    avg_auc = float(results[1][1])
+    if avg_map > best_result:
         fp = open("best_result", "wb+")
-        fp.write("best_result:\t"+str(result))
+        fp.write("best_result:\t"+str(avg_map))
         fp.write('['+','.join(str(i) for i in individual)+']')
         fp.close()
-        best_result = result
-    return result,
+        best_result = avg_map
+    return avg_map, avg_auc,
 
 
 toolbox.register("evaluate", evalOneMax)
