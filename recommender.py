@@ -433,11 +433,11 @@ class Recommender:
         score = []
         for track in self.db.get_target_tracks():
             score.append([track, self.db.get_target_score(active_playlist, track)])
-        score.sort(key=itemgetter(1), reverse=True)
+        score = sorted(score, key=itemgetter(1), reverse=True)
         recommendations = [item for item, value in score[0:5]]
         return recommendations
 
-    def make_tf_idf_recommendations(self, active_playlist, target_tracks=[], neighborhood_knn=0, recommendations=[], knn=5, ensemble=0, tf_idf="bm25", coefficient="cosine", shrink=False):
+    def make_tf_idf_recommendations(self, active_playlist, target_tracks=[], neighborhood_knn=0, recommendations=[], knn=5, ensemble=0, tf_idf="bm25", coefficient="cosine", shrink=True):
         """
         Make Recommendations based on the tf-idf of the track tags
 
@@ -561,13 +561,11 @@ class Recommender:
         if ensemble:
             return possible_recommendations[0:knn]
         else:
-            possible_recommendations.sort(key=itemgetter(1), reverse=True)
+            possible_recommendations = sorted(possible_recommendations, key=itemgetter(1), reverse=True)
         recs = recommendations + [recommendation for recommendation, value in possible_recommendations]
         if knn <= 5:
             logging.debug("playlist: %i generated prediction: %s" % (active_playlist, possible_recommendations))
-
         return recs
-
 
     def make_naive_bayes_recommendations(self, playlist, target_tracks=[], recommendations=[], knn=5, ensemble=0):
         """
@@ -612,12 +610,10 @@ class Recommender:
 
             possible_recommendations.append([track, probability])
 
-
-        possible_recommendations.sort(key=itemgetter(1), reverse=True)
+        recs = sorted(possible_recommendations, key=itemgetter(1), reverse=True)
         if ensemble:
-            return possible_recommendations[0:knn]
-        recs = recommendations + [recommendation for recommendation, value in possible_recommendations[0:knn]]
-        return recs
+            return recs
+        return recommendations + [recommendation for recommendation, value in recs]
 
     def make_knn_bayes_recommendations(self, playlist, recommendations=[], knn=5, ensemble=0):
         """
@@ -657,12 +653,10 @@ class Recommender:
 
             possible_recommendations.append([track, probability])
 
-
-        possible_recommendations.sort(key=itemgetter(1), reverse=True)
+        recs = sorted(possible_recommendations, key=itemgetter(1), reverse=True)[0:knn]
         if ensemble:
-            return possible_recommendations[0:knn]
-        recs = recommendations + [recommendation for recommendation, value in possible_recommendations[0:knn]]
-        return recs
+            return recs
+        return recommendations + [recommendation for recommendation, value in recs]
 
     def make_hybrid_recommendations(self, active_playlist, recommendations=[], knn=5, ensemble=0):
         """
@@ -693,7 +687,7 @@ class Recommender:
             for track in target_tracks:
                 prediction = sum([self.db.get_item_similarities_alt(track,j) for j in owner_playlists_tracks])
                 predictions.append([track, prediction])
-            predictions.sort(key=itemgetter(1), reverse=True)
+            predictions = sorted(predictions, key=itemgetter(1), reverse=True)
             if ensemble:
                 return predictions[0:knn]
             return [recommendation for recommendation, _ in predictions[0:knn]]
@@ -789,9 +783,8 @@ class Recommender:
 
                 possible_recommendations.append([track, cosine_sim])
 
-        possible_recommendations.sort(key=itemgetter(1), reverse=True)
-        recs = recommendations + [recommendation for recommendation, value in possible_recommendations[0:knn]]
-        return recs
+        recs = sorted(possible_recommendations, key=itemgetter(1), reverse=True)[0:knn]
+        return recommendations + [recommendation for recommendation, value in recs]
 
     def make_playlist_based_recommendations(self, playlist, target_tracks=[], knn=5, ensemble=0):
         """
@@ -823,12 +816,12 @@ class Recommender:
             #coefficient = neighborhood_tracks.count(track) * len(playlist_tags.intersection(track_tags)) / (float(len(playlist_tags.union(track_tags))))
 
             possible_recommendations.append([track, prediction])
-            if ensemble:
-                return possible_recommendations[0:knn]
+        recs = sorted(possible_recommendations, key=itemgetter(1), reverse=True)[0:knn]
 
-        possible_recommendations.sort(key=itemgetter(1), reverse=True)
-        recs = [recommendation for recommendation, value in possible_recommendations[0:knn]]
-        return recs
+        if ensemble:
+            return recs
+
+        return [recommendation for recommendation, value in recs]
 
 
     def make_user_based_recommendations(self, playlist, target_tracks=[], knn=5, ensemble=0):
@@ -862,12 +855,12 @@ class Recommender:
             #coefficient = neighborhood_tracks.count(track) * len(playlist_tags.intersection(track_tags)) / (float(len(playlist_tags.union(track_tags))))
 
             possible_recommendations.append([track, prediction])
-        if ensemble:
-            return possible_recommendations[0:knn]
-        possible_recommendations.sort(key=itemgetter(1), reverse=True)
+        recs = sorted(possible_recommendations, key=itemgetter(1), reverse=True)[0:knn]
 
-        recs = [recommendation for recommendation, value in possible_recommendations[0:knn]]
-        return recs
+        if ensemble:
+            return recs
+
+        return [recommendation for recommendation, value in recs]
 
     def make_artists_recommendations(self, playlist, recommendations=[], knn=5, ensemble=0):
         """
@@ -926,7 +919,7 @@ class Recommender:
             prediction = sum([self.db.get_item_similarities_alt(i,j) for j in playlist_tracks])
             possible_recommendations.append([i, prediction])
 
-        possible_recommendations.sort(key=itemgetter(1), reverse=True)
+        possible_recommendations = sorted(possible_recommendations, key=itemgetter(1), reverse=True)
         if ensemble:
             return possible_recommendations[0:knn]
         iterator = 0
@@ -964,17 +957,11 @@ class Recommender:
 
         playlist_titles = self.db.get_titles_playlist(playlist)
 
-        playlist_created_at = self.db.get_created_at_playlist(playlist)
-
         if playlist_titles == []:
             raise ValueError("no titles!")
 
         tf_idf_titles_playlist = [self.db.get_title_idf(title) for title in playlist_titles]
-
-        similarities = []
-        playlists = self.db.get_playlists()
-
-        
+                
         for track in target_tracks:
             if track in playlist_tracks_set:
                 continue
@@ -1234,10 +1221,11 @@ class Recommender:
         Collaborative recommendations which uses pre-computed item to item similarity
         for building the neighborhood and the predictions
 
-        :param playlist: Target playlist
+        :param active_playlist: Target playlist
         :param target_tracks: target tracks
         :param recommendations: partially filled recommendations list
         :param knn: recommendations to generate
+        :param ensemble: if ensemble is ON
         :return: recommendations list
         :raise ValueError: if playlist empty of tracks or all tracks have no features
         """
@@ -1307,10 +1295,10 @@ class Recommender:
                 jaccard_sim = sum([helper.jaccard(tags, track_tags) for track_tags in tracks_tags])
 
                 possible_recommendations.append([track, jaccard_sim])
-        recommendations = sorted(possible_recommendations, key=itemgetter(1), reverse=True)[0:knn]
+        recs = sorted(possible_recommendations, key=itemgetter(1), reverse=True)[0:knn]
         if ensemble:
-            return recommendations
-    	return [recommendation for recommendation, value in recommendations]
+            return recs
+    	return recommendations + [recommendation for recommendation, value in recs]
 
 
     def make_bad_tf_idf_recommendations(self, playlist, target_tracks=[], recommendations=[], knn=5, ensemble=0):
@@ -1363,8 +1351,7 @@ class Recommender:
                     similarities.append(cosine_sim)
                 value = sum(similarities)
                 possible_recommendations.append([track, value])
-        possible_recommendations.sort(key=itemgetter(1), reverse=True)
+        recs = sorted(possible_recommendations, key=itemgetter(1), reverse=True)[0:knn]
         if ensemble:
-            return possible_recommendations[0:knn]
-        recommendations = sorted(possible_recommendations, key=itemgetter(1), reverse=True)[0:knn]
-        return [recommendation for recommendation, value in recommendations]
+            return recs
+        return recommendations + [recommendation for recommendation, value in recs]
