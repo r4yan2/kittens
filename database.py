@@ -21,6 +21,8 @@ class Database:
         self.whitelist = whitelist
         self.test = test
         self.individual = individual
+        
+        logging.debug("Loading database with istance %i..." % (test))
 
         if test > 0:
             self.load_test_set(test)
@@ -759,7 +761,10 @@ class Database:
                 return self.encoding[active_tag]
             except AttributeError:
                 fp = open("data/tag_encoding", "rb")
-                self.tag_encoding = [int(elem) for elem in fp.readline().split(",")]
+                self.tag_encoding = helper.parseIntList(fp.readline())
+                if len(self.individual) != len(self.tag_encoding):
+                    raise ValueError("individual - tag association mismatch! Please check tag encoding")
+                    sys.exit(0)
                 self.encoding = {tag: individual for individual, tag in zip(self.individual, self.tag_encoding)}
             except KeyError:
                 return 1.0
@@ -1150,8 +1155,9 @@ class Database:
                 fp = open('data/whitelist', 'rb')
                 whitelist = set(helper.parseIntList(fp.readline()))
                 fp.close()
-                logging.debug("Loaded whitelist!\ntags: %s" % (whitelist))
+                logging.debug("Loaded whitelist!")
             except:
+                self.whitelist = False
                 logging.debug("No whitelist file found, continuing with all tags!")
 
         for track in tracks:
