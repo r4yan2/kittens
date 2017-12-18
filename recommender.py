@@ -511,7 +511,7 @@ class Recommender:
 
                 denominator = math.sqrt(helper.square_sum(tf_idf_playlist)) * math.sqrt(helper.square_sum(tf_idf_track))
                 if shrink:
-                    denominator += helper.set_difference_len(playlist_features_unique, tags)
+                    denominator -= math.sqrt(self.db.get_track_inclusion_value(track))
 
             elif coefficient == "product":
 
