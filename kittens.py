@@ -11,8 +11,15 @@ from collections import Counter
 
 # A logfile to take info during the execution
 logging.basicConfig(filename='log/kittens.log', level=logging.DEBUG, filemode='w')
+"""
+sys.argv[0] kittens
+sys.argv[1] Debug: 0 ON, 1 OFF 
+sys.argv[2] choice of the recommendations algorithms
+sys.argv[3] choice of the number of core to use
+sys.argv[4] choice of the instance (0 for recommendation, 1-6 test)
+sys.argv[5] individual enabled/disabled if using genetic algorithm
+"""
 
-# take input from command line sys.argv[0] is the program name
 if len(sys.argv) < 5:
     print "Less than 5 arguments passed"
     sys.exit(0)
@@ -50,12 +57,8 @@ recommender_system = Recommender(db)
 # This list store the result from the worker process (identifier, playlist, [recommendation])
 results = []
 
-# The following lines are needed to pass the db object between all process (multiprocessing always on)
-#manager = Manager()
-#ns = manager.Namespace()
-#ns.db = db
-
 target_playlists = db.get_target_playlists()
+target_playlists_length = len(target_playlists)
 
 logging.debug("len of target playlist %i" % len(target_playlists))
 
@@ -75,23 +78,21 @@ for p in proc:
 
 # Retrieve results from the out queue and display percentage
 completion = 0
-target_playlists_length = len(target_playlists)
 
 # placeholder for a running map@5
 run_map5 = []
-run_map5_n = 0
+run_auc = []
 map_playlist = []
-missing = len(target_playlists)
+auc_playlist = []
+
 done = set()
-for i in xrange(missing):
+for i in xrange(target_playlists_length):
     try:
-        r = q_out.get()
+        r = q_out.get(timeout=300)
     except:
         missing = list(done.symmetric_difference(target_playlists))
-        logging.debug("Missing: %s, Requesting new recommendations", (missing))
-        rec = recommender_system.make_collaborative_item_item_recommendations(missing[0])
-        check_rec = recommender_system.check_recommendations(missing[0], rec)
-        r = [check_rec, -1, missing[0], len(db.get_playlist_tracks(missing[0]))]
+        logging.debug("Missing: %s, Please request new recommendations manually" % missing)
+        break
     if r == -1:
         continue
     if not suppress_output:
@@ -102,21 +103,27 @@ for i in xrange(missing):
             sys.stdout.flush()
             completion = percentage
     if test: # if the test istance is enabled more logging is done
-        logging.debug("worker number %i reporting result %s for playlist %i" % (r[1],r[0],r[2]))
-        done.add(r[2])
+        map5, auc_score, precision, recall, worker, playlist, playlist_length = r
+        logging.debug("worker number %i reporting map %f, auc %f, precision %f, recall %f for playlist %i" % (worker, map5, auc_score, precision, recall, playlist))
+        done.add(playlist)
 
-        (map5, precision, recall) = r[0]
-        map_playlist.append([map5, r[3]])
+        map_playlist.append([map5, playlist_length])
+        auc_playlist.append([auc_score, playlist_length])
 
         # calculate a running map@5 value
         run_map5.append(map5)
-        run_map5_n += 1
-        avg = sum(run_map5)/run_map5_n
+        avg_map5 = helper.mean(run_map5)
 
-        logging.debug("running map5 average %f" % avg)
+        run_auc.append(auc_score)
+        avg_auc = helper.mean(run_auc)
+
+        logging.debug("running map5 average %f" % avg_map5)
+        logging.debug("running auc average %f" % avg_auc)
         logging.debug("map@5 distribution %s" % Counter(sorted(run_map5)).items())
-        r=r[0]
-    results.append(r)
+        results.append([map5, auc_score, precision, recall])
+    else:
+        identifier, playlist, recommendations = r
+        results.append([identifier, playlist, recommendations])
     logging.debug("results length so far: %i" % len(results))
 
 # Terminate worker process
@@ -126,15 +133,14 @@ logging.debug("All process terminated succesfully")
 if test:
     # write test results
     results_length = len(results)
-    map5_res = [map5 for map5, precision, recall in results]
-    precision_res = [precision for map5, precision, recall in results]
-    recall_res = [recall for map5, precision, recall in results]
+    map5_res, auc_res, precision_res, recall_res = zip(*results)
 
-    avg_map5 = sum(map5_res)/float(results_length)
-    avg_precision = sum(precision_res)/float(results_length)
-    avg_recall = sum(recall_res)/float(results_length)
+    avg_map5 = helper.mean(map5_res)
+    avg_auc = helper.mean(auc_res)
+    avg_precision = helper.mean(precision_res)
+    avg_recall = helper.mean(recall_res)
 
-    to_write = [["MAP@5", avg_map5], ["Precision", avg_precision], ["Recall", avg_recall]]
+    to_write = [["AVG MAP@5", avg_map5], ["AVG ROC_AUC", avg_auc], ["Precision", avg_precision], ["Recall", avg_recall]]
     logging.debug("map@5 distribution %s" % Counter(map5_res).items())
     map_playlist.sort(key=itemgetter(1))
     logging.debug("map@5/playlists_length distribution %s" % map_playlist)
@@ -160,9 +166,9 @@ if test:
     helper.write("test_result"+str(instance), to_write, '\t')
 else:
     #write normal results
-    result = [[x[1], x[2]] for x in sorted(results, key=itemgetter(0))]
-    for playlist, recommendation in result:
-        elem = [playlist, reduce(lambda x, y: str(x) + ' ' + str(y), recommendation)]
+    result = [[playlist, recommendations] for identifier, playlist, recommendations in sorted(results, key=itemgetter(0))]
+    for playlist, recommendations in result:
+        elem = [playlist, ' '.join(str(x) for x in recommendations)]
         to_write.append(elem)
     logging.debug(to_write)
     helper.write("result", to_write)
