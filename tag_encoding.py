@@ -8,6 +8,8 @@ tags = [tag for line in tracks_map.values() for tag in line[4]]
 tags_set = set(tags)
 tags_sorted = sorted(tags_set)
 
+print "Encoded", len(tags_set), "tags!"
+
 tags_joined = ','.join([str(elem) for elem in tags_sorted])
 
 file_to = open("data/tag_encoding", "wb+")
