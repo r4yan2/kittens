@@ -69,7 +69,7 @@ class Database:
 
     def get_playlists(self):
         """
-        getter for the playlists set
+        getter for the playlists set IN TRAIN
 
         :return: set of playlists
         """
@@ -827,7 +827,7 @@ class Database:
         user_tracks = self.get_playlist_user_tracks(playlist)
         return user_tracks.count(track)
 
-    def get_average_track_inclusion(self, track):
+    def get_track_inclusion_value(self, track):
         """
         Get the actual number of playlist which included the track
         
@@ -1338,16 +1338,14 @@ class Database:
         :param track:
         :return:
         """
-        try:
-            return self.tracks_map[track][4]
-        except AttributeError:
-            track_map = self.get_tracks_map()
+        while True:
             try:
-                return track_map[track][4]
+                tags = self.tracks_map[track][4]
+                return tags 
+            except AttributeError:
+                track_map = self.get_tracks_map()
             except LookupError:
                 return []
-        except LookupError:
-            return []
 
     def get_track_tags_map(self):
         """
@@ -1420,6 +1418,15 @@ class Database:
                 playlists = self.get_track_playlists(track, n=10)
                 titles_track = [title for playlist in playlists for title in self.get_titles_playlist(playlist)]
                 self.track_titles_map[track] = titles_track
+    
+    def get_titles(self):
+        """
+        Getter for all the titles in the database
+        
+        :return: list of titles (int)
+        """
+        playlist_final = self.get_playlist_final()
+        return set([title for playlist in playlist_final for title in playlist_final[playlist][1]])
 
     def get_titles_playlist(self, playlist):
         """
@@ -1444,12 +1451,7 @@ class Database:
         playlist_titles_included = title_playlist_map[title]
         den_idf = float(len(playlist_titles_included))
         num_idf = self.get_num_playlists()
-        try:
-            idf = math.log1p(num_idf / den_idf)
-        except ValueError:
-            idf = 0
-        except ZeroDivisionError:
-            idf = 0
+        idf = math.log10(num_idf / den_idf)
         return idf
 
     def get_track_playlists_map(self):
