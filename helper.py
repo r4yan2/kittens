@@ -284,7 +284,11 @@ def plot(lst):
         for elem in lst:
             if not isinstance(elem, str):
                 raise ValueError("Input is not a string")
-            to_draw = [[int(length), float(value)] for value, length in read(elem, ',')]
+            to_draw_value = (float(value) for value, length in read(elem, ','))
+            to_draw_length = [int(length) for value, length in read(elem, ',')]
+            to_draw_pos = set(to_draw_length)
+            to_draw = [[i, next(to_draw_value) if i in to_draw_pos else 0.0] for i in xrange(1,len(to_draw_length))]
+            #to_draw = [[int(length), float(value)] for value, length in read(elem, ',')]
             plt.plot(*zip(*to_draw), label=elem)
     plt.legend(loc='best')
     plt.show(block=False)
