@@ -683,6 +683,24 @@ class Database:
             except KeyError:
                 pass
 
+    def get_track_significative_titles(self, track):
+        """
+        Try to guess what's the most significant titles for the track if any
+        
+        :param track: track
+        :return: titles (int list) 
+        """
+        titles = self.get_titles_track(track)
+        counter_titles = Counter(titles).items()
+        mean = helper.mean([value for title, value in counter_titles])
+        try:
+            max_value = max(counter_titles, key=itemgetter(1))
+        except ValueError:
+            return -1
+        if max_value[1] > mean:
+            return max_value[0]
+        else:
+            return -1
 
     def get_train_list(self):
         """
