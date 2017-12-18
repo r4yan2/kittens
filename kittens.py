@@ -27,12 +27,16 @@ choice = int(sys.argv[2])
 core = int(sys.argv[3])
 
 if len(sys.argv) > 5:
-    fp = open("individual", "rb")
-    individual = helper.parseFloatList(fp.readline())
+    try:
+        fp = open(sys.argv[5], "rb")
+    except FileNotFoundError as e:
+        logging.debug("Not found %s" % (e))
+        sys.exit(0)
+    individual = helper.parseIntList(fp.readline())
     fp.close()
     db = Database(instance, individual)
     suppress_output = True
-    logging.debug("individual parsed, kittens output suppressed\nIndividual: %s" % (individual,))
+    logging.debug("individual parsed, kittens output suppressed\n")
 else:
     db = Database(instance)
     suppress_output = False
