@@ -684,6 +684,25 @@ class Database:
             except KeyError:
                 pass
 
+    def get_playlist_significative_tag(self, playlist):
+        """
+        Try to catch the most significative tag in the playlist
+
+        :param playlist: playlist
+        :return tag: int tag
+        """
+        tags = [tag for track in self.get_playlist_tracks(playlist) for tag in self.get_track_tags(track)]
+        tags_counter = Counter(tags).items()
+        mean = helper.mean([value for tag, value in tags_counter])
+        try:
+            max_value = max(tags_counter, key=itemgetter(1))
+        except ValueError:
+            return -1
+        if max_value[1] > mean:
+            return max_value[0]
+        else:
+            return -1
+
     def get_track_significative_titles(self, track):
         """
         Try to guess what's the most significant titles for the track if any
@@ -691,17 +710,10 @@ class Database:
         :param track: track
         :return: titles (int list)
         """
-        titles = self.get_titles_track(track)
-        counter_titles = Counter(titles).items()
-        mean = helper.mean([value for title, value in counter_titles])
-        try:
-            max_value = max(counter_titles, key=itemgetter(1))
-        except ValueError:
-            return -1
-        if max_value[1] > mean:
-            return max_value[0]
-        else:
-            return -1
+        titles = self.get_track_titles(track)
+        counter_titles = Counter(titles)
+        mean = helper.mean([value for title, value in counter_titles.iteritems()])
+        return [title for title in titles if counter_titles[title] > mean]
 
     def get_train_list(self):
         """
