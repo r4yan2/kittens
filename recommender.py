@@ -474,10 +474,10 @@ class Recommender:
             k = 1.2
             b = 0.75
             len_over_avg = k * (1 - b + b * playlist_features_length/average)
-            tf_idf_playlist = [self.db.get_tag_idf(tag) * ((playlist_features.count(tag) * (k + 1)) / (playlist_features.count(tag) + len_over_avg)) for tag in playlist_features_unique]
+            tf_idf_playlist = [self.db.get_tag_idf(tag, tf_idf) * ((playlist_features.count(tag) * (k + 1)) / (playlist_features.count(tag) + len_over_avg)) for tag in playlist_features_unique]
         elif tf_idf == "normal":
-            tf_idf_playlist = [(1.0 + math.log(playlist_features.count(tag), 10)) * self.db.get_tag_idf(tag) for tag in playlist_features_unique]
-            
+            tf_idf_playlist = [(1.0 + math.log10(playlist_features.count(tag))) * self.db.get_tag_idf(tag, tf_idf) for tag in playlist_features_unique]
+
         average_track_tags_count = self.db.get_average_track_tags_count()
 
         for track in target_tracks:
@@ -485,14 +485,14 @@ class Recommender:
             tags = self.db.get_track_tags(track)
             if tf_idf == "bm25":
                 tf_track = (k + 1) / (1 + k * (1 - b + b * (len(tags) / average_track_tags_count))) # tags.count(tag) is always 1
-                tf_idf_track = [self.db.get_tag_idf(tag) * tf_track for tag in tags]
+                tf_idf_track = [self.db.get_tag_idf(tag, tf_idf) * tf_track for tag in tags]
             elif tf_idf == "normal":
-                tf_idf_track = [self.db.get_tag_idf(tag) for tag in tags]
+                tf_idf_track = [self.db.get_tag_idf(tag, tf_idf) for tag in tags]
 
             if coefficient == "pearson":
 
-                mean_tfidf_track = sum(tf_idf_track) / len(tf_idf_track)
-                mean_tfidf_playlist = sum(tf_idf_playlist) / len(tf_idf_playlist)
+                mean_tfidf_track = helper.mean(tf_idf_track)
+                mean_tfidf_playlist = helper.mean(tf_idf_playlist)
 
                 numerator = sum([(tf_idf_track[tags.index(tag)] - mean_tfidf_track) *
                                (tf_idf_playlist[playlist_features_unique.index(tag)] - mean_tfidf_playlist)
