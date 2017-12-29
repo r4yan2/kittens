@@ -1220,15 +1220,15 @@ class Database:
         tracks.next()
         result = {}
         iterator = -10
-        if self.whitelist:
+        if self.tag_whitelist:
             try:
-                fp = open('data/whitelist', 'rb')
-                whitelist = set(helper.parseIntList(fp.readline()))
+                fp = open('data/tag_whitelist', 'rb')
+                tag_whitelist = set(helper.parseList(fp.readline(), int))
                 fp.close()
-                logging.debug("Loaded whitelist!")
+                logging.debug("Loaded tag whitelist!")
             except:
-                self.whitelist = False
-                logging.debug("No whitelist file found, continuing with all tags!")
+                self.tag_whitelist = False
+                logging.debug("No tag whitelist file found, continuing with all tags!")
 
         for track in tracks:
             track_id = int(track[0])
