@@ -6,7 +6,7 @@ import logging
 from operator import itemgetter
 
 class Database:
-    def __init__(self, test, individual=None, tags="extended", whitelist=True):
+    def __init__(self, test, individual=False, coefficient=False, extended=True, tag_whitelist=True, title_whitelist=False):
         """
         if we are in test execution train_set, test_set are loaded transparently,
         otherwise the normal dataset are loaded
@@ -17,10 +17,17 @@ class Database:
         :param whitelist: if whitelist have to be loaded
         :return: the initialized object
         """
-        self.tags_mode = tags
-        self.whitelist = whitelist
+        if individual:
+            fp = open(individual, "rb")
+            self.individual = helper.parseList(fp.readline(), float)
+            fp.close()
+        else:
+            self.individual = False
+
+        self.extended = extended
+        self.tag_whitelist = tag_whitelist
+        self.title_whitelist = title_whitelist
         self.test = test
-        self.individual = individual
         
         logging.debug("Loading database with istance %i..." % (test))
 
@@ -799,16 +806,19 @@ class Database:
         :return: 1 if tag is in the gene 0 otherwise
         """
         while True:
-            try:
-                return self.encoding[active_tag]
-            except AttributeError:
-                fp = open("data/tag_encoding", "rb")
-                self.tag_encoding = helper.parseIntList(fp.readline())
-                if len(self.individual) != len(self.tag_encoding):
-                    raise ValueError("individual - tag association mismatch! Please check tag encoding")
-                    sys.exit(0)
-                self.encoding = {tag: individual for individual, tag in zip(self.individual, self.tag_encoding)}
-            except KeyError:
+            if self.individual:
+                try:
+                    return self.encoding[active_tag]
+                except AttributeError:
+                    fp = open("data/tag_encoding", "rb")
+                    self.tag_encoding = helper.parseList(fp.readline(), int)
+                    if len(self.individual) != len(self.tag_encoding):
+                        raise ValueError("individual - tag association mismatch! Please check tag encoding")
+                        sys.exit(0)
+                    self.encoding = {tag: individual for individual, tag in zip(self.individual, self.tag_encoding)}
+                except KeyError:
+                    return 1.0
+            else:
                 return 1.0
 
     def get_favourite_user_track(self, track):
@@ -1056,21 +1066,30 @@ class Database:
         """
         try:
             return self.playlist_final
-
         except AttributeError:
-
             playlist_list = helper.read("playlists_final")
             result = {}
             playlist_list.next()
+            if self.title_whitelist:
+                try:
+                    fp = open('data/title_whitelist', 'rb')
+                    title_whitelist = set(helper.parseList(fp.readline(), int))
+                    fp.close()
+                    logging.debug("Loaded title whitelist!")
+                except:
+                    self.title_whitelist = False
+                    logging.debug("No title whitelist file found, continuing with all tags!")
             for playlist in playlist_list:
                 created_at = int(playlist[0])
                 playlist_id = int(playlist[1])
-                title = helper.parseIntList(playlist[2])
+                titles = helper.parseList(playlist[2], int)
+                if self.title_whitelist:
+                    titles = [title for title in titles if title in title_whitelist]
                 numtracks = int(playlist[3])
                 duration = int(playlist[4])
                 owner = int(playlist[5])
 
-                result[playlist_id]= [created_at, title, numtracks, duration, owner]
+                result[playlist_id]= [created_at, titles, numtracks, duration, owner]
             self.playlist_final = result
             return self.playlist_final
 
