@@ -416,7 +416,7 @@ class Database:
         for playlist_b in playlists:
 
             created_at = self.get_created_at_playlist(playlist_b)
-            if not math.fabs(created_at_active - created_at) < (60 * 60 * 24 * 365 * 3):
+            if math.fabs(created_at_active - created_at) > (60 * 60 * 24 * 365 * 3) or self.get_playlist_numtracks(playlist_b) < 10:
                 continue
 
             tracks_playlist_b = set(self.get_playlist_tracks(playlist_b))
@@ -511,6 +511,7 @@ class Database:
         already_scanned_user = set()
         playlists = self.get_playlists()
         created_at_active = self.get_created_at_playlist(active_playlist)
+        target_tracks = self.get_target_tracks()
 
         neighborhood = []
         for playlist in playlists:
@@ -535,7 +536,7 @@ class Database:
             elif coefficient == "jaccard":
                 similarity = helper.jaccard(active_tracks, tracks)
 
-            neighborhood.append([tracks, similarity])
+            neighborhood.append([target_tracks.intersection(tracks), similarity])
         neighborhood.sort(key=itemgetter(1), reverse=True)
         return [track for tracks, value in neighborhood[0:knn] for track in tracks]
 
@@ -578,7 +579,7 @@ class Database:
             except KeyError:
                 return 0.0
         except AttributeError:
-            similarities = helper.read("item-item-similarities"+str(self.test), ",")
+            similarities = helper.read("STAI TOCCANDO LA FUNZIONE SBAGLIATA!"+str(self.test), ",")
             self.similarities_map = {}
             for (x,y, value) in similarities:
                 x = int(x)
