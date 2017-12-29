@@ -1093,6 +1093,15 @@ class Database:
             self.playlist_final = result
             return self.playlist_final
 
+    def get_playlist_numtracks(self, playlist):
+        """
+        Get the number of tracks of the given playlist as specified in playlist_final.csv
+
+        :param playlist: int playlist
+        :return: int numtracks
+        """
+        return self.playlist_final[playlist][2]
+
     def user_user_similarity(self, active_user, knn=75):
         """
         Get similarity value based on the user owner of the playlist
