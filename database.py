@@ -1453,7 +1453,7 @@ class Database:
             track_playlists_map = self.get_track_playlists_map()
             return track_playlists_map[track]
 
-    def get_titles_track(self, track):
+    def get_track_titles(self, track):
         """
         Get all the titles associated to the track
         track -> playlists -> titles
@@ -1468,7 +1468,7 @@ class Database:
                 self.track_titles_map = {}
             except KeyError:
                 playlists = self.get_track_playlists(track, n=10)
-                titles_track = [title for playlist in playlists for title in self.get_titles_playlist(playlist)]
+                titles_track = [title for playlist in playlists for title in self.get_playlist_titles(playlist)]
                 self.track_titles_map[track] = titles_track
     
     def get_titles(self):
@@ -1480,7 +1480,7 @@ class Database:
         playlist_final = self.get_playlist_final()
         return set([title for playlist in playlist_final for title in playlist_final[playlist][1]])
 
-    def get_titles_playlist(self, playlist):
+    def get_playlist_titles(self, playlist):
         """
         Getter for the playlist titles
 
@@ -1500,10 +1500,10 @@ class Database:
         :return:
         """
         title_playlist_map = self.get_title_playlists_map()
-        playlist_titles_included = title_playlist_map[title]
-        den_idf = float(len(playlist_titles_included))
+        playlist_including_title = title_playlist_map[title]
+        den_idf = float(len(playlist_including_title))
         num_idf = self.get_num_playlists()
-        idf = math.log10(num_idf / den_idf)
+        idf = math.log1p(num_idf / den_idf) #smooth logarithm ln(1+x)
         return idf
 
     def get_track_playlists_map(self):
