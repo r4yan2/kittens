@@ -785,13 +785,19 @@ class Database:
             train_list = helper.read(to_open)
             logging.debug("loaded %s" % (to_open))
             train_list.next()
-            self.train_list = [[int(element[0]), int(element[1])] for element in train_list if int(element[1]) in track_whitelist]
+            if self.track_whitelist:
+                self.train_list = [[int(element[0]), int(element[1])] for element in train_list if int(element[1]) in track_whitelist]
+            else:
+                self.train_list = [[int(element[0]), int(element[1])] for element in train_list]
             self.num_interactions = len(self.train_list)
         else:
             to_open = "train_set"+str(test)
             train_list = helper.read(to_open)
             logging.debug("loaded %s" % (to_open))
-            self.train_list = [[int(element[0]), int(element[1])] for element in train_list if int(element[1]) in track_whitelist]
+            if self.track_whitelist:
+                self.train_list = [[int(element[0]), int(element[1])] for element in train_list if int(element[1]) in track_whitelist]
+            else:
+                self.train_list = [[int(element[0]), int(element[1])] for element in train_list]
             self.num_interactions = len(self.train_list)
 
     def get_tag_playlists_map(self):
