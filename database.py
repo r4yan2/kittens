@@ -6,7 +6,7 @@ import logging
 from operator import itemgetter
 
 class Database:
-    def __init__(self, test, individual=False, coefficient=False, extended=True, tag_whitelist=True, title_whitelist=False):
+    def __init__(self, test, individual=False, coefficient=False, extended=True, tag_whitelist=True, title_whitelist=False, track_whitelist=False):
         """
         if we are in test execution train_set, test_set are loaded transparently,
         otherwise the normal dataset are loaded
@@ -27,6 +27,7 @@ class Database:
         self.extended = extended
         self.tag_whitelist = tag_whitelist
         self.title_whitelist = title_whitelist
+        self.track_whitelist = track_whitelist
         self.test = test
         
         logging.debug("Loading database with istance %i..." % (test))
@@ -367,6 +368,93 @@ class Database:
                         return tracks
             return tracks
 
+    def compute_collaborative_playlists_similarity(self, playlist, knn=50, tracks_knn=150, coefficient="jaccard", values="None", target_tracks="include"):
+        """
+        This method computes the similarities between playlists based on the included tracks.
+        Various coefficient can be used (jaccard, map, cosine, pearson)
+        NB: the best is jaccard
+        
+        :param playlist: active_playlist
+        :param knn: cardinality of the neighborhood *** USE tracks_knn INSTEAD ***
+        :param tracks_knn: an alternate way of returning results, if specified return the knn best matching tracks
+        :param coefficient: coefficient to use
+        :param values: if None return only the playlists, if all return also the values
+        :param target_tracks: default include only target_tracks in tracks_knn
+        :return: list of playlists
+        """
+        playlists = self.get_playlists()
+        tracks_playlist = set(self.get_playlist_tracks(playlist))
+        tracks_playlist_length = len(tracks_playlist)
+        created_at_active = self.get_created_at_playlist(playlist)
+        similarities = []
+        
+        for playlist_b in playlists:
+            
+            created_at = self.get_created_at_playlist(playlist_b)
+            if math.fabs(created_at_active - created_at) > (60 * 60 * 24 * 365 * 3) or self.get_playlist_numtracks(playlist_b) < 10:
+                continue
+            
+            tracks_playlist_b = set(self.get_playlist_tracks(playlist_b))
+            tracks_playlist_b_length = len(tracks_playlist_b)
+            
+            if coefficient == "jaccard":
+                jaccard = helper.jaccard(tracks_playlist, tracks_playlist_b)
+                if jaccard > 0:
+                    similarities.append([playlist_b, jaccard])
+                
+            elif coefficient == "cosine":
+                num_cosine_sim = sum([float(track in tracks_playlist) for track in tracks_playlist_b])
+                
+                den_cosine_sim = math.sqrt(len(tracks_playlist)) * math.sqrt(
+                len(tracks_playlist_b))
+                
+                try:
+                    cosine_sim = num_cosine_sim / den_cosine_sim
+                except ZeroDivisionError:
+                    cosine_sim = 0
+                    
+                similarities.append([playlist_b, cosine_sim])
+            elif coefficient == "pearson":
+                
+                matched = sum([float(track in tracks_playlist) for track in tracks_playlist_b])
+                
+                not_matched_a = tracks_playlist_length - matched
+                not_matched_b = tracks_playlist_b_length - matched
+                mean_playlist_a = tracks_playlist_length / self.get_num_tracks()
+                mean_playlist_b = tracks_playlist_b_length / self.get_num_tracks()
+                
+                numerator = sum([matched * (1.0 - mean_playlist_a) * (1.0 - mean_playlist_b), not_matched_a * (1.0 - mean_playlist_a) * (0.0 - mean_playlist_b), not_matched_b * (0.0 - mean_playlist_a) * (1.0 - mean_playlist_b), (self.get_num_tracks() - not_matched_a - not_matched_b - matched) * (0.0 - mean_playlist_a) * (0.0 - mean_playlist_b)])
+                
+                denominator = math.sqrt(sum([tracks_playlist_length * (1.0 - mean_playlist_a), (self.get_num_tracks() - tracks_playlist_length) * (0.0 - mean_playlist_a)])) * math.sqrt(sum([tracks_playlist_b_length * (1.0 - mean_playlist_b), (self.get_num_tracks() - tracks_playlist_length) * (0.0 - mean_playlist_b)]))
+                
+                pearson = numerator/denominator
+                
+                similarities.append([playlist_b, pearson])
+                
+        similarities.sort(key=itemgetter(1), reverse=True)
+        if tracks_knn == None:
+            if values == "None":
+                return  [playlist for playlist, value in similarities[0:knn]]
+            elif values == "all":
+                return similarities[0:knn]
+        else:
+            tracks = set()
+            iterator = 0
+            if target_tracks != "include":
+                while len(tracks) < tracks_knn:
+                    tracks += self.get_playlist_tracks(similarities[iterator][0])
+                    iterator += 1
+            else:
+                target_tracks = self.get_target_tracks()
+                while len(tracks) < tracks_knn:
+                    try:
+                        tracks.update(target_tracks.intersection(self.get_playlist_tracks(similarities[iterator][0])).difference(tracks_playlist))
+                    except IndexError as e:
+                        logging.debug("Hit an Index Error when selecting tracks for %i\nIndex: %i Error:%s" % (playlist, iterator, e))
+                        return tracks
+                    iterator += 1
+                    return tracks
+
     def get_min_max_playlists(self):
         """
         Getter for the min and max values of playlists identifier
@@ -393,92 +481,6 @@ class Database:
             self.max_track = max(tracks)
             return self.min_track, self.max_track
 
-    def compute_collaborative_playlists_similarity(self, playlist, knn=50, tracks_knn=150, coefficient="jaccard", values="None", target_tracks="include"):
-        """
-        This method computes the similarities between playlists based on the included tracks.
-        Various coefficient can be used (jaccard, map, cosine, pearson)
-        NB: the best is jaccard
-
-        :param playlist: active_playlist
-        :param knn: cardinality of the neighborhood *** USE tracks_knn INSTEAD ***
-        :param tracks_knn: an alternate way of returning results, if specified return the knn best matching tracks
-        :param coefficient: coefficient to use
-        :param values: if None return only the playlists, if all return also the values
-        :param target_tracks: default include only target_tracks in tracks_knn
-        :return: list of playlists
-        """
-        playlists = self.get_playlists()
-        tracks_playlist = set(self.get_playlist_tracks(playlist))
-        tracks_playlist_length = len(tracks_playlist)
-        created_at_active = self.get_created_at_playlist(playlist)
-        similarities = []
-
-        for playlist_b in playlists:
-
-            created_at = self.get_created_at_playlist(playlist_b)
-            if math.fabs(created_at_active - created_at) > (60 * 60 * 24 * 365 * 3) or self.get_playlist_numtracks(playlist_b) < 10:
-                continue
-
-            tracks_playlist_b = set(self.get_playlist_tracks(playlist_b))
-            tracks_playlist_b_length = len(tracks_playlist_b)
-
-            if coefficient == "jaccard":
-                jaccard = helper.jaccard(tracks_playlist, tracks_playlist_b)
-                similarities.append([playlist_b, jaccard])
-
-            elif coefficient == "cosine":
-                num_cosine_sim = sum([float(track in tracks_playlist) for track in tracks_playlist_b])
-
-                den_cosine_sim = math.sqrt(len(tracks_playlist)) * math.sqrt(
-                    len(tracks_playlist_b))
-
-                try:
-                    cosine_sim = num_cosine_sim / den_cosine_sim
-                except ZeroDivisionError:
-                    cosine_sim = 0
-
-                similarities.append([playlist_b, cosine_sim])
-            elif coefficient == "pearson":
-
-                matched = sum([float(track in tracks_playlist) for track in tracks_playlist_b])
-
-                not_matched_a = tracks_playlist_length - matched
-                not_matched_b = tracks_playlist_b_length - matched
-                mean_playlist_a = tracks_playlist_length / self.get_num_tracks()
-                mean_playlist_b = tracks_playlist_b_length / self.get_num_tracks()
-
-                numerator = sum([matched * (1.0 - mean_playlist_a) * (1.0 - mean_playlist_b), not_matched_a * (1.0 - mean_playlist_a) * (0.0 - mean_playlist_b), not_matched_b * (0.0 - mean_playlist_a) * (1.0 - mean_playlist_b), (self.get_num_tracks() - not_matched_a - not_matched_b - matched) * (0.0 - mean_playlist_a) * (0.0 - mean_playlist_b)])
-
-                denominator = math.sqrt(sum([tracks_playlist_length * (1.0 - mean_playlist_a), (self.get_num_tracks() - tracks_playlist_length) * (0.0 - mean_playlist_a)])) * math.sqrt(sum([tracks_playlist_b_length * (1.0 - mean_playlist_b), (self.get_num_tracks() - tracks_playlist_length) * (0.0 - mean_playlist_b)]))
-
-                pearson = numerator/denominator
-
-                similarities.append([playlist_b, pearson])
-
-        similarities.sort(key=itemgetter(1), reverse=True)
-        if tracks_knn == None:
-            if values == "None":
-                return  [playlist for playlist, value in similarities[0:knn]]
-            elif values == "all":
-                return similarities[0:knn]
-        else:
-            tracks = set()
-            iterator = 0
-            if target_tracks != "include":
-                while len(tracks) < tracks_knn:
-                    tracks += self.get_playlist_tracks(similarities[iterator][0])
-                    iterator += 1
-
-            else:
-                target_tracks = self.get_target_tracks()
-                while len(tracks) < tracks_knn:
-                    try:
-                        tracks.update(target_tracks.intersection(self.get_playlist_tracks(similarities[iterator][0])).difference(tracks_playlist))
-                    except IndexError as e:
-                        logging.debug("Hit an Index Error when selecting tracks for %i\nIndex: %i Error:%s" % (playlist, iterator, e))
-                        return tracks
-                    iterator += 1
-            return tracks
 
     def get_taxonomy_value(self, i, j):
         """
@@ -768,18 +770,28 @@ class Database:
         :param test: specify the istance of test if enabled
         :return: None
         """
+        if self.track_whitelist:
+            try:
+                fp = open('data/track_whitelist', 'rb')
+                track_whitelist = set(helper.parseList(fp.readline(), int))
+                fp.close()
+                logging.debug("Loaded track whitelist!")
+            except:
+                self.track_whitelist = False
+                logging.debug("No track whitelist file found, continuing with all tags!")
+            
         if test == None:
             to_open = "train_final"
             train_list = helper.read(to_open)
             logging.debug("loaded %s" % (to_open))
             train_list.next()
-            self.train_list = [[int(element[0]), int(element[1])] for element in train_list]
+            self.train_list = [[int(element[0]), int(element[1])] for element in train_list if int(element[1]) in track_whitelist]
             self.num_interactions = len(self.train_list)
         else:
             to_open = "train_set"+str(test)
             train_list = helper.read(to_open)
             logging.debug("loaded %s" % (to_open))
-            self.train_list = [[int(element[0]), int(element[1])] for element in train_list]
+            self.train_list = [[int(element[0]), int(element[1])] for element in train_list if int(element[1]) in track_whitelist]
             self.num_interactions = len(self.train_list)
 
     def get_tag_playlists_map(self):
@@ -1259,11 +1271,11 @@ class Database:
             if self.extended:
                 tags = [artist_id + 276615] + [album + 847203 if album > 0 else iterator] + tags
                 tags = [tag for tag in tags if tag > 0]
-            if self.whitelist:
-                tags = [tag for tag in tags if tag in whitelist]
+            if self.tag_whitelist:
+                tags = [tag for tag in tags if tag in tag_whitelist]
             try:
                 if self.individual:
-                    tags = [tag for tag in tags if self.genetic(tag)]
+                    tags = [tag for tag in tags if math.ceil(self.genetic(tag))]
             except Exception as e:
                 print e
             result[track_id]= [artist_id, duration, playcount, album, tags]
