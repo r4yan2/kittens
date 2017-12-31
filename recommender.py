@@ -156,7 +156,8 @@ class Recommender:
             elif choice == 7:
                 try:
                     recommendations = self.make_tf_idf_titles_recommendations(target)
-                except ValueError:
+                except ValueError as e:
+                    logging.debug("titles recommendations cannot be done for %i because of %s" % (target, e))
                     try:
                         recommendations = self.make_tf_idf_recommendations(target)
                     except ValueError:
@@ -179,8 +180,8 @@ class Recommender:
                 try:
                     recommendations = self.make_collaborative_item_item_recommendations(target)
                 except ValueError as e:
-                   logging.debug("cannot use collaborative for %i because of %s" % (target, e))
-                   #q_out.put(-1)
+                    logging.debug("cannot use collaborative for %i because of %s" % (target, e))
+                    #q_out.put(-1)
 
             elif choice == 12:
                 try:
@@ -310,7 +311,7 @@ class Recommender:
                 count += 1
         return recommendations
 
-    def make_top_listened_recommendations(self, playlist, target_tracks=[], recommendations=[], knn=5):
+    def make_top_listened_recommendations(self, playlist, target_tracks=[], recommendations=[], knn=5, reverse_order=True):
         """
         Recommend the knn top listened tracks in the dataset
 
@@ -322,19 +323,14 @@ class Recommender:
         """
         if target_tracks == []:
             target_tracks = self.db.get_target_tracks()
+            already_included = self.db.get_playlist_tracks(playlist)
+            target_tracks = target_tracks.difference(already_included).difference(recommendations)
         knn -= len(recommendations)
-        top_listened = self.db.get_top_listened()
-        iterator = 0
-        count = 0
-        already_included = self.db.get_playlist_tracks(playlist)
-        while count < knn:
-            item = top_listened[iterator][0]
-            if item not in already_included and item not in recommendations and item in target_tracks:
-                recommendations.append(item)
-                count += 1
-            iterator += 1
+        predictions = [[track, self.db.get_track_playcount(track)] for track in target_tracks]
+        recs = sorted(predictions, key=itemgetter(1), reverse=reverse_order)[:knn]
+        logging.debug("recommendations: %s" % (recs))
 
-        return recommendations
+        return recommendations + [recommendation for recommendation, value in recs]
 
     def make_top_included_recommendations(self, playlist, target_tracks=[], recommendations=[], knn=5):
         """
@@ -485,9 +481,9 @@ class Recommender:
             k = 1.2
             b = 0.75
             len_over_avg = k * (1 - b + b * playlist_features_length/average)
-            tf_idf_playlist = [self.db.get_tag_idf(tag) * ((playlist_features.count(tag) * (k + 1)) / (playlist_features.count(tag) + len_over_avg)) for tag in playlist_features_unique]
+            tf_idf_playlist = [self.db.get_tag_idf(tag, tf_idf) * ((playlist_features.count(tag) * (k + 1)) / (playlist_features.count(tag) + len_over_avg)) for tag in playlist_features_unique]
         elif tf_idf == "normal":
-            tf_idf_playlist = [(1.0 + math.log(playlist_features.count(tag), 10)) * self.db.get_tag_idf(tag) for tag in playlist_features_unique]
+            tf_idf_playlist = [(1.0 + math.log10(playlist_features.count(tag))) * self.db.get_tag_idf(tag, tf_idf) for tag in playlist_features_unique]
 
         average_track_tags_count = self.db.get_average_track_tags_count()
 
@@ -496,14 +492,14 @@ class Recommender:
             tags = self.db.get_track_tags(track)
             if tf_idf == "bm25":
                 tf_track = (k + 1) / (1 + k * (1 - b + b * (len(tags) / average_track_tags_count))) # tags.count(tag) is always 1
-                tf_idf_track = [self.db.get_tag_idf(tag) * tf_track for tag in tags]
+                tf_idf_track = [self.db.get_tag_idf(tag, tf_idf) * tf_track for tag in tags]
             elif tf_idf == "normal":
-                tf_idf_track = [self.db.get_tag_idf(tag) for tag in tags]
+                tf_idf_track = [self.db.get_tag_idf(tag, tf_idf) for tag in tags]
 
             if coefficient == "pearson":
 
-                mean_tfidf_track = sum(tf_idf_track) / len(tf_idf_track)
-                mean_tfidf_playlist = sum(tf_idf_playlist) / len(tf_idf_playlist)
+                mean_tfidf_track = helper.mean(tf_idf_track)
+                mean_tfidf_playlist = helper.mean(tf_idf_playlist)
 
                 numerator = sum([(tf_idf_track[tags.index(tag)] - mean_tfidf_track) *
                                (tf_idf_playlist[playlist_features_unique.index(tag)] - mean_tfidf_playlist)

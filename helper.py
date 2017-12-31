@@ -184,23 +184,15 @@ def jaccard(I, J):
 
     return jaccard_coefficient * mse
 
-def parseIntList(lst):
+def parseList(lst, type):
     """
     Manual parsing for some fields of the csv, help to avoid uses of eval function
 
     :param lst: string to parse
-    :return: parsed integer list
+    :param type: typecast element to the given type
+    :return: parsed type list
     """
-    return [int(num) for num in lst.strip('[]\n').split(',') if num != 'None' and num != '']
-
-def parseFloatList(lst):
-    """
-    Manual parsing for some fields of the csv, help to avoid uses of eval function
-
-    :param lst: string to parse
-    :return: parsed integer list
-    """
-    return [float(num) for num in lst[1:-1].split(',') if num != 'None' and num != '']
+    return [type(num) for num in lst.strip('[]\n').split(',') if num != 'None' and num != '']
 
 def phi_coefficient(list1, list2, tot_tags):
     """
