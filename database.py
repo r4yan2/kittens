@@ -344,21 +344,28 @@ class Database:
     
                 if similarity > 0:
                     neighborhood.append([playlist_b, similarity])
+        neighborhood = sorted(neighborhood, key=itemgetter(1), reverse=True)
+        
+        if only_one:
+            neighborhood = [[playlist, value] for playlist, value in neighborhood if value == 1]
 
-        if tracks_knn == None:
-            if values == "None":
-                return  [playlist for playlist, value in neighborhood[0:knn]]
-            elif values == "all":
+        if not tracks_knn:
+            if return_values:
                 return neighborhood[0:knn]
-        else:
-            tracks = set()
+            else:
+                return [playlist for playlist, _ in neighborhood[0:knn]]
+        elif isinstance(tracks_knn,int):
             iterator = 0
-            if target_tracks != "include":
+            target_tracks = self.get_target_tracks()
+            if return_values:
+                tracks = {}
                 while len(tracks) < tracks_knn:
-                    tracks += self.get_playlist_tracks(neighborhood[iterator][0])
+                    for t in starget_tracks.intersection(self.get_playlist_tracks(neighborhood[iterator][0])).difference(playlist_a_tracks):
+                        if t not in tracks:
+                            tracks[t] = neighborhood[iterator][1]
                     iterator += 1
             else:
-                target_tracks = self.get_target_tracks()
+                tracks = set()
                 while len(tracks) < tracks_knn:
                     try:
                         tracks.update(target_tracks.intersection(self.get_playlist_tracks(neighborhood[iterator][0])).difference(playlist_a_tracks))
@@ -366,7 +373,23 @@ class Database:
                     except IndexError as e:
                         logging.debug("Hit an Index Error when selecting tracks for %i\nIndex: %i Error:%s" % (playlist_a, iterator, e))
                         return tracks
+
             return tracks
+        elif isinstance(tracks_knn, list):
+            target_tracks = self.get_target_tracks()
+            tracks_knn.sort()
+            to_return = []
+            for knn in tracks_knn:
+                iterator = 0
+                tracks = set()
+                while len(tracks) < knn:
+                    try:
+                        tracks.update(target_tracks.intersection(self.get_playlist_tracks(neighborhood[iterator][0])).difference(playlist_a_tracks))
+                        iterator += 1
+                    except IndexError as e:
+                        break
+                to_return.append(tracks)
+            return to_return
 
     def compute_collaborative_playlists_similarity(self, playlist, knn=50, tracks_knn=150, coefficient="jaccard", values="None", target_tracks="include"):
         """
