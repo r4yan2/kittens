@@ -204,22 +204,23 @@ class Database:
                 self.user_tracks[int(u)].append(int(i))
             return self.user_tracks[user]
 
-    def compute_content_playlists_similarity(self, playlist_a, knn=75, single_tag=0, title_flag=0, tag_flag=0, track_flag=1, tracks_knn=150, coefficient="jaccard", values="None", target_tracks="include"):
+    def compute_content_playlists_similarity(self, playlist_a, knn=75, single_tag=0, title_flag=0, tag_flag=0, track_flag=1, tracks_knn=300, coefficient="jaccard", return_values=False, only_one=False):
         """
         This method compute the neighborhood for a given playlists by using content or collaborative techniques
 
         :param playlist_a: given playlist
-        :param knn: cardinality of the neighborhood ***USE tracks_knn INSTEAD***
+        :param knn: cardinality of the neighborhood(in playlists) ***USE tracks_knn INSTEAD***
         :param title_flag: specify if title have to be used
         :param tag_flag: specify if tag have to be used
         :param track_flag: specify if track have to be used
         :param tracks_knn: specify the quantity of neighbor track to return
         :param coefficient: specify which coefficient to use
-        :param values: if computed value of neighborhoodness have to be given back with playlists
-        :param target_tracks: consider target tracks only when selecting knn tracks (leave default)
+        :param return_values: if computed value of neighborhoodness have to be given back with playlists
+        :param only_one: if active only playlists with similarity 1 are considered
         :return: neighborhood
         """
         playlists = self.get_playlists()
+        created_at_active = self.get_created_at_playlist(playlist_a)
 
         if single_tag:
             single_tag = self.get_playlist_significative_tag(playlist_a)
@@ -270,11 +271,12 @@ class Database:
             neighborhood = []
     
             for playlist_b in playlists:
+                created_at = self.get_created_at_playlist(playlist_b)
 
                 if self.get_playlist_numtracks(playlist_b) < 10:
+                    #or math.fabs(created_at_active - created_at) > (60 * 60 * 24 * 365 * 3):
                     continue
     
-                similarity = []
                 playlist_b_tags = []
                 playlist_b_titles = []
                 playlist_b_tracks = []
@@ -344,10 +346,10 @@ class Database:
     
                 if similarity > 0:
                     neighborhood.append([playlist_b, similarity])
-        neighborhood = sorted(neighborhood, key=itemgetter(1), reverse=True)
-        
         if only_one:
             neighborhood = [[playlist, value] for playlist, value in neighborhood if value == 1]
+        else:
+            neighborhood = sorted(neighborhood, key=itemgetter(1), reverse=True)
 
         if not tracks_knn:
             if return_values:
@@ -360,7 +362,7 @@ class Database:
             if return_values:
                 tracks = {}
                 while len(tracks) < tracks_knn:
-                    for t in starget_tracks.intersection(self.get_playlist_tracks(neighborhood[iterator][0])).difference(playlist_a_tracks):
+                    for t in target_tracks.intersection(self.get_playlist_tracks(neighborhood[iterator][0])).difference(playlist_a_tracks):
                         if t not in tracks:
                             tracks[t] = neighborhood[iterator][1]
                     iterator += 1
@@ -381,17 +383,26 @@ class Database:
             to_return = []
             for knn in tracks_knn:
                 iterator = 0
-                tracks = set()
+                if return_values:
+                    tracks = {}
+                else:
+                    tracks = set()
                 while len(tracks) < knn:
-                    try:
-                        tracks.update(target_tracks.intersection(self.get_playlist_tracks(neighborhood[iterator][0])).difference(playlist_a_tracks))
+                    if return_values:
+                        for t in target_tracks.intersection(self.get_playlist_tracks(neighborhood[iterator][0])).difference(playlist_a_tracks):
+                            if t not in tracks:
+                                tracks[t] = neighborhood[iterator][1]
                         iterator += 1
-                    except IndexError as e:
-                        break
+                    else:
+                        try:
+                            tracks.update(target_tracks.intersection(self.get_playlist_tracks(neighborhood[iterator][0])).difference(playlist_a_tracks))
+                            iterator += 1
+                        except IndexError as e:
+                            break
                 to_return.append(tracks)
             return to_return
 
-    def compute_collaborative_playlists_similarity(self, playlist, knn=50, tracks_knn=150, coefficient="jaccard", values="None", target_tracks="include"):
+    def compute_collaborative_playlists_similarity(self, playlist, knn=50, tracks_knn=300, coefficient="jaccard", values="None", target_tracks="include"):
         """
         This method computes the similarities between playlists based on the included tracks.
         Various coefficient can be used (jaccard, map, cosine, pearson)
@@ -414,7 +425,8 @@ class Database:
         for playlist_b in playlists:
             
             created_at = self.get_created_at_playlist(playlist_b)
-            if math.fabs(created_at_active - created_at) > (60 * 60 * 24 * 365 * 3) or self.get_playlist_numtracks(playlist_b) < 10:
+            #if math.fabs(created_at_active - created_at) > (60 * 60 * 24 * 365 * 3) or 
+            if self.get_playlist_numtracks(playlist_b) < 10:
                 continue
             
             tracks_playlist_b = set(self.get_playlist_tracks(playlist_b))
@@ -476,7 +488,7 @@ class Database:
                         logging.debug("Hit an Index Error when selecting tracks for %i\nIndex: %i Error:%s" % (playlist, iterator, e))
                         return tracks
                     iterator += 1
-                    return tracks
+        return tracks
 
     def get_min_max_playlists(self):
         """
