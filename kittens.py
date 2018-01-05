@@ -141,9 +141,7 @@ if test:
     avg_recall = helper.mean(recall_res)
 
     to_write = [["AVG MAP@5", avg_map5], ["AVG ROC_AUC", avg_auc], ["Precision", avg_precision], ["Recall", avg_recall]]
-    logging.debug("map@5 distribution %s" % Counter(map5_res).items())
     map_playlist.sort(key=itemgetter(1))
-    logging.debug("map@5/playlists_length distribution %s" % map_playlist)
 
     old_value = map_playlist[0][1]
     cnt = 0.0
@@ -159,7 +157,6 @@ if test:
             res += map5
             cnt += 1.0
 
-    logging.debug("avg map@5 per playlist length %s" % map_playlist_mean)
     helper.write("map5distr"+str(choice), map_playlist_mean)
 
     logging.debug(to_write)
@@ -170,5 +167,4 @@ else:
     for playlist, recommendations in result:
         elem = [playlist, ' '.join(str(x) for x in recommendations)]
         to_write.append(elem)
-    logging.debug(to_write)
     helper.write("result", to_write)
