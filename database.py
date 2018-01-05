@@ -204,7 +204,7 @@ class Database:
                 self.user_tracks[int(u)].append(int(i))
             return self.user_tracks[user]
 
-    def compute_content_playlists_similarity(self, playlist_a, knn=75, single_tag=0, title_flag=0, tag_flag=0, track_flag=1, tracks_knn=300, coefficient="jaccard", return_values=False, only_one=False, cumulative_track_value=True):
+    def compute_content_playlists_similarity(self, playlist_a, knn=200, single_tag=0, title_flag=0, tag_flag=0, track_flag=1, tracks_knn=300, coefficient="jaccard", return_values=False, only_one=False, cumulative_track_value=False):
         """
         This method compute the neighborhood for a given playlists by using content or collaborative techniques
 
@@ -221,7 +221,6 @@ class Database:
         :return: neighborhood
         """
         playlists = self.get_playlists()
-        created_at_active = self.get_created_at_playlist(playlist_a)
 
         if single_tag:
             single_tag = self.get_playlist_significative_tag(playlist_a)
@@ -272,10 +271,8 @@ class Database:
             neighborhood = []
     
             for playlist_b in playlists:
-                created_at = self.get_created_at_playlist(playlist_b)
 
-                if self.get_playlist_numtracks(playlist_b) < 10:
-                    #or math.fabs(created_at_active - created_at) > (60 * 60 * 24 * 365 * 3):
+                if self.get_playlist_numtracks(playlist_b) < 10 or playlist_b == playlist_a:
                     continue
     
                 playlist_b_tags = []
