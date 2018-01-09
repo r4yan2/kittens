@@ -908,27 +908,24 @@ class Database:
             else:
                 return 1.0
 
-    def get_favourite_user_track(self, track):
+    def get_track_users(self, track):
         """
-        Currently I don't know what this method do
-        track -> user?
+        track -> [users]
 
-        :return:
+        :param: track
+        :return: int list
         """
         playlists = self.get_track_playlists(track)
         playlist_final = self.get_playlist_final()
-        try:
-            return self.favourite_user_track_map[track]
-        except KeyError:
-
-            users = [playlist_final[playlist][4] for playlist in playlists]
-            users_set = set(users)
-            if users == []:
-                self.favourite_user_track_map[track] = []
-            else:
-                max_count = max([users.count(user) for user in users_set])
-                self.favourite_user_track_map[track] = [user for user in users_set if users.count(user) == max_count]
-            return self.favourite_user_track_map[track]
+        while True:
+            try:
+                return self.track_users_map[track]
+            except AttributeError:
+                self.track_users_map = {}
+            except KeyError:
+                users = [playlist_final[playlist][4] for playlist in playlists]
+                users_set = set(users)
+                self.track_users_map[track] = users_set
 
     def get_playlist_tracks_ratings(self, playlist):
         """
