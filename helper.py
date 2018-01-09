@@ -161,10 +161,40 @@ def jaccard(I, J):
     """
     Compute the jaccard similarity improved y multiplication with the mse
 
+    :param I: list
+    :param J: list
+    :return: similarity value
+    """
+    I_len = len(I)
+    J_len = len(J)
+    if not (I_len and J_len):
+        return 0.0
+        #raise ValueError("passed empty lists!")
+    intersection = float(len([1 for i in I if i in J]))
+    if not intersection:
+        return 0.0
+    disjoint = I_len + J_len - 2 * intersection
+    if not disjoint:
+        return 1.0
+    union = intersection + disjoint
+
+    jaccard_coefficient = intersection / union
+    mse = 1.0 - disjoint / union
+
+    return jaccard_coefficient * mse
+
+
+def jaccard_set(I, J):
+    """
+    Compute the jaccard similarity improved y multiplication with the mse
+
     :param I: set
     :param J: set
     :return: similarity value
     """
+    if not (len(I) and len(J)):
+        return 0.0
+        #raise ValueError("passed empty lists!")
     if not isinstance(I, set):
         I = set(I)
     if not isinstance(J, set):
@@ -172,13 +202,11 @@ def jaccard(I, J):
     intersection = float(len(I.intersection(J)))
     if not intersection:
         return 0.0
-    union = float(len(I.union(J)))
-    if not union:
-        return 0.0
     disjoint = float(len(I.symmetric_difference(J)))
-    if disjoint == union:
-        return 0.0
-    #ratseq = [math.fabs(tracks.index(i) - tracks.index(j)) for playlist in I.intersection(J) for tracks in [db.get_playlist_tracks(playlist)]]
+    if not disjoint:
+        return 1.0
+    union = intersection + disjoint
+
     jaccard_coefficient = intersection / union
     mse = 1.0 - disjoint / union
 
