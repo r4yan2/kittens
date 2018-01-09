@@ -1347,6 +1347,20 @@ class Database:
 
         return result
 
+    def get_playlist_user_playlists(self, playlist):
+        """
+        return the playlists of the user who created the given playlist
+        :param playlist: the playlist of the user
+        :return: a list of playlists
+        """
+        playlist_final = self.get_playlist_final()
+        owned_by = playlist_final[playlist][4]
+
+        owner_playlist = self.get_owner_playlists()
+        playlist_list = owner_playlist[owned_by]
+
+        return playlist_list
+
     def get_playlist_user_tracks(self, playlist):
         """
         return the tracks of the user who created the given playlist
@@ -1363,21 +1377,14 @@ class Database:
 
         return tracks_listened
 
-    def get_user_playlists(self, playlist, user=None):
+    def get_user_playlists(self, user):
         """
-        return the playlists of the user who created the given playlist
-        :param playlist: the playlist of the user
-        :return: a list of tracks
+        return the playlists of the user
+        :param user: the user
+        :return: a list of playlists
         """
         owner_playlist = self.get_owner_playlists()
-        if user:
-            return owner_playlist[user]
-        playlist_final = self.get_playlist_final()
-        owned_by = playlist_final[playlist][4]
-
-        playlist_list = owner_playlist[owned_by]
-
-        return playlist_list
+        return owner_playlist[user]
 
     def get_playlist_user(self, playlist):
         """
@@ -1392,8 +1399,9 @@ class Database:
 
     def get_owner_playlists(self):
         """
-        
-        :return:
+        map owner: playlists
+
+        :return: hashmpa
         """
         try:
             return self.owner_playlist
@@ -1651,18 +1659,17 @@ class Database:
         map_tracks = self.get_tracks_map()
         return map_tracks[track][0]
 
-    def get_artist_tracks(self, track):
+    def get_artist_tracks(self, artist):
         """
-        Getter for all the songs of the artist who made the track
+        Getter for all the songs of the artist
 
-        :param track: A single track
+        :param artist: An artist
         :return: the songs list
         """
         map_tracks = self.get_tracks_map()
-        artist = map_tracks[track][0]
         return [track for track in map_tracks if artist == map_tracks[track][0]]
 
-    def get_album_tracks(self, track):
+    def get_track_album_tracks(self, track):
         """
         Getter of all the songs of the album which contains also the current track
         :param track: A single track
