@@ -152,57 +152,16 @@ class Database:
         self.train_list = helper.diff_test_set(train, test)
         self.test_set = test
 
-    def compute_urm(self):
-        """
-        """
-        train = self.get_train_list()
-        urm = [[self.get_playlist_user(playlist), item] for playlist, item in train]
-        urm.sort(key=itemgetter(0,1))
-        to_write = []
-        old_user = urm[0][0]
-        old_item = urm[0][1]
-        count = 0
-        for user, item in urm:
-            if user == old_user:
-                if item == old_item:
-                    count += 1
-                else:
-                    to_write.append([old_user, old_item , count])
-                    old_item = item
-                    count = 1
-            else:
-                to_write.append([old_user, old_item, count])
-                old_user = user
-                old_item = item
-                count = 1
-        helper.write("urm", to_write, ',')
-
-    def get_user_set(self):
-        """
-        Getter for the user set taken from the pre-built urm
-
-        :return: user set
-        """
-        try:
-            return self.user_set
-        except AttributeError:
-            self.user_set = set([int(u) for (u,i,r) in helper.read("urm", ',')])
-            return self.user_set
-
     def get_user_tracks(self, user):
         """
-        Getter for the tracks of the user, taken from the pre-built urm
+        Getter for the tracks of the user
 
         :param user: the user for which we need the tracks
         :return: the list of tracks
         """
-        try:
-            return self.user_tracks[user]
-        except AttributeError:
-            self.user_tracks = defaultdict(lambda: [], {})
-            for (u,i,r) in helper.read("urm", ','):
-                self.user_tracks[int(u)].append(int(i))
-            return self.user_tracks[user]
+        owner_playlists = self.get_owner_playlists()
+        user_tracks = [track for playlist in owner_playlists[user] for track in self.get_playlist_tracks(playlist)]
+        return user_tracks
 
     def compute_content_playlists_similarity(self, playlist_a, knn=200, single_tag=0, title_flag=0, tag_flag=0, track_flag=1, tracks_knn=300, coefficient="jaccard", return_values=False, only_one=False, cumulative_track_value=False):
         """
