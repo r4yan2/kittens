@@ -152,57 +152,16 @@ class Database:
         self.train_list = helper.diff_test_set(train, test)
         self.test_set = test
 
-    def compute_urm(self):
-        """
-        """
-        train = self.get_train_list()
-        urm = [[self.get_playlist_user(playlist), item] for playlist, item in train]
-        urm.sort(key=itemgetter(0,1))
-        to_write = []
-        old_user = urm[0][0]
-        old_item = urm[0][1]
-        count = 0
-        for user, item in urm:
-            if user == old_user:
-                if item == old_item:
-                    count += 1
-                else:
-                    to_write.append([old_user, old_item , count])
-                    old_item = item
-                    count = 1
-            else:
-                to_write.append([old_user, old_item, count])
-                old_user = user
-                old_item = item
-                count = 1
-        helper.write("urm", to_write, ',')
-
-    def get_user_set(self):
-        """
-        Getter for the user set taken from the pre-built urm
-
-        :return: user set
-        """
-        try:
-            return self.user_set
-        except AttributeError:
-            self.user_set = set([int(elem[0]) for elem in helper.read("urm")])
-            return self.user_set
-
     def get_user_tracks(self, user):
         """
-        Getter for the tracks of the user, taken from the pre-built urm
+        Getter for the tracks of the user
 
         :param user: the user for which we need the tracks
         :return: the list of tracks
         """
-        try:
-            return self.user_tracks[user]
-        except AttributeError:
-            self.user_tracks = defaultdict(lambda: [], {})
-            for elem in helper.read("urm"):
-                self.user_tracks[int(elem[0])].append(int(elem[1]))
-            return self.user_tracks[user]
+        owner_playlists = self.get_owner_playlists()
+        user_tracks = [track for playlist in owner_playlists[user] for track in self.get_playlist_tracks(playlist)]
+        return user_tracks
 
     def compute_content_playlists_similarity(self, playlist_a, knn=200, single_tag=0, title_flag=0, tag_flag=0, track_flag=1, tracks_knn=300, coefficient="jaccard", return_values=False, only_one=False, cumulative_track_value=False):
         """
@@ -274,7 +233,7 @@ class Database:
 
                 if self.get_playlist_numtracks(playlist_b) < 10 or playlist_b == playlist_a:
                     continue
-    
+
                 playlist_b_tags = []
                 playlist_b_titles = []
                 playlist_b_tracks = []
@@ -908,27 +867,24 @@ class Database:
             else:
                 return 1.0
 
-    def get_favourite_user_track(self, track):
+    def get_track_users(self, track):
         """
-        Currently I don't know what this method do
-        track -> user?
+        track -> [users]
 
-        :return:
+        :param: track
+        :return: int list
         """
         playlists = self.get_track_playlists(track)
         playlist_final = self.get_playlist_final()
-        try:
-            return self.favourite_user_track_map[track]
-        except KeyError:
-
-            users = [playlist_final[playlist][4] for playlist in playlists]
-            users_set = set(users)
-            if users == []:
-                self.favourite_user_track_map[track] = []
-            else:
-                max_count = max([users.count(user) for user in users_set])
-                self.favourite_user_track_map[track] = [user for user in users_set if users.count(user) == max_count]
-            return self.favourite_user_track_map[track]
+        while True:
+            try:
+                return self.track_users_map[track]
+            except AttributeError:
+                self.track_users_map = {}
+            except KeyError:
+                users = [playlist_final[playlist][4] for playlist in playlists]
+                users_set = set(users)
+                self.track_users_map[track] = users_set
 
     def get_playlist_tracks_ratings(self, playlist):
         """
@@ -1350,6 +1306,20 @@ class Database:
 
         return result
 
+    def get_playlist_user_playlists(self, playlist):
+        """
+        return the playlists of the user who created the given playlist
+        :param playlist: the playlist of the user
+        :return: a list of playlists
+        """
+        playlist_final = self.get_playlist_final()
+        owned_by = playlist_final[playlist][4]
+
+        owner_playlist = self.get_owner_playlists()
+        playlist_list = owner_playlist[owned_by]
+
+        return playlist_list
+
     def get_playlist_user_tracks(self, playlist):
         """
         return the tracks of the user who created the given playlist
@@ -1366,21 +1336,14 @@ class Database:
 
         return tracks_listened
 
-    def get_user_playlists(self, playlist, user=None):
+    def get_user_playlists(self, user):
         """
-        return the playlists of the user who created the given playlist
-        :param playlist: the playlist of the user
-        :return: a list of tracks
+        return the playlists of the user
+        :param user: the user
+        :return: a list of playlists
         """
         owner_playlist = self.get_owner_playlists()
-        if user:
-            return owner_playlist[user]
-        playlist_final = self.get_playlist_final()
-        owned_by = playlist_final[playlist][4]
-
-        playlist_list = owner_playlist[owned_by]
-
-        return playlist_list
+        return owner_playlist[user]
 
     def get_playlist_user(self, playlist):
         """
@@ -1395,8 +1358,9 @@ class Database:
 
     def get_owner_playlists(self):
         """
+        map owner: playlists
 
-        :return:
+        :return: hashmap
         """
         try:
             return self.owner_playlist
@@ -1654,18 +1618,17 @@ class Database:
         map_tracks = self.get_tracks_map()
         return map_tracks[track][0]
 
-    def get_artist_tracks(self, track):
+    def get_artist_tracks(self, artist):
         """
-        Getter for all the songs of the artist who made the track
+        Getter for all the songs of the artist
 
-        :param track: A single track
+        :param artist: An artist
         :return: the songs list
         """
         map_tracks = self.get_tracks_map()
-        artist = map_tracks[track][0]
         return [track for track in map_tracks if artist == map_tracks[track][0]]
 
-    def get_album_tracks(self, track):
+    def get_track_album_tracks(self, track):
         """
         Getter of all the songs of the album which contains also the current track
         :param track: A single track
