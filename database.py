@@ -1266,7 +1266,6 @@ class Database:
         tracks = helper.read("tracks_final")
         tracks.next()
         result = {}
-        iterator = -10
         if self.tag_whitelist:
             try:
                 fp = open('data/tag_whitelist', 'rb')
@@ -1279,7 +1278,7 @@ class Database:
 
         for track in tracks:
             track_id = int(track[0])
-            artist_id = int(track[1])
+            artist_id = int(track[1]) + 276615
             duration = int(track[2])
             try:
                 playcount = float(track[3]) # yes, PLAYCOUNT is memorized as a floating point
@@ -1287,13 +1286,12 @@ class Database:
                 playcount = 0.0
             album = helper.parseList(track[4], int)
             try:
-                album = int(album[0])  # yes again, album is memorized as a list, even if no track have more than 1 album
+                album = int(album[0]) + 847203  # yes again, album is memorized as a list, even if no track have more than 1 album
             except:
-                album = iterator
-                iterator -= 1
+                album = -1
             tags = helper.parseList(track[5], int) # evaluation of the tags list
             if self.extended:
-                tags = [artist_id + 276615] + [album + 847203 if album > 0 else iterator] + tags
+                tags = [artist_id] + [album] + tags
                 tags = [tag for tag in tags if tag > 0]
             if self.tag_whitelist:
                 tags = [tag for tag in tags if tag in tag_whitelist]
@@ -1625,8 +1623,15 @@ class Database:
         :param artist: An artist
         :return: the songs list
         """
-        map_tracks = self.get_tracks_map()
-        return [track for track in map_tracks if artist == map_tracks[track][0]]
+        while True:
+            try:
+                return self.artist_tracks_map[artist]
+            except AttributeError:
+                self.artist_tracks_map = defaultdict(lambda: [], {})
+                map_tracks = self.get_tracks_map()
+                for track in map_tracks:
+                    artist_a = map_tracks[track][0]
+                    self.artist_tracks_map[artist_a].append(track)
 
     def get_track_album_tracks(self, track):
         """
