@@ -94,7 +94,10 @@ class Recommender:
         """
         """
         if not self.db.get_individual_state():
-            self.db.set_individual_state(True)
+            try:
+                self.db.set_individual_state(True)
+            except Exception as e:
+                logging.debug("%s" % (e))
 
 
     def run(self, choice, db, q_in, q_out, test, number):
@@ -528,42 +531,21 @@ class Recommender:
         #target_tracks_artists = [track for track in target_tracks if self.db.get_artist(track) in set_active_artists]
 
         artists_percentages = []
-        scanned = set()
-        for track in playlist_tracks:
-            artist = self.db.get_artist(track)
-            if artist in scanned:
-                continue
-            scanned.add(artist)
-            artist_tracks = self.db.get_artist_tracks(artist)
-            float_is_in_artist_tracks = [float(track in artist_tracks) for track in playlist_tracks]
-            artist_percentage = sum(float_is_in_artist_tracks)/len(playlist_tracks)
-            artists_percentages.append([artist, artist_percentage, artist_tracks])
+        playlist_artists_counter = Counter(playlist_artists)
 
-        most_in_artist = max(artists_percentages, key=itemgetter(1))
+        most_in_artist = max(playlist_artists_counter.values())/float(sum(playlist_artists_counter.values()))
 
-        if most_in_artist[1] < 0.10:
-            similar_artists_tracks = [(t, self.db.get_track_inclusion_value(t) * v) for a in playlist_artists for aa, v in self.db.get_similar_artist(a) for t in self.db.get_artist_tracks(aa) if t in target_tracks]
-            #target_tracks = [track for track in target_tracks if self.db.get_artist(track) in active_artists_filtered]
-            sorted_tracks = sorted(similar_artists_tracks, key=itemgetter(1), reverse=True)
-            recommendations = sorted_tracks[0:knn]
-            return [elem[0] for elem in recommendations]
-        '''
+        if most_in_artist < 0.10:
+            #similar_artists_tracks = [(t, self.db.get_track_inclusion_value(t) + v) for a in scanned for aa, v in self.db.get_similar_artist(a) for t in self.db.get_artist_tracks(aa) if t in target_tracks
+                                        #and self.db.get_track_playcount(t) / (1.0 + self.db.get_track_inclusion_value(t)) >= 1]
+            similar_artists_tracks = [t for a in playlist_artists_counter for aa, v in self.db.get_similar_artist(a) for t in self.db.get_artist_tracks(aa) if t in target_tracks
+                                        and self.db.get_track_playcount(t) / (1.0 + self.db.get_track_inclusion_value(t)) >= 1]
+            target_tracks = similar_artists_tracks
+
             self.deactivate_individual()
 
         else:
             self.activate_individual()
-        '''
-        #if most_in_artist[1] < 0.10:
-            #similar_artists_tracks = [t  for a in playlist_artists for aa in self.db.get_similar_artist(a) for t in self.db.get_artist_tracks(aa) if self.db.get_track_inclusion_value(t) > 15 and self.db.get_track_playcount(t) > 400]
-            #target_tracks_artists = similar_artists_tracks
-            #return self.make_collaborative_item_item_recommendations(active_playlist, target_tracks=similar_artists_tracks)
-
-        #if most_in_artist[1] < 0.10:
-            #return self.make_collaborative_item_item_recommendations(active_playlist)
-
-
-        #tf_idf_titles_playlist = [self.db.get_title_idf(title) for title in playlist_titles]
-
 
         if tf_idf == "bm25":
             average = self.db.get_average_playlist_tags_count()
