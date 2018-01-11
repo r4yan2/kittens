@@ -26,6 +26,7 @@ class Database:
             fp.close()
         else:
             self.individual = False
+            self.individual_coefficient = False
 
         self.extended = extended
         self.tag_whitelist = tag_whitelist
@@ -49,6 +50,9 @@ class Database:
     def set_individual_state(self, state):
         """
         """
+        if state:
+            if not self.individual_filename:
+                raise ValueError("Will not activate individual because no individual was set upon start!")
         self.individual = state
 
     def get_individual_filename(self):
@@ -1559,7 +1563,7 @@ class Database:
                     tags = [tag for tag in tags if math.ceil(self.genetic(tag))]
             except Exception as e:
                 print e
-            result[track_id]= [artist_id + 276615, duration, playcount, album, tags]
+            result[track_id]= [artist_id, duration, playcount, album, tags]
 
         return result
 
