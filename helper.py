@@ -116,6 +116,26 @@ def square_sum(x):
         acc += elem*elem
     return acc
 
+def euclidean_squared_distance(a,b):
+    """
+    computes the euclidean distance between a and b
+    """
+
+    elements_a_not_b = len([1 for elem in a if elem not in b])
+    elements_b_not_a = len([1 for elem in b if elem not in a])
+
+    return math.sqrt((elements_a_not_b + elements_b_not_a) ** 2)
+
+def ochiai_coefficient(a,b):
+    """
+    computes the ochiai coefficient between a and b
+    """
+
+    length_a = len(a)
+    length_b = len(b)
+    common_elements = len([1 for elem in a if elem in b])
+    return float(common_elements) / math.sqrt((length_a) * (length_b))
+
 def pearsonr(x, y):
     """
     return the pearson correlation between x and y
@@ -179,6 +199,32 @@ def jaccard(I, J):
     union = intersection + disjoint
 
     jaccard_coefficient = intersection / union
+    mse = 1.0 - disjoint / union
+
+    return jaccard_coefficient * mse
+
+def jaccard_shrinked(I, J, length_p, shrink=False):
+    """
+    Compute the jaccard similarity improved y multiplication with the mse
+
+    :param I: list
+    :param J: list
+    :return: similarity value
+    """
+    I_len = len(I)
+    J_len = len(J)
+    if not (I_len and J_len):
+        return 0.0
+        #raise ValueError("passed empty lists!")
+    intersection = float(len([1 for i in I if i in J]))
+    if not intersection:
+        return 0.0
+    disjoint = I_len + J_len - 2 * intersection
+    if not disjoint:
+        return 1.0
+    union = intersection + disjoint
+
+    jaccard_coefficient = intersection / (union + length_p)
     mse = 1.0 - disjoint / union
 
     return jaccard_coefficient * mse
@@ -255,16 +301,24 @@ def phi_coefficient(list1, list2, tot_tags):
 
 def hemming_distance(a, b):
     """
-    
+
     """
     counter = 0
     equal = 0
     for elem in a:
-        if elem in b: 
+        if elem in b:
             equal += 1
-        else: 
+        else:
             counter += 1
-    return counter + len(b) - equal 
+    return counter + len(b) - equal
+
+def tanimoto(x, y):
+    """
+    Compute the tanimoto coefficient between two lists
+    """
+    intersection = [common_item for common_item in x if common_item in y]
+    return float(len(intersection)) / (len(x) + len(y) - len(intersection))
+
 
 def LevenshteinDistance(s, s_len, t, t_len):
     """
@@ -292,7 +346,7 @@ def LevenshteinDistance(s, s_len, t, t_len):
 def plot(lst):
     """
     Helper function to easy plot data stored from kittens past execution
-    
+
     :param lst: name or list of names of saved map5 distributions
     """
     if not isinstance(lst, list):

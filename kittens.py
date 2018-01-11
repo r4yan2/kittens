@@ -13,7 +13,7 @@ from collections import Counter
 logging.basicConfig(filename='log/kittens.log', level=logging.DEBUG, filemode='w')
 """
 sys.argv[0] kittens
-sys.argv[1] Debug: 0 ON, 1 OFF 
+sys.argv[1] Debug: 0 ON, 1 OFF
 sys.argv[2] choice of the recommendations algorithms
 sys.argv[3] choice of the number of core to use
 sys.argv[4] choice of the instance (0 for recommendation, 1-6 test)
@@ -34,13 +34,7 @@ choice = int(sys.argv[2])
 core = int(sys.argv[3])
 
 if len(sys.argv) > 5:
-    try:
-        fp = open(sys.argv[5], "rb")
-    except FileNotFoundError as e:
-        logging.debug("Not found %s" % (e))
-        sys.exit(0)
-    individual = helper.parseIntList(fp.readline())
-    fp.close()
+    individual = sys.argv[5]
     db = Database(instance, individual)
     suppress_output = True
     logging.debug("individual parsed, kittens output suppressed\n")
@@ -70,7 +64,7 @@ q_out = Queue()
 [q_in.put((-1, -1)) for _ in xrange(core)]
 
 # Starting the process
-proc = [Process(target=recommender_system.run, args=(choice, db, q_in, q_out, test, i))
+proc = [Process(target=recommender_system.run, args=(choice, db, q_in, q_out, instance, i))
         for i in xrange(core)]
 for p in proc:
     p.daemon = True
@@ -88,7 +82,7 @@ auc_playlist = []
 done = set()
 for i in xrange(target_playlists_length):
     try:
-        r = q_out.get(timeout=300)
+        r = q_out.get()
     except:
         missing = list(done.symmetric_difference(target_playlists))
         logging.debug("Missing: %s, Please request new recommendations manually" % missing)

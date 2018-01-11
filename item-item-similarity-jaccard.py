@@ -16,15 +16,13 @@ def compute_item_item_similarities(db, q_in, q_out, number):
         if i == -1:
             time.sleep(30)
             break
-        playlists = [playlist for playlist in self.get_playlists() if len(self.get_playlist_tracks(playlist)) >= 10]
 
-
-        i_playlists = set(db.get_track_playlists(i))
-        if i_playlists == []:
+        i_stuffs = db.get_track_playlists(i)
+        if i_stuffs == []:
             q_out.put(-1)
             continue
 
-        similarities = [[i,j,helper.jaccard(i_playlists, j_playlists)] for j in tracks for j_playlists in [db.get_track_playlists(j)] if j_playlists != [] and i < j]
+        similarities = [[i,j,helper.jaccard(i_stuffs, j_stuffs)] for j in tracks for j_stuffs in [db.get_track_playlists(j)] if j_stuffs != [] and i < j]
 
         similarities = [[i,j,v] for i,j,v in similarities if v > 0]
 
@@ -32,14 +30,14 @@ def compute_item_item_similarities(db, q_in, q_out, number):
             q_out.put(-1)
             continue
         else:
-            q_out.put(sorted(similarities, key=itemgetter(2), reverse=True)[0:500])
+            q_out.put(sorted(similarities, key=itemgetter(2), reverse=True)[0:300])
 
-fp = open('data/item-item-similarities4.csv', 'w', 0)
+fp = open('data/item-item-similarities0.csv', 'w', 0)
 writer = csv.writer(fp, delimiter=',', quoting=csv.QUOTE_NONE)
 
 core=int(sys.argv[1])
 
-db = Database(4)
+db = Database(0)
 target_tracks = sorted(db.get_target_tracks())
 
 # Queue(s) for the process, one for input data to the process, the other for the output data to the main process

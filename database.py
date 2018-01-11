@@ -17,9 +17,12 @@ class Database:
         :param whitelist: if whitelist have to be loaded
         :return: the initialized object
         """
+
         if individual:
             fp = open(individual, "rb")
-            self.individual = helper.parseList(fp.readline(), float)
+            self.individual_filename = individual
+            self.individual_coefficient = helper.parseList(fp.readline(), float)
+            self.individual = True
             fp.close()
         else:
             self.individual = False
@@ -37,6 +40,21 @@ class Database:
             self.load_train_list(test)
         else:
             self.load_train_list()
+
+    def get_individual_state(self):
+        """
+        """
+        return self.individual
+
+    def set_individual_state(self, state):
+        """
+        """
+        self.individual = state
+
+    def get_individual_filename(self):
+        """
+        """
+        return self.individual_filename
 
     def get_target_playlists_tracks_set(self):
         """
@@ -296,7 +314,9 @@ class Database:
                     if title_flag:
                         similarity_title = helper.jaccard(playlist_a_titles, playlist_b_titles)
                     if track_flag:
+
                         similarity_track = helper.jaccard(playlist_a_tracks, playlist_b_tracks)
+
                     if tag_flag:
                         similarity_tag = helper.jaccard(playlist_a_tags, playlist_b_tags)
                     similarity = similarity_tag * similarity_title * similarity_track
@@ -409,14 +429,17 @@ class Database:
         similarities = []
 
         for playlist_b in playlists:
-
+            '''
             created_at = self.get_created_at_playlist(playlist_b)
             #if math.fabs(created_at_active - created_at) > (60 * 60 * 24 * 365 * 3) or
             if self.get_playlist_numtracks(playlist_b) < 10:
                 continue
+            '''
 
             tracks_playlist_b = set(self.get_playlist_tracks(playlist_b))
             tracks_playlist_b_length = len(tracks_playlist_b)
+
+
 
             if coefficient == "jaccard":
                 jaccard = helper.jaccard(tracks_playlist, tracks_playlist_b)
@@ -463,7 +486,7 @@ class Database:
             iterator = 0
             if target_tracks != "include":
                 while len(tracks) < tracks_knn:
-                    tracks += self.get_playlist_tracks(similarities[iterator][0])
+                    tracks = tracks.union(self.get_playlist_tracks(similarities[iterator][0]))
                     iterator += 1
             else:
                 target_tracks = self.get_target_tracks()
@@ -656,7 +679,7 @@ class Database:
             except KeyError:
                 return 0.0
         except AttributeError:
-            similarities = helper.read("item-item-similarities"+str(self.test), ",")
+            similarities = helper.read("item-item-similarities" + str(self.test), ",")
             self.similarities_map = {}
             old_x = 0
             for (x, y, value) in similarities:
@@ -679,6 +702,207 @@ class Database:
                     return self.similarities_map[j][i]
                 except KeyError:
                     return 0.0
+
+    def get_tag_similarities(self, i, j):
+        """
+        This method parse the item similairities csv and returns the similarity
+         between tags i and j
+
+        :param i: tag i int
+        :param j: tag j int
+        :return: similarity between i and j float
+        """
+        try:
+            return self.similarities_map_tags[i][j]
+        except KeyError:
+            try:
+                return self.similarities_map_tags[j][i]
+            except KeyError:
+                return 0.0
+        except AttributeError:
+            similarities = helper.read("tag-tag-similarities" + str(self.test), ",")
+            self.similarities_map_tags = {}
+            old_x = 0
+            for (x, y, value) in similarities:
+                x = int(x)
+                y = int(y)
+                value = float(value)
+                if old_x != x:
+                    limit = 200
+                    self.similarities_map_tags[x] = {}
+                    self.similarities_map_tags[x][y] = value
+                    old_x = x
+                elif limit > 0:
+                    self.similarities_map_tags[x][y] = value
+                    limit -= 1
+
+            try:
+                return self.similarities_map_tags[i][j]
+            except KeyError:
+                try:
+                    return self.similarities_map_tags[j][i]
+                except KeyError:
+                    return 0.0
+
+    def get_similar_artist(self, a, knn=None, return_values=True):
+        """
+        """
+        self.get_artist_similarities(0,0)
+        try:
+            result = self.similarities_map_artists[a]
+            if knn:
+                result = sorted(result.items(), key=itemgetter(1), reverse=True)[0:knn]
+            else:
+                result = result.items()
+            if return_values:
+                return result
+            else:
+                return [elem[0] for elem in result]
+        except KeyError:
+            return []
+
+
+
+    def get_artist_similarities(self, i, j):
+        """
+        This method parse the item similairities csv and returns the similarity
+         between artists i and j
+
+        :param i: artist i int
+        :param j: artist j int
+        :return: similarity between i and j float
+        """
+        try:
+            return self.similarities_map_artists[i][j]
+        except KeyError:
+            try:
+                return self.similarities_map_artists[j][i]
+            except KeyError:
+                return 0.0
+        except AttributeError:
+            similarities = helper.read("artist-artist-similarities" + str(self.test), ",")
+            self.similarities_map_artists = {}
+            old_x = 0
+            for (x, y, value) in similarities:
+                x = int(x)
+                y = int(y)
+                value = float(value)
+                if old_x != x:
+                    limit = 200
+                    self.similarities_map_artists[x] = {}
+                    self.similarities_map_artists[x][y] = value
+                    old_x = x
+                elif limit > 0:
+                    self.similarities_map_artists[x][y] = value
+                    limit -= 1
+
+            try:
+                return self.similarities_map_artists[i][j]
+            except KeyError:
+                try:
+                    return self.similarities_map_artists[j][i]
+                except KeyError:
+                    return 0.0
+
+    def get_item_similarities_united_alt(self, i, j, type):
+        """
+        This method parse the item similairities csv and returns the similarity
+         between tracks i and j
+
+        :param i: track i int
+        :param j: track j int
+        :return: similarity between i and j float
+        """
+        while(True):
+            try:
+                value = self.similarities_map[i][j]
+                for name, sim in value:
+                    if name == type:
+                        return sim
+                return 0.0
+            except KeyError:
+                try:
+                    value = self.similarities_map[j][i]
+                    for name, sim in value:
+                        if name == type:
+                            return sim
+                    return 0.0
+                except KeyError:
+                    return 0.0
+            except AttributeError:
+                similarities1 = helper.read("item-item-similarities" + str(self.test) + "_bis", ",")
+                similarities2 = helper.read("item-item-similarities" + str(self.test), ",")
+                similarities3 = helper.read("item-item-content" + str(self.test), ",")
+                self.similarities_map = {}
+                old_x = 0
+                for (x, y, value) in similarities1:
+                    x = int(x)
+                    y = int(y)
+                    value = ["users", float(value)]
+                    if old_x != x:
+                        limit = 150
+                        self.similarities_map[x] = {}
+                        self.similarities_map[x][y] = []
+                        self.similarities_map[x][y].append(value)
+                        old_x = x
+                    elif limit > 0:
+                        self.similarities_map[x][y] = []
+                        self.similarities_map[x][y].append(value)
+                        limit -= 1
+
+                for (x, y, value) in similarities2:
+                    x = int(x)
+                    y = int(y)
+                    value = ["playlists", float(value)]
+                    if old_x != x:
+                        limit = 150
+                        try:
+                            self.similarities_map[x][y].append(value)
+                        except KeyError:
+                            try:
+                                self.similarities_map[x][y] = []
+                                self.similarities_map[x][y].append(value)
+
+                            except KeyError:
+                                self.similarities_map[x] = {}
+                                self.similarities_map[x][y] = []
+                                self.similarities_map[x][y].append(value)
+
+                        old_x = x
+                    elif limit > 0:
+                        try:
+                            self.similarities_map[x][y].append(value)
+                        except KeyError:
+                            self.similarities_map[x][y] = []
+                            self.similarities_map[x][y].append(value)
+                        limit -= 1
+
+                for (x, y, value) in similarities3:
+                    x = int(x)
+                    y = int(y)
+                    value = ["content", float(value)]
+                    if old_x != x:
+                        limit = 150
+                        try:
+                            self.similarities_map[x][y].append(value)
+                        except KeyError:
+                            try:
+                                self.similarities_map[x][y] = []
+                                self.similarities_map[x][y].append(value)
+
+                            except KeyError:
+                                self.similarities_map[x] = {}
+                                self.similarities_map[x][y] = []
+                                self.similarities_map[x][y].append(value)
+                        old_x = x
+                    elif limit > 0:
+                        try:
+                            self.similarities_map[x][y].append(value)
+                        except KeyError:
+                            self.similarities_map[x][y] = []
+                            self.similarities_map[x][y].append(value)
+                        limit -= 1
+
 
 
     def set_item_similarities(self, i, j, update):
@@ -731,6 +955,28 @@ class Database:
                 self.similarities_map[j][i] = 0
             except KeyError:
                 pass
+
+    def normalized_tag_preference(self, playlist, active_tag=None):
+        """
+        """
+        playlist_tracks = self.get_playlist_tracks(playlist)
+        playlist_tags = [tag for track in playlist_tracks for tag in self.get_track_tags(track)]
+
+        if active_tag:
+
+            count_tags = playlist_tags.count(active_tag)
+            normalized = float(count_tags) / (1 + len(playlist_tags))
+
+            return normalized
+
+        else:
+            tags_counter = Counter(playlist_tags)
+            mean_average = helper.mean(tags_counter.values())
+
+            return mean_average
+
+
+
 
     def get_playlist_significative_tag(self, playlist):
         """
@@ -812,6 +1058,7 @@ class Database:
                 self.train_list = [[int(element[0]), int(element[1])] for element in train_list]
             self.num_interactions = len(self.train_list)
         else:
+
             to_open = "train_set"+str(test)
             train_list = helper.read(to_open)
             logging.debug("loaded %s" % (to_open))
@@ -858,10 +1105,10 @@ class Database:
                 except AttributeError:
                     fp = open("data/tag_encoding", "rb")
                     self.tag_encoding = helper.parseList(fp.readline(), int)
-                    if len(self.individual) != len(self.tag_encoding):
+                    if len(self.individual_coefficient) != len(self.tag_encoding):
                         raise ValueError("individual - tag association mismatch! Please check tag encoding")
                         sys.exit(0)
-                    self.encoding = {tag: individual for individual, tag in zip(self.individual, self.tag_encoding)}
+                    self.encoding = {tag: individual for individual, tag in zip(self.individual_coefficient, self.tag_encoding)}
                 except KeyError:
                     return 1.0
             else:
@@ -1111,6 +1358,7 @@ class Database:
         the initialization of the playlist final csv
         :return:
         """
+
         try:
             return self.playlist_final
         except AttributeError:
@@ -1257,6 +1505,17 @@ class Database:
             self.average_tags_length = helper.mean(tags_list_len)
             return self.average_tags_length
 
+    def get_created_at_tracks(self, track):
+        """
+        This method returns for a track, the created at attributes of the playlists where the specific track was included
+        """
+
+        playlists_track = self.get_track_playlists(track)
+
+        return [self.get_created_at_playlist(playlist) for playlist in playlists_track]
+
+
+
 
     def compute_tracks_map(self):
         """
@@ -1266,7 +1525,6 @@ class Database:
         tracks = helper.read("tracks_final")
         tracks.next()
         result = {}
-        iterator = -10
         if self.tag_whitelist:
             try:
                 fp = open('data/tag_whitelist', 'rb')
@@ -1279,7 +1537,7 @@ class Database:
 
         for track in tracks:
             track_id = int(track[0])
-            artist_id = int(track[1])
+            artist_id = int(track[1]) + 276615
             duration = int(track[2])
             try:
                 playcount = float(track[3]) # yes, PLAYCOUNT is memorized as a floating point
@@ -1287,13 +1545,12 @@ class Database:
                 playcount = 0.0
             album = helper.parseList(track[4], int)
             try:
-                album = int(album[0])  # yes again, album is memorized as a list, even if no track have more than 1 album
+                album = int(album[0]) + 847203  # yes again, album is memorized as a list, even if no track have more than 1 album
             except:
-                album = iterator
-                iterator -= 1
+                album = -1
             tags = helper.parseList(track[5], int) # evaluation of the tags list
             if self.extended:
-                tags = [artist_id + 276615] + [album + 847203 if album > 0 else iterator] + tags
+                tags = [artist_id] + [album] + tags
                 tags = [tag for tag in tags if tag > 0]
             if self.tag_whitelist:
                 tags = [tag for tag in tags if tag in tag_whitelist]
@@ -1302,7 +1559,7 @@ class Database:
                     tags = [tag for tag in tags if math.ceil(self.genetic(tag))]
             except Exception as e:
                 print e
-            result[track_id]= [artist_id, duration, playcount, album, tags]
+            result[track_id]= [artist_id + 276615, duration, playcount, album, tags]
 
         return result
 
@@ -1344,6 +1601,7 @@ class Database:
         """
         owner_playlist = self.get_owner_playlists()
         return owner_playlist[user]
+
 
     def get_playlist_user(self, playlist):
         """
@@ -1618,6 +1876,16 @@ class Database:
         map_tracks = self.get_tracks_map()
         return map_tracks[track][0]
 
+    def get_album(self, track):
+        """
+        Getter for the album who made the track
+
+        :param track: A single track
+        :return: the album id integer
+        """
+        map_tracks = self.get_tracks_map()
+        return map_tracks[track][3]
+
     def get_artist_tracks(self, artist):
         """
         Getter for all the songs of the artist
@@ -1625,8 +1893,15 @@ class Database:
         :param artist: An artist
         :return: the songs list
         """
-        map_tracks = self.get_tracks_map()
-        return [track for track in map_tracks if artist == map_tracks[track][0]]
+        while True:
+            try:
+                return self.artist_tracks_map[artist]
+            except AttributeError:
+                self.artist_tracks_map = defaultdict(lambda: [], {})
+                map_tracks = self.get_tracks_map()
+                for track in map_tracks:
+                    artist_a = map_tracks[track][0]
+                    self.artist_tracks_map[artist_a].append(track)
 
     def get_track_album_tracks(self, track):
         """
@@ -1637,6 +1912,8 @@ class Database:
         map_tracks = self.get_tracks_map()
         album = map_tracks[track][3]
         return [track for track in map_tracks if album == map_tracks[track][3]]
+
+
 
     def get_top_listened(self):
         """
