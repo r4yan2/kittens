@@ -41,6 +41,7 @@ class Database:
             self.load_train_list(test)
         else:
             self.load_train_list()
+        self.get_playlist_final()
 
     def get_individual_state(self):
         """
@@ -544,6 +545,7 @@ class Database:
 
         return taxonomy
 
+
     def get_user_based_collaborative_filtering(self, active_playlist, knn=20, coefficient="jaccard"):
         """
         This method is created in order to provide a CF via users.
@@ -765,6 +767,57 @@ class Database:
         except KeyError:
             return []
 
+    def get_similar_user(self, u, knn=None, return_values=True):
+        """
+        """
+        self.get_user_similarities(0,0)
+        try:
+            result = self.similarities_map_users[u]
+            if knn:
+                result = sorted(result.items(), key=itemgetter(1), reverse=True)[0:knn]
+            else:
+                result = result.items()
+            if return_values:
+                return result
+            else:
+                return [elem[0] for elem in result]
+        except KeyError:
+            return []
+
+    def get_similar_tracks(self, t, knn=None, return_values=True):
+        """
+        """
+        self.get_item_similarities_alt(0,0)
+        try:
+            result = self.similarities_map[t]
+            if knn:
+                result = sorted(result.items(), key=itemgetter(1), reverse=True)[0:knn]
+            else:
+                result = result.items()
+            if return_values:
+                return result
+            else:
+                return [elem[0] for elem in result]
+        except KeyError:
+            return []
+
+    def get_similar_tracks_on_tags(self, t, knn=None, return_values=True):
+        """
+        """
+        self.get_tag_similarities(0,0)
+        try:
+            result = self.similarities_map_tags[t]
+            if knn:
+                result = sorted(result.items(), key=itemgetter(1), reverse=True)[0:knn]
+            else:
+                result = result.items()
+            if return_values:
+                return result
+            else:
+                return [elem[0] for elem in result]
+        except KeyError:
+            return []
+
 
 
     def get_artist_similarities(self, i, j):
@@ -784,7 +837,7 @@ class Database:
             except KeyError:
                 return 0.0
         except AttributeError:
-            similarities = helper.read("artist-artist-similarities" + str(self.test), ",")
+            similarities = helper.read("artist-artist-similarities_bis" + str(self.test), ",")
             self.similarities_map_artists = {}
             old_x = 0
             for (x, y, value) in similarities:
@@ -805,6 +858,47 @@ class Database:
             except KeyError:
                 try:
                     return self.similarities_map_artists[j][i]
+                except KeyError:
+                    return 0.0
+
+    def get_user_similarities(self, i, j):
+        """
+        This method parse the item similairities csv and returns the similarity
+         between artists i and j
+
+        :param i: artist i int
+        :param j: artist j int
+        :return: similarity between i and j float
+        """
+        try:
+            return self.similarities_map_users[i][j]
+        except KeyError:
+            try:
+                return self.similarities_map_users[j][i]
+            except KeyError:
+                return 0.0
+        except AttributeError:
+            similarities = helper.read("user-user-similarities" + str(self.test), ",")
+            self.similarities_map_users = {}
+            old_x = 0
+            for (x, y, value) in similarities:
+                x = int(x)
+                y = int(y)
+                value = float(value)
+                if old_x != x:
+                    limit = 200
+                    self.similarities_map_users[x] = {}
+                    self.similarities_map_users[x][y] = value
+                    old_x = x
+                elif limit > 0:
+                    self.similarities_map_users[x][y] = value
+                    limit -= 1
+
+            try:
+                return self.similarities_map_users[i][j]
+            except KeyError:
+                try:
+                    return self.similarities_map_users[j][i]
                 except KeyError:
                     return 0.0
 
@@ -1482,6 +1576,14 @@ class Database:
         except AttributeError:
             self.tags = list(set([tag for item in self.get_tracks_map().itervalues() for tag in item[4]]))
             return self.tags
+
+    def get_users(self):
+        """
+        """
+        playlist_final = self.get_playlist_final()
+        users = [playlist[4] for playlist in playlist_final.values()]
+        set_users = set(users)
+        return set_users
 
     def get_average_playlist_tags_count(self):
         """
