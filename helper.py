@@ -177,6 +177,20 @@ def set_difference_len(I,J):
                 acc+=1
         return acc
 
+def sublist_sum(lst, iterator, pos):
+    lst=sorted(lst, key=itemgetter(iterator))
+    old_elem = lst[0][iterator]
+    sumup = 0
+    new_lst = []
+    for elem in lst:
+        if elem[iterator] == old_elem:
+            sumup += elem[pos]
+        else:
+            new_lst.append([old_elem,sumup])
+            sumup = elem[pos]
+            old_elem = elem[iterator]
+    return new_lst
+
 def jaccard(I, J):
     """
     Compute the jaccard similarity improved y multiplication with the mse
